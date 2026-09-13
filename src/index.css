@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-primary: #ffffff;
+    --bg-sidebar: #f9f9f9;
+    --bg-hover: #ececec;
+    --bg-card: #ffffff;
+    --border-color: #e5e5e5;
+    --text-primary: #0d0d0d;
+    --text-muted: #676767;
+    --input-bg: #f4f4f4;
+  }
+
+  .dark {
+    --bg-primary: #171717;
+    --bg-sidebar: #212121;
+    --bg-hover: #2f2f2f;
+    --bg-card: #212121;
+    --border-color: #303030;
+    --text-primary: #ececec;
+    --text-muted: #8e8e8e;
+    --input-bg: #2f2f2f;
+  }
+
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 120, 120, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 120, 120, 0.4);
+}
+
+/* Markdown formatting inside chat bubbles */
+.markdown-body p {
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+}
+
+.markdown-body p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body ul, .markdown-body ol {
+  margin-left: 1.25rem;
+  margin-bottom: 0.75rem;
+  list-style-type: disc;
+}
+
+.markdown-body code:not(pre code) {
+  background-color: rgba(120, 120, 120, 0.15);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85em;
+}
+
+.markdown-body pre {
+  background-color: #09090b;
+  color: #f4f4f5;
+  padding: 1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--border-color);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+}

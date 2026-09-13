@@ -1,0 +1,28 @@
+# Quick AI - Security & Environment Exclusions
+.env
+.env.local
+.env.*.local
+
+# Python cache & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+
+# Build artifacts & dependencies
+node_modules/
+dist/
+.clangd/
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs & scratch files
+*.log
+scratch/

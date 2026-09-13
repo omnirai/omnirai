@@ -1,0 +1,12 @@
+CompileFlags:
+  Add:
+    - "-std=c++17"
+    - "-w"
+Diagnostics:
+  Suppress:
+    - "pp_file_not_found"
+    - "undeclared_var_use"
+    - "no_member"
+    - "fatal_too_many_errors"
+    - "typecheck_invalid_operands"
+    - "reference_bind_failed"

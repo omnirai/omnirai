@@ -10,7 +10,7 @@ export default function TopBar({
   const getEngineLabel = () => {
     if (settings.engineMode === 'transformers-wasm') return 'Local WASM LLM';
     if (settings.engineMode === 'ollama-local') return 'Ollama Local';
-    return 'Quick AI Local Engine';
+    return 'Quick AI Multi-Model Engine';
   };
 
   return (

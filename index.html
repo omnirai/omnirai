@@ -661,6 +661,11 @@
       <div id="sidebar-history-list"></div>
 
       <div class="nav-label" style="margin-top:20px;">Preferences</div>
+      <div class="nav-item" onclick="openImageGeneratorModal()" style="display:flex;align-items:center;gap:8px;margin-bottom:4px;color:#10b981;font-weight:600;">
+        <span>🎨</span>
+        <span>AI Image Studio</span>
+        <span style="margin-left:auto;font-size:10px;background:rgba(16,185,129,0.15);padding:2px 6px;border-radius:9999px;">2 Daily</span>
+      </div>
       <div class="nav-item" onclick="openAccountModal()" style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
         <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
         <span>Account & Profile</span>
@@ -802,7 +807,11 @@
             <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
           </button>
 
-          <textarea id="user-input" rows="1" placeholder="Ask ChatGPT (GPT-4o), or attach a file..." oninput="this.style.height='auto';this.style.height=(this.scrollHeight)+'px';" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitPrompt();}" class="prompt-textarea"></textarea>
+          <button type="button" onclick="openImageGeneratorModal()" class="paperclip-btn" title="🎨 Open AI Image Studio (2 free daily)" style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.4);color:#10b981;">
+            🎨
+          </button>
+
+          <textarea id="user-input" rows="1" placeholder="Ask ChatGPT (GPT-4o), attach a file, or click 🎨..." oninput="this.style.height='auto';this.style.height=(this.scrollHeight)+'px';" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitPrompt();}" class="prompt-textarea"></textarea>
 
           <button type="button" id="send-btn" onclick="submitPrompt()" class="send-arrow-btn" title="Send message">
             ➔
@@ -1012,6 +1021,42 @@
           <button type="button" onclick="logoutUser(event);closeAccountModal();" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);padding:8px 14px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;transition:background 0.15s ease;">Sign Out</button>
         </div>
       </div>
+  <!-- Modal 5: Quick AI Image Studio Modal -->
+  <div id="image-generator-modal" class="modal-backdrop" onclick="if(event.target===this) closeImageGeneratorModal()">
+    <div class="modal-card" style="max-width:540px;">
+      <div class="modal-header">
+        <div class="modal-title" style="display:flex;align-items:center;gap:8px;">
+          <span>🎨</span>
+          <span>Quick AI Image Studio</span>
+        </div>
+        <button type="button" onclick="closeImageGeneratorModal()" class="modal-close-btn">✕</button>
+      </div>
+
+      <div id="img-modal-quota-badge" style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:#10b981;padding:8px 14px;border-radius:12px;font-size:12px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">
+        <span>✨ 2 Free Daily Images</span>
+        <span id="img-quota-remaining-text">2/2 remaining today</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Image Prompt / Description</label>
+        <textarea id="img-modal-prompt-input" rows="3" class="form-input" style="resize:none;font-family:inherit;line-height:1.5;" placeholder="Describe the image you want to generate (e.g. A futuristic glowing cybernetic city at night)..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Style Presets (Click to add style)</label>
+        <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:8px;">
+          <button type="button" onclick="appendImageStyle('photorealistic 8k detail, cinematic lighting')" class="hero-card" style="padding:8px 10px;font-size:11px;text-align:center;justify-content:center;">📸 Photorealistic</button>
+          <button type="button" onclick="appendImageStyle('cyberpunk neon aesthetics, octane render 8k')" class="hero-card" style="padding:8px 10px;font-size:11px;text-align:center;justify-content:center;">🎨 Cyberpunk</button>
+          <button type="button" onclick="appendImageStyle('anime studio ghibli style, vibrant colors')" class="hero-card" style="padding:8px 10px;font-size:11px;text-align:center;justify-content:center;">✏️ Anime</button>
+          <button type="button" onclick="appendImageStyle('unreal engine 5 3d render, hyperdetailed')" class="hero-card" style="padding:8px 10px;font-size:11px;text-align:center;justify-content:center;">🖼️ 3D Render</button>
+          <button type="button" onclick="appendImageStyle('epic fantasy digital painting, masterpiece')" class="hero-card" style="padding:8px 10px;font-size:11px;text-align:center;justify-content:center;">🌌 Epic Fantasy</button>
+          <button type="button" onclick="appendImageStyle('minimalist vector art, clean aesthetic')" class="hero-card" style="padding:8px 10px;font-size:11px;text-align:center;justify-content:center;">🖌️ Minimal Vector</button>
+        </div>
+      </div>
+
+      <button type="button" id="img-modal-submit-btn" onclick="submitImageFromModal()" class="google-auth-btn" style="background:#10b981;color:#000000;border:none;margin-top:12px;font-weight:700;font-size:13.5px;padding:12px;">
+        🎨 Generate AI Image Now
+      </button>
     </div>
   </div>
 
@@ -1409,6 +1454,49 @@
     }
 
     const MAX_DAILY_IMAGES = 2;
+
+    function openImageGeneratorModal() {
+      const modal = document.getElementById('image-generator-modal');
+      const quotaText = document.getElementById('img-quota-remaining-text');
+      if (quotaText) {
+        const q = getDailyImageQuota();
+        quotaText.innerText = `${q.remaining}/${MAX_DAILY_IMAGES} remaining today`;
+      }
+      if (modal) modal.classList.add('show');
+    }
+
+    function closeImageGeneratorModal() {
+      const modal = document.getElementById('image-generator-modal');
+      if (modal) modal.classList.remove('show');
+    }
+
+    function appendImageStyle(styleString) {
+      const input = document.getElementById('img-modal-prompt-input');
+      if (input) {
+        const current = input.value.trim();
+        if (current) {
+          input.value = current + ', ' + styleString;
+        } else {
+          input.value = styleString;
+        }
+      }
+    }
+
+    function submitImageFromModal() {
+      const input = document.getElementById('img-modal-prompt-input');
+      if (!input) return;
+      const promptVal = input.value.trim();
+      if (!promptVal) {
+        alert('Please describe the image you want to generate!');
+        return;
+      }
+      closeImageGeneratorModal();
+      const mainInput = document.getElementById('user-input');
+      if (mainInput) {
+        mainInput.value = '/image ' + promptVal;
+      }
+      submitPrompt();
+    }
 
     function getDailyImageQuota() {
       const userId = (typeof firebaseAuth !== 'undefined' && firebaseAuth.currentUser) ? firebaseAuth.currentUser.uid : 'guest';

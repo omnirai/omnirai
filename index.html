@@ -774,8 +774,8 @@
           <button type="button" onclick="sendQuickPrompt('What is weather? Explain deeply.')" class="hero-card">
             <span>🌧️ Explain how weather systems work</span>
           </button>
-          <button type="button" onclick="sendQuickPrompt('What is math?')" class="hero-card">
-            <span>📐 Fundamentals of Mathematics</span>
+          <button type="button" onclick="sendQuickPrompt('/image A futuristic glowing cybernetic dragon at night')" class="hero-card">
+            <span>🎨 Generate AI Image (2 free daily)</span>
           </button>
         </div>
       </div>
@@ -1392,8 +1392,8 @@
               <button type="button" onclick="sendQuickPrompt('What is weather? Explain deeply.')" class="hero-card">
                 <span>🌧️ Explain how weather systems work</span>
               </button>
-              <button type="button" onclick="sendQuickPrompt('What is math?')" class="hero-card">
-                <span>📐 Fundamentals of Mathematics</span>
+              <button type="button" onclick="sendQuickPrompt('/image A futuristic glowing cybernetic dragon at night')" class="hero-card">
+                <span>🎨 Generate AI Image (2 free daily)</span>
               </button>
             </div>
           </div>`;
@@ -1406,6 +1406,55 @@
       const inputEl = document.getElementById('user-input');
       if (inputEl) inputEl.value = promptText;
       submitPrompt();
+    }
+
+    const MAX_DAILY_IMAGES = 2;
+
+    function getDailyImageQuota() {
+      const userId = (typeof firebaseAuth !== 'undefined' && firebaseAuth.currentUser) ? firebaseAuth.currentUser.uid : 'guest';
+      const today = new Date().toISOString().slice(0, 10);
+      const key = `quickai_img_quota_${userId}_${today}`;
+      const count = parseInt(localStorage.getItem(key) || '0', 10);
+      return {
+        count: count,
+        remaining: Math.max(0, MAX_DAILY_IMAGES - count),
+        key: key
+      };
+    }
+
+    function incrementDailyImageQuota() {
+      const q = getDailyImageQuota();
+      const newCount = q.count + 1;
+      localStorage.setItem(q.key, newCount.toString());
+      return newCount;
+    }
+
+    function isImagePrompt(promptText) {
+      if (!promptText) return false;
+      const lower = promptText.trim().toLowerCase();
+      if (lower.startsWith('/image') || lower.startsWith('/img') || lower.startsWith('/draw') || lower.startsWith('/generate')) return true;
+      const patterns = [
+        'generate image', 'generate an image', 'create image', 'create an image',
+        'draw image', 'draw an image', 'generate picture', 'create picture',
+        'make an image', 'make a picture', 'paint an image'
+      ];
+      return patterns.some(p => lower.includes(p));
+    }
+
+    function cleanImagePrompt(promptText) {
+      let clean = promptText.replace(/^\/(image|img|draw|generate)\s*/i, '').trim();
+      const prefixes = [
+        /^(please\s+)?generate\s+(an?\s+)?image\s+(of\s+)?/i,
+        /^(please\s+)?create\s+(an?\s+)?image\s+(of\s+)?/i,
+        /^(please\s+)?draw\s+(an?\s+)?image\s+(of\s+)?/i,
+        /^(please\s+)?generate\s+(a\s+)?picture\s+(of\s+)?/i,
+        /^(please\s+)?create\s+(a\s+)?picture\s+(of\s+)?/i,
+        /^(please\s+)?make\s+(an?\s+)?image\s+(of\s+)?/i
+      ];
+      prefixes.forEach(p => {
+        clean = clean.replace(p, '');
+      });
+      return clean.trim() || promptText.trim();
     }
 
     async function submitPrompt() {
@@ -1454,28 +1503,61 @@
           messages: []
         };
         allChatSessions.unshift(session);
+        renderSidebarHistory();
       }
 
-      session.messages.push({
-        role: 'user',
-        content: text,
-        contentHtml: displayUserHtml
-      });
-      saveChatsToStorage();
-
-      // 1. User Bubble
+      // 1. User Message Bubble
       const userDiv = document.createElement('div');
       userDiv.className = 'chat-bubble-user';
-      userDiv.innerHTML = `
-        <div class="content">${displayUserHtml}</div>
-        <div class="avatar avatar-user">U</div>`;
+      userDiv.innerHTML = `<div class="content">${displayUserHtml}</div><div class="avatar avatar-user">U</div>`;
       container.appendChild(userDiv);
+      if (session) {
+        session.messages.push({ role: 'user', content: text || (fileDataCopy ? fileDataCopy.name : '') });
+        saveChatsToStorage();
+      }
 
-      // 2. Assistant Loading Bubble
+      // 2. Assistant Loading / Response Bubble
       const assistantId = 'assistant-' + Date.now();
       const assistantDiv = document.createElement('div');
       assistantDiv.id = assistantId;
       assistantDiv.className = 'chat-bubble-assistant';
+
+      // Check if user requested AI Image Generation
+      if (isImagePrompt(text) && !fileDataCopy) {
+        const quota = getDailyImageQuota();
+        let respContent = '';
+        if (quota.remaining <= 0) {
+          respContent = `⚠️ **Daily Image Limit Reached (2/2 Used Today)**\n\nYou have used your **2 free AI image generations** for today. Your daily limit resets tomorrow at midnight!\n\n💡 *Tip: You can continue chatting with ChatGPT (GPT-4o), Gemini 1.5, Claude 3.5, Code Studio, and SVG Studio with unlimited chats!*`;
+        } else {
+          const usedCount = incrementDailyImageQuota();
+          const remainingCount = MAX_DAILY_IMAGES - usedCount;
+          const imagePrompt = cleanImagePrompt(text);
+          const seed = Math.floor(Math.random() * 1000000);
+          const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=1024&height=1024&nologo=true&seed=${seed}`;
+
+          respContent = `🎨 **AI Image Generated Successfully**\n\n` +
+            `> **Prompt**: *"${escapeHtml(imagePrompt)}"* \n\n` +
+            `<div style="margin:14px 0;border-radius:16px;overflow:hidden;border:1px solid #303030;background:#0f172a;max-width:600px;">` +
+            `<img src="${imageUrl}" alt="${escapeHtml(imagePrompt)}" style="width:100%;height:auto;display:block;border-radius:16px 16px 0 0;" loading="lazy" />` +
+            `<div style="padding:12px 16px;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">` +
+            `<span style="font-size:12px;color:#10b981;font-weight:600;">✨ Daily Image Quota (${usedCount}/${MAX_DAILY_IMAGES} used today, ${remainingCount} remaining)</span>` +
+            `<a href="${imageUrl}" target="_blank" download="quickai_${Date.now()}.jpg" style="background:#10b981;color:#000000;font-weight:700;font-size:12px;padding:6px 14px;border-radius:9999px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">📥 Download Image</a>` +
+            `</div></div>`;
+        }
+
+        assistantDiv.innerHTML = `
+          <div class="avatar avatar-ai" style="background:transparent;">${QUICK_AI_SVG_LOGO}</div>
+          <div class="content markdown-body">${renderMarkdown(respContent)}</div>`;
+        container.appendChild(assistantDiv);
+        container.scrollTop = container.scrollHeight;
+
+        if (session) {
+          session.messages.push({ role: 'assistant', content: respContent });
+          saveChatsToStorage();
+        }
+        return;
+      }
+
       assistantDiv.innerHTML = `
         <div class="avatar avatar-ai" style="background:transparent;">${QUICK_AI_SVG_LOGO}</div>
         <div class="content markdown-body"><div style="display:flex;align-items:center;gap:10px;"><div class="typing-dots"><span></span><span></span><span></span></div><span style="font-size:13px;color:#9ca3af;font-weight:500;">typing...</span></div></div>`;

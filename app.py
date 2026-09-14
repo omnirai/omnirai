@@ -741,6 +741,11 @@ HTML_PAGE = r"""<!DOCTYPE html>
               <span class="menu-text">ChatGPT (GPT-4o)</span>
               <span class="menu-badge">OpenAI</span>
             </div>
+            <div class="model-menu-item" data-model="flux-image" onclick="selectModelCustom('flux-image')">
+              <span class="menu-icon" style="font-size:16px;">🎨</span>
+              <span class="menu-text">FLUX AI Image Generator</span>
+              <span class="menu-badge" style="background:#10b981;color:#000000;font-weight:700;">2 Daily</span>
+            </div>
             <div class="model-menu-item" data-model="perplexity" onclick="selectModelCustom('perplexity')">
               <span class="menu-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7V17L12 22L22 17V7L12 2ZM12 4.15L19.5 7.9V10.5L12 6.75L4.5 10.5V7.9L12 4.15ZM4.5 12.5L12 8.75L19.5 12.5V16.1L12 19.85L4.5 16.1V12.5Z" fill="#20b2aa"/><path d="M12 2V22M2 7L22 17M2 17L22 7" stroke="#20b2aa" stroke-width="1.5"/></svg></span>
               <span class="menu-text">Perplexity Sonar</span>
@@ -1081,10 +1086,11 @@ HTML_PAGE = r"""<!DOCTYPE html>
   <script>
     let activeModel = 'gpt-4o';
     let attachedFileData = null;
-    const allModels = ['gpt-4o', 'perplexity', 'gemini-1.5-flash', 'grok-2', 'claude-3-5-sonnet', 'deepseek-reasoner', 'native'];
+    const allModels = ['gpt-4o', 'flux-image', 'perplexity', 'gemini-1.5-flash', 'grok-2', 'claude-3-5-sonnet', 'deepseek-reasoner', 'native'];
 
     const modelLabels = {
       'gpt-4o': 'ChatGPT (GPT-4o)',
+      'flux-image': 'FLUX AI Image Generator (2 Free Daily)',
       'perplexity': 'Perplexity Sonar (Router API)',
       'gemini-1.5-flash': 'Google Gemini 1.5',
       'grok-2': 'Grok 2 (xAI)',
@@ -1095,6 +1101,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
     const modelIcons = {
       'gpt-4o': '🟢',
+      'flux-image': '🎨',
       'perplexity': '🌐',
       'gemini-1.5-flash': '✦',
       'grok-2': '🚀',
@@ -1115,10 +1122,25 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
     function renderMarkdown(text) {
       if (!text) return '';
-      let str = String(text)
+      let str = String(text);
+
+      // Preserve existing HTML components (images, downloads, badges, cards)
+      const htmlComponents = [];
+      str = str.replace(/<(div|img|a|span|table|thead|tbody|tr|th|td|button|hr|br|strong|em|code|pre)[\s\S]*?<\/\1>|<img[\s\S]*?>|<br\s*\/?>|<hr\s*\/?>/gi, function(m) {
+        htmlComponents.push(m);
+        return '___HTML_COMPONENT_' + (htmlComponents.length - 1) + '___';
+      });
+
+      // Escape remaining raw symbols
+      str = str
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
+
+      // Restore HTML components
+      htmlComponents.forEach((comp, idx) => {
+        str = str.replace('___HTML_COMPONENT_' + idx + '___', comp);
+      });
       
       // Preserve Code blocks
       const codeBlocks = [];
@@ -1258,6 +1280,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
     const MODEL_ICONS_SVG = {
       'gpt-4o': `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 23a6.0462 6.0462 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5351-3.0137l.142.0852 4.783 2.7582a.7948.7948 0 0 0 .7854 0l5.8341-3.3696v2.332a.0805.0805 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7854.7854 0 0 0 .3927.6813l5.8152 3.3554-2.02 1.1686a.0758.0758 0 0 1-.071 0l-4.8303-2.7913A4.4944 4.4944 0 0 1 2.3408 7.8956zm16.0963 3.8558L12.603 8.3817l2.02-1.1686a.0758.0758 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6773a.79.79 0 0 0-.4117-.6789zm2.5222-2.0304l-.142-.0852-4.7735-2.7582a.7948.7948 0 0 0-.7854 0L9.4243 10.2467V7.9147a.0805.0805 0 0 1 .0332-.0615l4.8303-2.7914a4.4992 4.4992 0 0 1 6.6759 4.6626zm-12.0194 4.8814l-2.02-1.1686a.071.071 0 0 1-.038-.052V7.799a4.504 4.504 0 0 1 7.3709-3.4536l-.1419.0804-4.7783 2.7582a.7948.7948 0 0 0-.3927.6813v6.7369z" fill="#10a37f"/></svg>`,
+      'flux-image': `<span style="font-size:16px;">🎨</span>`,
       'perplexity': `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7V17L12 22L22 17V7L12 2ZM12 4.15L19.5 7.9V10.5L12 6.75L4.5 10.5V7.9L12 4.15ZM4.5 12.5L12 8.75L19.5 12.5V16.1L12 19.85L4.5 16.1V12.5Z" fill="#20b2aa"/><path d="M12 2V22M2 7L22 17M2 17L22 7" stroke="#20b2aa" stroke-width="1.5"/></svg>`,
       'gemini-1.5-flash': `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z" fill="url(#geminiGrad)"/><defs><linearGradient id="geminiGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#4285F4"/><stop offset="50%" stop-color="#9B51E0"/><stop offset="100%" stop-color="#EA4335"/></linearGradient></defs></svg>`,
       'grok-2': `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" fill="#ffffff"/></svg>`,
@@ -1311,7 +1334,13 @@ HTML_PAGE = r"""<!DOCTYPE html>
       });
 
       const inputEl = document.getElementById('user-input');
-      if (inputEl) inputEl.placeholder = `Ask ${modelLabels[modelId] || 'AI'}, or attach a file...`;
+      if (inputEl) {
+        if (modelId === 'flux-image') {
+          inputEl.placeholder = '🎨 Describe an image to generate (e.g. create logo of quick ai)...';
+        } else {
+          inputEl.placeholder = `Ask ${modelLabels[modelId] || 'AI'}, or attach a file...`;
+        }
+      }
     }
 
 
@@ -1534,13 +1563,14 @@ HTML_PAGE = r"""<!DOCTYPE html>
     }
 
     function isImagePrompt(promptText) {
+      if (activeModel === 'flux-image') return true;
       if (!promptText) return false;
       const lower = promptText.trim().toLowerCase();
       if (lower.startsWith('/image') || lower.startsWith('/img') || lower.startsWith('/draw') || lower.startsWith('/generate')) return true;
       const patterns = [
         'generate image', 'generate an image', 'create image', 'create an image',
         'draw image', 'draw an image', 'generate picture', 'create picture',
-        'make an image', 'make a picture', 'paint an image'
+        'make an image', 'make a picture', 'paint an image', 'create logo', 'logo of'
       ];
       return patterns.some(p => lower.includes(p));
     }

@@ -43,9 +43,10 @@ class QuickAiEngine:
         lower = clean_prompt.lower()
         words = set(re.findall(r'\w+', lower))
 
-        # 1. AI Self-Identity & Attribution Check
+        # 1. AI Self-Identity & Attribution Check (Skip if file is attached)
+        has_attached_file = "[Attached File:" in prompt
         identity_phrases = ["who are you", "who are u", "who r u", "what are you", "what are u", "who made you", "who created you", "creator of quick ai", "bishalcodes", "who created quick ai", "what is quick ai", "tell me about yourself", "who built you", "what can you do"]
-        if any(k in lower for k in identity_phrases):
+        if not has_attached_file and any(k in lower for k in identity_phrases):
             model_name = {
                 'gpt-4o': 'ChatGPT (GPT-4o)',
                 'perplexity': 'Perplexity Sonar',
@@ -63,9 +64,9 @@ class QuickAiEngine:
                 "How can I help you today? Feel free to ask any question or request assistance with code, science, writing, recipes, or analysis!"
             )
 
-        # 2. Conversational Greetings & Natural Chat Handler
+        # 2. Conversational Greetings & Natural Chat Handler (Skip if file is attached)
         greetings = {"hello", "hi", "hlo", "helo", "hey", "hola", "hy", "sup", "yo", "namaste", "k cha", "sancho cha", "morning", "evening", "afternoon", "howdy"}
-        if words.intersection(greetings) or lower in greetings or any(lower.startswith(g + " ") for g in greetings):
+        if not has_attached_file and (words.intersection(greetings) or lower in greetings or any(lower.startswith(g + " ") for g in greetings)):
             non_greeting = [w for w in words if w not in greetings and w not in {"is", "a", "the", "there", "you", "are", "doing", "how", "it", "going"}]
             if not non_greeting or len(lower) <= 12:
                 model_name = {

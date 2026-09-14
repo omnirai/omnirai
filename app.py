@@ -1391,12 +1391,18 @@ HTML_PAGE = r"""<!DOCTYPE html>
       const text = inputEl.value.trim();
       if (!text && !attachedFileData) return;
 
+      const fileDataCopy = attachedFileData;
       let fullText = text;
       let displayUserHtml = escapeHtml(text).replace(/\n/g, '<br>');
 
-      if (attachedFileData) {
-        displayUserHtml = `<div style="border-bottom:1px solid #555;padding-bottom:6px;margin-bottom:6px;font-family:monospace;font-size:12px;color:#10b981;">📎 ${escapeHtml(attachedFileData.name)}</div>` + (displayUserHtml || 'Analyzed attached file.');
-        fullText = (text ? text + '\n\n' : '') + '[Attached File: ' + attachedFileData.name + ']\n' + attachedFileData.content;
+      if (fileDataCopy) {
+        const sizeStr = fileDataCopy.size >= 1024 * 1024 
+          ? (fileDataCopy.size / (1024 * 1024)).toFixed(2) + ' MB' 
+          : (fileDataCopy.size / 1024).toFixed(1) + ' KB';
+        displayUserHtml = `<div style="border-bottom:1px dashed #444;padding-bottom:6px;margin-bottom:8px;font-family:monospace;font-size:12px;color:#10b981;display:flex;align-items:center;gap:6px;"><span>📎</span> <strong>${escapeHtml(fileDataCopy.name)}</strong> <span style="opacity:0.6;">(${sizeStr})</span></div>` + (displayUserHtml || '<em>Read & analyzed attached file.</em>');
+        
+        const defaultPrompt = 'Please read and analyze the attached file in detail and explain its contents, key insights, or any questions.';
+        fullText = `[Attached File: ${fileDataCopy.name}]\n--- FILE CONTENT START ---\n${fileDataCopy.content}\n--- FILE CONTENT END ---\n\n${text ? 'User Question: ' + text : defaultPrompt}`;
       }
 
       // Clear input & file chip immediately
@@ -1415,7 +1421,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
       let session = allChatSessions.find(s => s.id === currentChatId);
       if (!session) {
         currentChatId = currentChatId || ('chat_' + Date.now());
-        const snippetTitle = text ? (text.length > 26 ? text.substring(0, 26) + '...' : text) : (attachedFileData ? attachedFileData.name : 'New Chat');
+        const snippetTitle = text ? (text.length > 26 ? text.substring(0, 26) + '...' : text) : (fileDataCopy ? fileDataCopy.name : 'New Chat');
         session = {
           id: currentChatId,
           title: snippetTitle,

@@ -294,14 +294,48 @@ HTML_PAGE = r"""<!DOCTYPE html>
       display: flex; gap: 12px; justify-content: flex-end; width: 100%;
     }
     .chat-bubble-user .content {
-      background: #2f2f2f; color: #fff; padding: 14px 18px; border-radius: 18px 18px 2px 18px; max-width: 80%; font-size: 14px; line-height: 1.6;
+      background: #2f2f2f; color: #fff; padding: 12px 16px; border-radius: 18px 18px 2px 18px; max-width: 85%; font-size: 14px; line-height: 1.6;
     }
     .chat-bubble-assistant {
-      display: flex; gap: 12px; justify-content: flex-start; width: 100%;
+      display: flex; gap: 14px; justify-content: flex-start; width: 100%;
     }
     .chat-bubble-assistant .content {
-      background: #212121; border: 1px solid #303030; color: #fff; padding: 14px 18px; border-radius: 18px 18px 18px 2px; max-width: 80%; font-size: 14px; line-height: 1.6;
+      background: transparent; border: none; color: #ececec; padding: 2px 0; max-width: 100%; font-size: 14.5px; line-height: 1.65; flex: 1; min-width: 0;
     }
+
+    /* Clean Dynamic Markdown Styles (ChatGPT Style) */
+    .md-inline-code {
+      background: #27272a; padding: 2px 6px; border-radius: 6px;
+      font-family: monospace; font-size: 13px; color: #10b981;
+    }
+    .md-hr { border: none; border-top: 1px solid #303030; margin: 16px 0; }
+    .md-h1 { font-size: 20px; font-weight: 700; color: inherit; margin: 16px 0 8px 0; }
+    .md-h2 { font-size: 17px; font-weight: 600; color: inherit; margin: 14px 0 6px 0; }
+    .md-h3 { font-size: 15px; font-weight: 600; color: inherit; margin: 12px 0 4px 0; }
+    .md-code-block {
+      background: #09090b; padding: 14px; border-radius: 10px; overflow-x: auto;
+      margin: 12px 0; border: 1px solid #303030; font-family: monospace; font-size: 13px; color: #e4e4e7;
+    }
+
+    /* Tables */
+    .md-table-wrapper {
+      overflow-x: auto; margin: 14px 0; border-radius: 10px;
+      border: 1px solid #333336; background: #18181b;
+    }
+    .md-table {
+      width: 100%; border-collapse: collapse; font-size: 13.5px; text-align: left;
+    }
+    .md-table th {
+      padding: 10px 14px; border-bottom: 1px solid #333336; border-right: 1px solid #333336;
+      background-color: #222225; color: #10b981; font-weight: 600;
+    }
+    .md-table th:last-child { border-right: none; }
+    .md-table td {
+      padding: 10px 14px; border-bottom: 1px solid #28282b; border-right: 1px solid #28282b; color: #d4d4d8;
+    }
+    .md-table td:last-child { border-right: none; }
+    .md-table tr:last-child td { border-bottom: none; }
+    .md-table tr:nth-child(even) { background-color: #1c1c1f; }
     .avatar {
       width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; flex-shrink: 0;
     }
@@ -570,8 +604,14 @@ HTML_PAGE = r"""<!DOCTYPE html>
     body.light-mode .send-arrow-btn { background: #18181b; color: #ffffff; }
     body.light-mode .send-arrow-btn:hover { background: #27272a; }
 
-    body.light-mode .chat-bubble-user .content { background: #e4e4e7; color: #18181b; }
-    body.light-mode .chat-bubble-assistant .content { background: #ffffff; border-color: #e4e4e7; color: #18181b; }
+    body.light-mode .chat-bubble-user .content { background: #f4f4f5; color: #18181b; border: 1px solid #e4e4e7; }
+    body.light-mode .chat-bubble-assistant .content { background: transparent; color: #09090b; border: none; }
+    body.light-mode .md-inline-code { background: #f4f4f5; color: #09090b; border: 1px solid #e4e4e7; }
+    body.light-mode .md-hr { border-top-color: #e4e4e7; }
+    body.light-mode .md-table-wrapper { background: #ffffff !important; border-color: #e4e4e7 !important; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+    body.light-mode .md-table th { background-color: #f4f4f5 !important; color: #059669 !important; border-bottom-color: #e4e4e7 !important; border-right-color: #e4e4e7 !important; }
+    body.light-mode .md-table td { color: #18181b !important; border-bottom-color: #e4e4e7 !important; border-right-color: #f4f4f5 !important; }
+    body.light-mode .md-table tr:nth-child(even) { background-color: #fafafa !important; }
     body.light-mode .avatar-user { background: #e4e4e7; color: #18181b; }
     body.light-mode .avatar-ai { background: #18181b; color: #ffffff; }
     body.light-mode .footer-note { color: #71717a; }
@@ -1043,10 +1083,10 @@ HTML_PAGE = r"""<!DOCTYPE html>
       });
 
       // Inline code
-      str = str.replace(/`([^`]+)`/g, '<code style="background:#27272a;padding:2px 6px;border-radius:4px;font-family:monospace;font-size:13px;color:#10b981;">$1</code>');
+      str = str.replace(/`([^`]+)`/g, '<code class="md-inline-code">$1</code>');
 
       // Horizontal Rules (--- or *** or ___ on a single line)
-      str = str.replace(/^\s*[-*_]{3,}\s*$/gm, '<hr style="border:none;border-top:1px solid #303030;margin:14px 0;">');
+      str = str.replace(/^\s*[-*_]{3,}\s*$/gm, '<hr class="md-hr">');
 
       // Tables handling (| Header | Header |\n|---|---|\n| Cell | Cell |)
       str = str.replace(/(\|[^\n]+\|\r?\n\|[-:\s|]+\|\r?\n(?:\|[^\n]+\|\r?\n?)+)/g, function(match) {
@@ -1056,17 +1096,17 @@ HTML_PAGE = r"""<!DOCTYPE html>
         const headers = lines[0].replace(/^\||\|$/g, '').split('|').map(c => c.trim());
         const rows = lines.slice(2);
 
-        let html = '<div style="overflow-x:auto;margin:12px 0;"><table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid #303030;background:#1e1e1e;border-radius:8px;overflow:hidden;">';
-        html += '<thead style="background:#262626;"><tr>';
+        let html = '<div class="md-table-wrapper"><table class="md-table">';
+        html += '<thead><tr>';
         headers.forEach(h => {
-          html += `<th style="padding:10px 14px;border:1px solid #303030;text-align:left;color:#10b981;font-weight:600;">${h}</th>`;
+          html += `<th>${h}</th>`;
         });
         html += '</tr></thead><tbody>';
         rows.forEach(r => {
           const cells = r.replace(/^\||\|$/g, '').split('|').map(c => c.trim());
-          html += '<tr style="border-bottom:1px solid #2f2f2f;">';
+          html += '<tr>';
           cells.forEach(c => {
-            html += `<td style="padding:8px 14px;border:1px solid #303030;color:#e5e5e5;">${c}</td>`;
+            html += `<td>${c}</td>`;
           });
           html += '</tr>';
         });
@@ -1075,9 +1115,9 @@ HTML_PAGE = r"""<!DOCTYPE html>
       });
 
       // Headers (# Title, ## Section, ### Subsection)
-      str = str.replace(/^### (.*$)/gim, '<h3 style="font-size:15px;font-weight:600;color:#fff;margin:12px 0 4px 0;">$1</h3>');
-      str = str.replace(/^## (.*$)/gim, '<h2 style="font-size:17px;font-weight:600;color:#fff;margin:14px 0 6px 0;">$1</h2>');
-      str = str.replace(/^# (.*$)/gim, '<h1 style="font-size:19px;font-weight:700;color:#fff;margin:16px 0 8px 0;">$1</h1>');
+      str = str.replace(/^### (.*$)/gim, '<h3 class="md-h3">$1</h3>');
+      str = str.replace(/^## (.*$)/gim, '<h2 class="md-h2">$1</h2>');
+      str = str.replace(/^# (.*$)/gim, '<h1 class="md-h1">$1</h1>');
 
       // Bold and Italic
       str = str.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
@@ -1089,7 +1129,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
 
       // Restore code blocks
       codeBlocks.forEach((code, idx) => {
-        const codeHtml = `<pre style="background:#09090b;padding:12px;border-radius:8px;overflow-x:auto;margin:10px 0;border:1px solid #303030;font-family:monospace;font-size:13px;color:#e4e4e7;"><code>${code}</code></pre>`;
+        const codeHtml = `<pre class="md-code-block"><code>${code}</code></pre>`;
         str = str.replace('___CODE_BLOCK_' + idx + '___', codeHtml);
       });
 

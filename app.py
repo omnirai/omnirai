@@ -1498,7 +1498,18 @@ HTML_PAGE = r"""<!DOCTYPE html>
       submitPrompt();
     }
 
-    const MAX_DAILY_IMAGES = 2;
+    const MAX_DAILY_IMAGES = 5;
+
+    function resetDailyImageQuota() {
+      const userId = (typeof firebaseAuth !== 'undefined' && firebaseAuth.currentUser) ? firebaseAuth.currentUser.uid : 'guest';
+      const today = new Date().toISOString().slice(0, 10);
+      const key = `quickai_img_quota_${userId}_${today}`;
+      localStorage.removeItem(key);
+      const quotaText = document.getElementById('img-quota-remaining-text');
+      if (quotaText) {
+        quotaText.innerText = `${MAX_DAILY_IMAGES}/${MAX_DAILY_IMAGES} remaining today`;
+      }
+    }
 
     function openImageGeneratorModal() {
       const modal = document.getElementById('image-generator-modal');
@@ -1661,7 +1672,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
         const quota = getDailyImageQuota();
         let respContent = '';
         if (quota.remaining <= 0) {
-          respContent = `⚠️ **Daily Image Limit Reached (2/2 Used Today)**\n\nYou have used your **2 free AI image generations** for today. Your daily limit resets tomorrow at midnight!\n\n💡 *Tip: You can continue chatting with ChatGPT (GPT-4o), Gemini 1.5, Claude 3.5, Code Studio, and SVG Studio with unlimited chats!*`;
+          respContent = `⚠️ **Daily Image Limit Reached (${MAX_DAILY_IMAGES}/${MAX_DAILY_IMAGES} Used Today)**\n\nYou have used your **${MAX_DAILY_IMAGES} free AI image generations** for today. Your daily limit resets tomorrow at midnight!\n\n<button type="button" onclick="resetDailyImageQuota();alert('✨ Daily Image Quota Reset Successfully! Try generating your image again.');" style="background:#10b981;color:#000000;border:none;padding:8px 16px;border-radius:9999px;font-weight:700;font-size:12px;cursor:pointer;margin-top:10px;">⚡ Reset Daily Quota Now</button>`;
         } else {
           const usedCount = incrementDailyImageQuota();
           const remainingCount = MAX_DAILY_IMAGES - usedCount;

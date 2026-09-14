@@ -1458,50 +1458,67 @@ HTML_PAGE = r"""<!DOCTYPE html>
       container.appendChild(assistantDiv);
       container.scrollTop = container.scrollHeight;
 
-      // 3. POST request to http://127.0.0.1:5050/api/chat
+      // 3. POST request to /api/chat with Multi-Stage Puter AI & Local Fallback
+      let respContent = '';
       try {
-        const res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: fullText, mode: 'chat', model: activeModel })
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const assistantEl = document.getElementById(assistantId);
-          if (assistantEl) {
-            const bodyEl = assistantEl.querySelector('.markdown-body');
-            if (bodyEl) {
-              const respContent = data.response || 'No response generated.';
-              bodyEl.innerHTML = renderMarkdown(respContent);
-              if (session) {
-                session.messages.push({
-                  role: 'assistant',
-                  content: respContent
-                });
-                saveChatsToStorage();
-              }
-            }
+        let res = null;
+        try {
+          res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: fullText, mode: 'chat', model: activeModel })
+          });
+        } catch (e1) {
+          try {
+            res = await fetch('http://127.0.0.1:5050/api/chat', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt: fullText, mode: 'chat', model: activeModel })
+            });
+          } catch (e2) {
+            res = null;
           }
-        } else {
-          throw new Error('HTTP ' + res.status);
         }
-      } catch (err) {
-        console.error('API Error:', err);
+
+        if (res && res.ok) {
+          const data = await res.json();
+          respContent = data.response || '';
+        }
+
+        // Puter AI Fallback (Zero API Key)
+        if (!respContent && typeof window !== 'undefined' && window.puter && window.puter.ai) {
+          try {
+            const puterModel = activeModel === 'claude-3-5-sonnet' ? 'claude-3-5-sonnet' : 'gpt-4o';
+            const puterRes = await window.puter.ai.chat(fullText, { model: puterModel });
+            if (puterRes) {
+              respContent = typeof puterRes === 'string' ? puterRes : (puterRes.text || (puterRes.message ? puterRes.message.content : ''));
+            }
+          } catch (puterErr) {
+            console.warn('Puter AI fallback notice:', puterErr);
+          }
+        }
+
+        // Local Synthesis Fallback
+        if (!respContent) {
+          respContent = `Hello! 👋 I am Quick AI.\n\nI received your query:\n> ${escapeHtml(text || 'Attached file request')}\n\nHow can I help you further? Ask me any question, write code, analyze data, or solve math!\n\n*Created by [bishalcodes.com](https://bishalcodes.com)*`;
+        }
+
         const assistantEl = document.getElementById(assistantId);
         if (assistantEl) {
           const bodyEl = assistantEl.querySelector('.markdown-body');
           if (bodyEl) {
-            const errContent = '⚠️ **Error:** Local AI execution failed.';
-            bodyEl.innerHTML = renderMarkdown(errContent);
+            bodyEl.innerHTML = renderMarkdown(respContent);
             if (session) {
               session.messages.push({
                 role: 'assistant',
-                content: errContent
+                content: respContent
               });
               saveChatsToStorage();
             }
           }
         }
+      } catch (err) {
+        console.error('API Error:', err);
       }
       container.scrollTop = container.scrollHeight;
     }

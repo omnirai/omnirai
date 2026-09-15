@@ -1,0 +1,25 @@
+{
+  "short_name": "OMNIRA",
+  "name": "OMNIRA AI Platform",
+  "description": "Next-Gen AI Platform offering GPT-4o, Claude 3.5, Gemini 1.5, DeepSeek R1, Code Studio, and Image Studio.",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "48x48 192x192 512x512",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512",
+      "purpose": "any"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#ffffff",
+  "theme_color": "#10b981",
+  "display": "standalone",
+  "orientation": "any",
+  "categories": ["ai", "productivity", "utilities", "developer"]
+}

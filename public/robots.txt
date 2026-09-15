@@ -1,0 +1,63 @@
+# Allow ALL Search Engines, AI Bots, LLM Crawlers, and AI Agents Full Access
+User-agent: *
+Allow: /
+
+# OpenAI ChatGPT & Search Bots
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+# Anthropic Claude Bots
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+# Perplexity Search Bot
+User-agent: PerplexityBot
+Allow: /
+
+# Google Search & Gemini AI Bots
+User-agent: Googlebot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+# Microsoft Bing & Copilot
+User-agent: Bingbot
+Allow: /
+
+# Apple Intelligence
+User-agent: Applebot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# Meta AI & Llama
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: Meta-ExternalFetcher
+Allow: /
+
+# ByteDance & TikTok AI
+User-agent: Bytespider
+Allow: /
+
+# Cohere & Diffbot AI Knowledge Crawlers
+User-agent: cohere-ai
+Allow: /
+
+User-agent: Diffbot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+# Sitemaps and AI Documentation
+Sitemap: https://omnira-chat.vercel.app/sitemap.xml

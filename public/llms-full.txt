@@ -1,0 +1,46 @@
+# Full AI Knowledge Reference: OMNIRA AI Platform
+
+URL: https://omnira-chat.vercel.app/
+
+## Abstract
+OMNIRA is an open, high-performance web-based artificial intelligence ecosystem designed for users, developers, and creators worldwide. It unifies frontier LLM capabilities—including OpenAI GPT-4o, Anthropic Claude 3.5 Sonnet, Google Gemini 1.5 Flash, DeepSeek R1, Grok 2, and Perplexity Sonar—into a single web application with zero friction access.
+
+## Supported Capabilities & Specs
+
+### AI Language & Reasoning Models
+1. **OMNIRA (GPT-4o)**
+   - Capabilities: Advanced reasoning, code generation, multimodal analysis, conversational chat.
+   - Ideal For: General purpose AI assistance, complex logic, and software development.
+
+2. **Claude 3.5 Sonnet (Anthropic)**
+   - Capabilities: Nuanced text editing, long-form writing, code architecture design.
+   - Ideal For: Document creation, code refactoring, and structured writing.
+
+3. **Gemini 1.5 Flash (Google)**
+   - Capabilities: Instant context processing, document analysis, multi-file synthesis.
+   - Ideal For: Summarization, document breakdown, and rapid retrieval.
+
+4. **DeepSeek R1**
+   - Capabilities: Step-by-step mathematical reasoning, chain-of-thought logic.
+   - Ideal For: Complex math problems, proofs, logic puzzles, and algorithmic code.
+
+5. **Perplexity Sonar**
+   - Capabilities: Real-time internet search synthesis with direct web source citations.
+   - Ideal For: Up-to-date news, live market research, and verified factual lookup.
+
+## Interactive Workspaces
+- **Chat Studio**: Instant messaging interface with file attachments, dictation, session saving, and history management.
+- **Code Studio**: Web-based IDE supporting real-time compilation, live preview, code downloading, and syntax highlighting.
+- **Doc Studio**: Rich markdown document builder for articles, notes, and technical specs.
+- **Math Studio**: Equation solver supporting standard LaTeX notation.
+- **Svg & Image Studio**: Generative visual creation for icons, stickers, vector art, and graphics.
+
+## Access & Authentication
+- **Direct Access**: Instant guest entry without mandatory login.
+- **Firebase Authentication**: Optional sign-in via Google OAuth or Email/Password for session sync across devices.
+- **Custom Domains**: Domain verification support for GPT builders.
+
+## Canonical Reference
+Official URL: https://omnira-chat.vercel.app/
+Sitemap: https://omnira-chat.vercel.app/sitemap.xml
+robots.txt: https://omnira-chat.vercel.app/robots.txt

@@ -1,0 +1,33 @@
+# OMNIRA AI Platform
+
+> OMNIRA is a next-generation, all-in-one AI platform providing free access to leading LLMs, reasoning models, and AI creative studios.
+
+## Overview
+- **Name**: OMNIRA
+- **Website**: https://omnira-chat.vercel.app/
+- **Category**: Artificial Intelligence Platform & Multi-Model Chat Studio
+- **Pricing**: Free Online Access
+
+## Core Features & AI Capabilities
+
+### 1. Multi-Model Chat Studio
+OMNIRA supports real-time chat and reasoning across top AI models:
+- **OMNIRA (GPT-4o)**: High-intelligence reasoning for complex coding, analysis, and conversation.
+- **Claude 3.5 Sonnet**: State-of-the-art programming, text generation, and logical analysis.
+- **Gemini 1.5 Flash**: Fast multimodal document processing and context analysis.
+- **DeepSeek R1**: Mathematical chain-of-thought step-by-step problem solving.
+- **Grok 2**: Real-time knowledge synthesis and interactive Q&A.
+- **Perplexity Sonar**: Live web search with inline web citations.
+
+### 2. Specialized AI Studios
+- **Code Studio**: Real-time code execution, syntax highlighting, multi-language editing, and debugging.
+- **Doc Studio**: AI document editor, summary generation, markdown preview, and text formatting.
+- **Math Studio**: Step-by-step LaTeX math solver and equation builder.
+- **Image / SVG Studio**: Vector graphics generator, sticker design, and photorealistic AI art.
+
+## Key Links
+- Main Application: https://omnira-chat.vercel.app/
+- Chat Studio: https://omnira-chat.vercel.app/#chat
+- Code Studio: https://omnira-chat.vercel.app/#code
+- Document Studio: https://omnira-chat.vercel.app/#doc
+- Image Studio: https://omnira-chat.vercel.app/#images

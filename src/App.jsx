@@ -7,14 +7,39 @@ import DocStudio from './components/DocStudio';
 import MathStudio from './components/MathStudio';
 import SvgStudio from './components/SvgStudio';
 import SettingsModal from './components/SettingsModal';
+import AuthScreen from './components/AuthScreen';
 import { queryQuickAi } from './engine/quickAiEngine';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('chat');
   const [activeMode, setActiveMode] = useState('chat'); // 'chat' | 'code' | 'doc' | 'math' | 'svg'
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    return typeof window !== 'undefined' ? window.innerWidth >= 1024 : false;
+  });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Authentication State - Default to ACTIVE (Guest User) so anyone enters app directly!
+  const [currentUser, setCurrentUser] = useState(() => {
+    const saved = localStorage.getItem('omnira_user');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return {
+      name: 'Guest User',
+      email: 'guest@omnira.ai',
+      username: '@guest_user',
+      avatar: 'GU',
+      provider: 'guest',
+      plan: 'Free'
+    };
+  });
+
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    const saved = localStorage.getItem('omnira_authenticated');
+    return saved !== null ? saved === 'true' : true; // Always allow direct access
+  });
 
   // Selected Active AI Model
   const [selectedModel, setSelectedModel] = useState(() => {
@@ -22,10 +47,10 @@ export default function App() {
     return saved || 'gpt-4o';
   });
 
-  // Dark Mode State with localStorage persistence
+  // Light Mode by default
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('chatgpt_theme');
-    return saved ? saved === 'dark' : true;
+    return saved ? saved === 'dark' : false;
   });
 
   // Settings State
@@ -62,6 +87,15 @@ export default function App() {
     return saved || 'default-session-1';
   });
 
+  // Persist Auth State & Current User
+  useEffect(() => {
+    localStorage.setItem('omnira_authenticated', isAuthenticated ? 'true' : 'false');
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    localStorage.setItem('omnira_user', JSON.stringify(currentUser));
+  }, [currentUser]);
+
   // Save Model Selection
   useEffect(() => {
     localStorage.setItem('chatgpt_selected_model', selectedModel);
@@ -89,6 +123,56 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('chatgpt_current_id', currentChatId);
   }, [currentChatId]);
+
+  // Firebase Auth state change listener
+  useEffect(() => {
+    import('./firebase').then(({ auth, onAuthStateChanged }) => {
+      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        if (firebaseUser) {
+          setCurrentUser({
+            name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+            email: firebaseUser.email,
+            username: `@${(firebaseUser.email || 'user').split('@')[0]}`,
+            avatar: firebaseUser.photoURL || firebaseUser.displayName?.charAt(0) || 'U',
+            picture: firebaseUser.photoURL,
+            provider: 'firebase',
+            uid: firebaseUser.uid,
+            plan: 'Pro'
+          });
+          setIsAuthenticated(true);
+        }
+      });
+      return () => unsubscribe();
+    }).catch(err => console.error('Firebase listener error', err));
+  }, []);
+
+  // Handlers for Auth
+  const handleLogin = (user) => {
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+    setIsAuthModalOpen(false);
+  };
+
+  const handleLogout = () => {
+    import('./firebase').then(({ auth, signOut }) => {
+      signOut(auth).catch(() => {});
+    });
+    // Switch to Guest Mode without blocking site access!
+    setCurrentUser({
+      name: 'Guest User',
+      email: 'guest@omnira.ai',
+      username: '@guest_user',
+      avatar: 'GU',
+      provider: 'guest',
+      plan: 'Free'
+    });
+    setIsAuthenticated(true);
+    setIsSettingsOpen(false);
+  };
+
+  const handleUpdateUser = (updatedUser) => {
+    setCurrentUser(updatedUser);
+  };
 
   // Get Active Chat Messages
   const currentSession = chatSessions.find(s => s.id === currentChatId) || chatSessions[0];
@@ -190,7 +274,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors">
+    <div className="flex h-screen w-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors select-none">
       
       {/* ChatGPT Drawer Sidebar */}
       <Sidebar
@@ -202,9 +286,11 @@ export default function App() {
         onSelectChat={(id) => setCurrentChatId(id)}
         onDeleteChat={handleDeleteChat}
         openSettings={() => setIsSettingsOpen(true)}
+        openAuth={() => setIsAuthModalOpen(true)}
         activeMode={activeMode}
         setActiveMode={setActiveMode}
-        userName="Lama Bikal"
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
 
       {/* Main Area */}
@@ -219,9 +305,10 @@ export default function App() {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           openSettings={() => setIsSettingsOpen(true)}
+          openAuth={() => setIsAuthModalOpen(true)}
           darkMode={darkMode}
           setDarkMode={setDarkMode}
-          userName="Lama Bikal"
+          currentUser={currentUser}
         />
 
         {/* View Switcher: Main ChatGPT View or Studio Views */}
@@ -275,7 +362,19 @@ export default function App() {
         setSettings={setSettings}
         darkMode={darkMode}
         setDarkMode={setDarkMode}
+        currentUser={currentUser}
+        onUpdateUser={handleUpdateUser}
+        onLogout={handleLogout}
       />
+
+      {/* Auth Modal (Google & Email Login) */}
+      {isAuthModalOpen && (
+        <AuthScreen
+          isModal={true}
+          onClose={() => setIsAuthModalOpen(false)}
+          onLogin={handleLogin}
+        />
+      )}
 
     </div>
   );

@@ -6,10 +6,9 @@ import {
   Sparkles, 
   Plus, 
   ChevronDown,
-  Check,
-  Sun,
-  Moon
+  Check
 } from 'lucide-react';
+import { GoogleLogo } from './AuthScreen';
 
 export const AI_MODELS = [
   {
@@ -151,10 +150,14 @@ export default function TopBar({
   activeTab,
   setActiveTab,
   openSettings,
+  openAuth,
   darkMode,
   setDarkMode,
-  userName = "Lama Bikal"
+  userName = "Guest User",
+  currentUser
 }) {
+  const displayUserName = currentUser?.name || userName;
+  const isGuest = !currentUser || currentUser.provider === 'guest' || displayUserName === "Guest User";
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -266,30 +269,37 @@ export default function TopBar({
         </button>
       </div>
 
-      {/* Right: Upgrade Sparkles Button + Theme Toggle + User Profile */}
+      {/* Right: Upgrade Sparkles Button + User Profile Avatar */}
       <div className="flex items-center gap-2">
+        
+        {/* Only show top Sign In button if user is NOT logged in (Guest Mode) */}
+        {isGuest && openAuth && (
+          <button
+            onClick={openAuth}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-xs font-semibold text-[var(--text-primary)] shadow-2xs transition-colors cursor-pointer"
+          >
+            <GoogleLogo className="w-3.5 h-3.5" />
+            <span>Sign In</span>
+          </button>
+        )}
+
         <button
           onClick={openSettings}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer"
         >
-          <Sparkles className="w-3.5 h-3.5 text-blue-500 fill-blue-500" />
           <span>Upgrade</span>
         </button>
 
         <button
-          onClick={() => setDarkMode(!darkMode)}
-          className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
-          title="Toggle Light/Dark Theme"
-        >
-          {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        </button>
-
-        <button
           onClick={openSettings}
-          className="w-7 h-7 rounded-full bg-emerald-700 text-white font-semibold text-xs flex items-center justify-center hover:opacity-90 transition-opacity shadow-2xs"
-          title={userName}
+          className="w-7 h-7 rounded-full bg-emerald-700 text-white font-semibold text-xs flex items-center justify-center hover:opacity-90 transition-opacity shadow-2xs cursor-pointer overflow-hidden"
+          title={displayUserName}
         >
-          {userName.charAt(0).toUpperCase()}
+          {currentUser?.picture ? (
+            <img src={currentUser.picture} alt={displayUserName} className="w-full h-full object-cover" />
+          ) : (
+            displayUserName.charAt(0).toUpperCase()
+          )}
         </button>
       </div>
 

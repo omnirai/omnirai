@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   SquarePen, 
   Search, 
@@ -11,8 +11,11 @@ import {
   Terminal, 
   MoreHorizontal,
   Trash2,
-  MessageSquare
+  MessageSquare,
+  LogOut,
+  LogIn
 } from 'lucide-react';
+import { GoogleLogo } from './AuthScreen';
 
 export default function Sidebar({ 
   isOpen, 
@@ -23,10 +26,15 @@ export default function Sidebar({
   onSelectChat,
   onDeleteChat,
   openSettings,
+  openAuth,
   activeMode,
   setActiveMode,
-  userName = "Lama Bikal"
+  currentUser,
+  onLogout
 }) {
+  const userName = currentUser?.name || "Guest User";
+  const isGuest = !currentUser || currentUser.provider === 'guest' || userName === "Guest User";
+
   const mainNavItems = [
     { id: 'chat', label: 'Chat', icon: MessageSquare, modeTarget: 'chat' },
     { id: 'images', label: 'Images', icon: ImageIcon, badge: 'UPDATED', modeTarget: 'svg' },
@@ -37,6 +45,18 @@ export default function Sidebar({
     { id: 'codex', label: 'Codex', icon: Terminal, modeTarget: 'code' },
     { id: 'more', label: 'More', icon: MoreHorizontal, action: 'settings' }
   ];
+
+  const handleLogout = () => {
+    if (confirm('Are you sure you want to log out of OMNIRA?')) {
+      if (onLogout) {
+        onLogout();
+      } else {
+        localStorage.removeItem('omnira_authenticated');
+        localStorage.removeItem('omnira_user');
+        window.location.reload();
+      }
+    }
+  };
 
   return (
     <>
@@ -176,15 +196,15 @@ export default function Sidebar({
           )}
         </div>
 
-        {/* Bottom User Profile Section */}
-        <div className="p-3 border-t border-[var(--border-color)] mt-auto">
+        {/* Bottom User Profile Section with Sign In / Log Out */}
+        <div className="p-3 border-t border-[var(--border-color)] mt-auto space-y-1.5">
           <div 
             onClick={openSettings}
             className="flex items-center justify-between p-2 rounded-xl hover:bg-[var(--bg-hover)] cursor-pointer transition-colors"
           >
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-7 h-7 rounded-full bg-emerald-700 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs">
-                {userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'LB'}
+                {userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'GU'}
               </div>
               
               <div className="truncate text-xs">
@@ -192,7 +212,7 @@ export default function Sidebar({
                   {userName}
                 </div>
                 <div className="text-[10px] text-[var(--text-muted)] leading-tight">
-                  Free
+                  {currentUser?.plan || 'Free'}
                 </div>
               </div>
             </div>
@@ -207,6 +227,25 @@ export default function Sidebar({
               Upgrade
             </button>
           </div>
+
+          {/* Sign In with Google / Account button if in Guest mode */}
+          {isGuest && openAuth ? (
+            <button
+              onClick={openAuth}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer shadow-sm"
+            >
+              <GoogleLogo className="w-4 h-4" />
+              <span>Sign In with Google</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+            >
+              <LogOut className="w-4 h-4 text-red-500 shrink-0" />
+              <span>Log out</span>
+            </button>
+          )}
         </div>
 
       </aside>

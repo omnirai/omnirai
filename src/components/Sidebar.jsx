@@ -1,170 +1,215 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   SquarePen, 
-  MessageSquare, 
-  Code, 
-  FileText, 
-  Calculator, 
-  Image as ImageIcon, 
-  Settings, 
-  Sun, 
-  Moon, 
+  Search, 
   PanelLeftClose, 
-  PanelLeft, 
-  ExternalLink,
-  Plus,
-  Compass
+  ImageIcon, 
+  BookOpen, 
+  Clock, 
+  Plug, 
+  Folder, 
+  Terminal, 
+  MoreHorizontal,
+  Trash2,
+  MessageSquare
 } from 'lucide-react';
 
 export default function Sidebar({ 
-  activeMode, 
-  setActiveMode, 
-  darkMode, 
-  setDarkMode, 
-  openSettings, 
   isOpen, 
-  setIsOpen,
-  onNewChat,
-  chatHistory = []
+  setIsOpen, 
+  onNewChat, 
+  chatHistory = [], 
+  currentChatId,
+  onSelectChat,
+  onDeleteChat,
+  openSettings,
+  activeMode,
+  setActiveMode,
+  userName = "Lama Bikal"
 }) {
-  const navItems = [
-    { id: 'chat', label: 'Chat', icon: MessageSquare },
-    { id: 'code', label: 'Code Studio', icon: Code },
-    { id: 'doc', label: 'Doc Writer', icon: FileText },
-    { id: 'math', label: 'Math & Logic', icon: Calculator },
-    { id: 'svg', label: 'SVG Studio', icon: ImageIcon },
+  const mainNavItems = [
+    { id: 'chat', label: 'Chat', icon: MessageSquare, modeTarget: 'chat' },
+    { id: 'images', label: 'Images', icon: ImageIcon, badge: 'UPDATED', modeTarget: 'svg' },
+    { id: 'library', label: 'Library', icon: BookOpen, modeTarget: 'doc' },
+    { id: 'scheduled', label: 'Scheduled', icon: Clock, modeTarget: 'math' },
+    { id: 'plugins', label: 'Plugins', icon: Plug, action: 'settings' },
+    { id: 'projects', label: 'Projects', icon: Folder, action: 'settings' },
+    { id: 'codex', label: 'Codex', icon: Terminal, modeTarget: 'code' },
+    { id: 'more', label: 'More', icon: MoreHorizontal, action: 'settings' }
   ];
 
   return (
-    <aside 
-      className={`fixed lg:static inset-y-0 left-0 z-40 flex flex-col bg-[var(--bg-sidebar)] border-r border-[var(--border-color)] transition-all duration-200 ${
-        isOpen ? 'w-64' : 'w-0 lg:w-16 overflow-hidden'
-      }`}
-    >
-      {/* Sidebar Header */}
-      <div className="flex items-center justify-between p-3.5 border-b border-[var(--border-color)]">
-        <div className={`flex items-center gap-2.5 ${!isOpen && 'lg:hidden'}`}>
-          <div className="w-7 h-7 rounded-lg bg-[var(--text-primary)] text-[var(--bg-primary)] flex items-center justify-center font-bold text-xs shadow-sm">
-            Q
-          </div>
-          <span className="font-semibold text-sm tracking-tight text-[var(--text-primary)]">
-            Quick AI
-          </span>
-        </div>
-
-        <button 
-          onClick={() => setIsOpen(!isOpen)} 
-          className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
-          title="Toggle Sidebar"
-        >
-          {isOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeft className="w-4 h-4" />}
-        </button>
-      </div>
-
-      {/* New Chat Button */}
-      <div className="p-3">
-        <button
-          onClick={onNewChat}
-          className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-all text-xs font-medium shadow-sm ${
-            !isOpen && 'lg:justify-center lg:px-0'
-          }`}
-        >
-          <SquarePen className="w-4 h-4 text-[var(--text-primary)]" />
-          {isOpen && <span>New chat</span>}
-        </button>
-      </div>
-
-      {/* Studio Modes Navigation */}
-      <div className="px-3 py-1 space-y-1">
-        <div className={`text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider px-2 py-1 ${!isOpen && 'lg:hidden'}`}>
-          Studios
-        </div>
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeMode === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveMode(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                isActive 
-                  ? 'bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold' 
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
-              } ${!isOpen && 'lg:justify-center lg:px-0'}`}
-              title={item.label}
-            >
-              <Icon className="w-4 h-4 shrink-0" />
-              {isOpen && <span className="truncate">{item.label}</span>}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Recent Chats Section */}
+    <>
+      {/* Mobile Backdrop */}
       {isOpen && (
-        <div className="flex-1 overflow-y-auto px-3 py-2 mt-2 border-t border-[var(--border-color)]">
-          <div className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider px-2 py-1 mb-1">
-            Recents
-          </div>
-          {chatHistory.length === 0 ? (
-            <div className="px-2 text-xs text-[var(--text-muted)] italic">No recent chats</div>
-          ) : (
-            <div className="space-y-0.5">
-              {chatHistory.slice(-5).map((chat, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setActiveMode('chat')}
-                  className="w-full text-left px-2.5 py-1.5 rounded-md text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] truncate block transition-colors"
-                >
-                  {chat.title || chat.content || `Session ${idx + 1}`}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <div 
+          onClick={() => setIsOpen(false)}
+          className="fixed inset-0 bg-black/40 z-30 lg:hidden backdrop-blur-2xs"
+        />
       )}
 
-      {/* Sidebar Footer / User Profile */}
-      <div className="p-3 border-t border-[var(--border-color)] mt-auto">
-        <div className={`flex items-center justify-between ${!isOpen && 'lg:flex-col lg:gap-2'}`}>
-          
-          <a
-            href="https://bishalcodes.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity truncate"
-          >
-            <div className="w-6 h-6 rounded-full bg-[var(--text-primary)] text-[var(--bg-primary)] flex items-center justify-center font-semibold text-[10px]">
-              B
-            </div>
-            {isOpen && (
-              <div className="truncate text-xs">
-                <div className="font-semibold text-[var(--text-primary)] truncate">bishalcodes.com</div>
-                <div className="text-[10px] text-[var(--text-muted)]">Free • Zero API Key</div>
-              </div>
-            )}
-          </a>
-
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
-              title="Toggle Dark/Light Mode"
-            >
-              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
-
-            <button
-              onClick={openSettings}
-              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
-              title="Settings"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
+      <aside 
+        className={`fixed lg:static inset-y-0 left-0 z-40 flex flex-col bg-[var(--bg-sidebar)] border-r border-[var(--border-color)] transition-all duration-200 select-none ${
+          isOpen ? 'w-64' : 'w-0 lg:w-0 overflow-hidden border-none'
+        }`}
+      >
+        {/* Top Sidebar Header */}
+        <div className="flex items-center justify-between p-3.5 border-b border-transparent">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-base tracking-tight text-[var(--text-primary)]">
+              OMNIRA
+            </span>
           </div>
 
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={openSettings}
+              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
+              title="Search"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => setIsOpen(false)} 
+              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
+              title="Close sidebar"
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-      </div>
-    </aside>
+
+        {/* New Chat Button */}
+        <div className="px-3 py-1">
+          <button
+            onClick={() => {
+              onNewChat();
+              setActiveMode('chat');
+            }}
+            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-all text-sm font-medium shadow-2xs group"
+          >
+            <div className="flex items-center gap-2.5">
+              <SquarePen className="w-4 h-4 text-[var(--text-primary)]" />
+              <span>New chat</span>
+            </div>
+          </button>
+        </div>
+
+        {/* Primary Features Navigation */}
+        <div className="px-2 py-2 space-y-0.5 border-b border-[var(--border-color)]">
+          {mainNavItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeMode === (item.modeTarget || item.id);
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  if (item.action === 'settings') {
+                    openSettings();
+                  } else if (item.modeTarget) {
+                    setActiveMode(item.modeTarget);
+                  }
+                }}
+                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  isActive 
+                    ? 'bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold' 
+                    : 'text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Icon className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                </div>
+                {item.badge && (
+                  <span className="text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Recent Chat Threads History */}
+        <div className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
+          <div className="px-2.5 text-[11px] font-semibold text-[var(--text-muted)] tracking-wider uppercase mb-1">
+            Recents
+          </div>
+
+          {chatHistory.length === 0 ? (
+            <div className="px-2.5 py-2 text-xs text-[var(--text-muted)] italic">
+              No recent conversations
+            </div>
+          ) : (
+            chatHistory.map((chat) => {
+              const isSelected = currentChatId === chat.id && activeMode === 'chat';
+              return (
+                <div
+                  key={chat.id}
+                  onClick={() => {
+                    onSelectChat(chat.id);
+                    setActiveMode('chat');
+                  }}
+                  className={`group relative flex items-center justify-between px-2.5 py-2 rounded-lg text-xs cursor-pointer transition-colors ${
+                    isSelected 
+                      ? 'bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold' 
+                      : 'text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+                  }`}
+                >
+                  <span className="truncate pr-6">
+                    {chat.title || 'New Chat'}
+                  </span>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteChat(chat.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/20 text-neutral-400 hover:text-red-500 transition-all absolute right-2"
+                    title="Delete Chat"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Bottom User Profile Section */}
+        <div className="p-3 border-t border-[var(--border-color)] mt-auto">
+          <div 
+            onClick={openSettings}
+            className="flex items-center justify-between p-2 rounded-xl hover:bg-[var(--bg-hover)] cursor-pointer transition-colors"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-7 h-7 rounded-full bg-emerald-700 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs">
+                {userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'LB'}
+              </div>
+              
+              <div className="truncate text-xs">
+                <div className="font-semibold text-[var(--text-primary)] truncate leading-tight">
+                  {userName}
+                </div>
+                <div className="text-[10px] text-[var(--text-muted)] leading-tight">
+                  Free
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                openSettings();
+              }}
+              className="px-2.5 py-1 rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] text-[11px] font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-hover)] shadow-2xs shrink-0"
+            >
+              Upgrade
+            </button>
+          </div>
+        </div>
+
+      </aside>
+    </>
   );
 }

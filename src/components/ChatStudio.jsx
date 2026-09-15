@@ -2,23 +2,20 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Plus, 
   Send, 
-  Paperclip, 
   Mic, 
   MicOff, 
   Volume2, 
   Copy, 
   Check, 
-  Download, 
-  Trash2, 
   FileText, 
   X,
-  Code,
-  Image as ImageIcon,
+  ImageIcon,
   PenTool,
   Globe,
   Brain,
   RefreshCw,
-  Sparkles
+  Sparkles,
+  ArrowUp
 } from 'lucide-react';
 import { marked } from 'marked';
 
@@ -37,12 +34,12 @@ export default function ChatStudio({
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Auto-scroll thread
+  // Auto-scroll to bottom of thread
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isGenerating]);
 
-  // Web Speech Dictation
+  // Speech Recognition (Voice Dictation)
   const toggleVoiceInput = () => {
     if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
       alert('Speech recognition is not supported in this browser.');
@@ -116,64 +113,169 @@ export default function ChatStudio({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Quick Action Cards (matching ChatGPT screenshot)
-  const quickActions = [
+  const quickOptionItems = [
     {
       icon: ImageIcon,
-      label: 'Create an image or SVG',
-      prompt: 'Draw a neural AI processor architecture SVG graphic'
+      label: 'Create an image or sticker',
+      prompt: 'Create an image of a cybernetic futuristic cat with glowing cyan neon eyes'
     },
     {
       icon: PenTool,
-      label: 'Write or edit text',
-      prompt: 'Write a clean executive summary about privacy-first local AI'
-    },
-    {
-      icon: Code,
-      label: 'Write code or scripts',
-      prompt: 'Build a responsive HTML/CSS pricing card widget'
+      label: 'Write or edit',
+      prompt: 'Write a persuasive elevator pitch for an AI productivity tool'
     },
     {
       icon: Globe,
-      label: 'Solve math or logic',
-      prompt: 'Solve equation: 2x^2 + 5x - 3 = 0 with step-by-step resolution'
+      label: 'Search the web',
+      prompt: 'Summarize recent technological breakthroughs in artificial intelligence'
     }
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)] max-w-4xl mx-auto w-full px-4 relative">
+    <div className="flex flex-col h-[calc(100vh-3.5rem)] w-full max-w-3xl mx-auto px-4 relative select-none">
       
-      {/* Messages Stream Container */}
-      <div className="flex-1 overflow-y-auto pt-6 pb-36 space-y-6">
+      {/* Thread Messages Stream */}
+      <div className="flex-1 overflow-y-auto pt-4 pb-44 space-y-6">
         
         {messages.length === 0 ? (
-          /* Empty Chat Hero (ChatGPT & Gemini Style) */
-          <div className="h-full flex flex-col items-center justify-center text-center my-auto px-4 max-w-2xl mx-auto">
+          /* Empty Chat View */
+          <div className="h-full flex flex-col items-center justify-center text-center my-auto px-4 max-w-xl mx-auto">
+            
+            {/* Title: Ready when you are. */}
             <h1 className="text-2xl sm:text-3xl font-medium tracking-tight mb-8 text-[var(--text-primary)]">
-              What's on the agenda today?
+              Ready when you are.
             </h1>
 
-            {/* Quick Action Suggestion Cards (ChatGPT style) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl">
-              {quickActions.map((act, idx) => {
-                const Icon = act.icon;
+            {/* Main Floating Input Composer Box */}
+            <div className="w-full mb-6">
+              
+              {attachedFile && (
+                <div className="mb-2 p-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl text-xs flex items-center justify-between shadow-2xs">
+                  <div className="flex items-center gap-2 truncate">
+                    <FileText className="w-4 h-4 text-[var(--text-primary)]" />
+                    <span className="font-mono text-[var(--text-primary)] truncate">{attachedFile.name}</span>
+                    <span className="text-[var(--text-muted)]">({(attachedFile.size / 1024).toFixed(1)} KB)</span>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => setAttachedFile(null)} 
+                    className="text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              <form 
+                onSubmit={handleSubmit}
+                className="rounded-[28px] border border-[var(--border-color)] bg-[var(--bg-input)] shadow-lg p-2 sm:p-3 transition-all focus-within:border-[var(--border-strong)]"
+              >
+                <div className="flex items-center gap-2">
+                  
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleFileUpload} 
+                    className="hidden" 
+                    accept=".txt,.md,.csv,.json,.js,.py,.html,.css"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors shrink-0"
+                    title="Add attachment"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
+
+                  <textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSubmit();
+                      }
+                    }}
+                    placeholder="Ask anything"
+                    rows={1}
+                    className="w-full bg-transparent border-none outline-none resize-none text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] py-1.5 font-normal"
+                  />
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    
+                    <button
+                      type="button"
+                      onClick={() => setIsThinkingMode(!isThinkingMode)}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                        isThinkingMode 
+                          ? 'border-[var(--border-color)] bg-[var(--bg-hover)] text-[var(--text-primary)] shadow-2xs' 
+                          : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--bg-hover)]'
+                      }`}
+                      title="Deep Local Thinking Model"
+                    >
+                      <Brain className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                      <span>Think</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={toggleVoiceInput}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                        isListening 
+                          ? 'bg-red-500 text-white animate-pulse' 
+                          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+                      }`}
+                      title="Voice Dictation"
+                    >
+                      {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                    </button>
+
+                    <button
+                      type="submit"
+                      disabled={(!input.trim() && !attachedFile) || isGenerating}
+                      className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                        input.trim() || attachedFile
+                          ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] shadow-sm'
+                          : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm'
+                      }`}
+                    >
+                      {input.trim() || attachedFile ? (
+                        <ArrowUp className="w-5 h-5 stroke-[2.5]" />
+                      ) : (
+                        <div className="flex items-center gap-0.5">
+                          <span className="w-1 h-3 bg-white rounded-full animate-pulse"></span>
+                          <span className="w-1 h-4 bg-white rounded-full animate-pulse delay-75"></span>
+                          <span className="w-1 h-2 bg-white rounded-full animate-pulse delay-150"></span>
+                        </div>
+                      )}
+                    </button>
+
+                  </div>
+
+                </div>
+              </form>
+            </div>
+
+            <div className="flex flex-col items-start gap-2.5 w-full max-w-sm pl-2">
+              {quickOptionItems.map((opt, idx) => {
+                const Icon = opt.icon;
                 return (
                   <button
                     key={idx}
-                    onClick={() => onSendMessage(act.prompt, null)}
-                    className="flex items-center gap-3 p-3.5 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-left transition-all text-xs font-medium text-[var(--text-primary)] shadow-sm group"
+                    onClick={() => onSendMessage(opt.prompt, null)}
+                    className="flex items-center gap-3 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors py-1 group"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-[var(--bg-hover)] flex items-center justify-center shrink-0">
-                      <Icon className="w-4 h-4 text-[var(--text-primary)]" />
-                    </div>
-                    <span className="truncate">{act.label}</span>
+                    <Icon className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)]" />
+                    <span>{opt.label}</span>
                   </button>
                 );
               })}
             </div>
+
           </div>
         ) : (
-          /* Thread Messages Stream */
+          /* Active Messages Thread */
           messages.map((m, index) => {
             const isUser = m.role === 'user';
             return (
@@ -182,22 +284,22 @@ export default function ChatStudio({
                 className={`flex gap-4 ${isUser ? 'justify-end' : 'justify-start'}`}
               >
                 {!isUser && (
-                  <div className="w-7 h-7 rounded-full bg-[var(--text-primary)] text-[var(--bg-primary)] flex items-center justify-center font-bold text-xs shrink-0 mt-1 shadow-sm">
-                    Q
+                  <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-1 shadow-2xs">
+                    <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                      <path d="M12 2L2 7V17L12 22L22 17V7L12 2ZM12 4.15L19.5 7.9V10.5L12 6.75L4.5 10.5V7.9L12 4.15ZM4.5 12.5L12 8.75L19.5 12.5V16.1L12 19.85L4.5 16.1V12.5Z"/>
+                    </svg>
                   </div>
                 )}
 
-                <div className={`space-y-1.5 max-w-[85%] sm:max-w-[78%] ${isUser ? 'items-end' : 'items-start'}`}>
+                <div className={`space-y-1.5 max-w-[85%] sm:max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
                   
-                  {/* Message Bubble */}
                   <div 
                     className={`p-4 rounded-2xl text-sm leading-relaxed ${
                       isUser 
-                        ? 'bg-[var(--bg-input)] text-[var(--text-primary)] rounded-tr-sm' 
-                        : 'bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-primary)] shadow-sm rounded-tl-sm'
+                        ? 'bg-neutral-200 dark:bg-neutral-800 text-[var(--text-primary)] rounded-tr-xs' 
+                        : 'bg-transparent text-[var(--text-primary)]'
                     }`}
                   >
-                    {/* Attached file preview */}
                     {m.attachedFile && (
                       <div className="mb-3 p-2 bg-[var(--bg-hover)] border border-[var(--border-color)] rounded-xl text-xs flex items-center gap-2 text-[var(--text-muted)]">
                         <FileText className="w-4 h-4 text-[var(--text-primary)]" />
@@ -213,7 +315,6 @@ export default function ChatStudio({
                     />
                   </div>
 
-                  {/* Actions under message */}
                   {!isUser && (
                     <div className="flex items-center gap-3 px-1 text-xs text-[var(--text-muted)]">
                       <button
@@ -229,149 +330,120 @@ export default function ChatStudio({
                         className="hover:text-[var(--text-primary)] flex items-center gap-1 transition-colors"
                       >
                         <Volume2 className="w-3.5 h-3.5" />
-                        <span>Listen</span>
+                        <span>Read aloud</span>
                       </button>
                     </div>
                   )}
 
                 </div>
-
-                {isUser && (
-                  <div className="w-7 h-7 rounded-full bg-[var(--bg-hover)] text-[var(--text-primary)] flex items-center justify-center font-semibold text-xs shrink-0 mt-1 border border-[var(--border-color)]">
-                    U
-                  </div>
-                )}
               </div>
             );
           })
         )}
 
-        {/* Inference Progress Spinner */}
         {isGenerating && (
-          <div className="flex items-center gap-3 p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] max-w-[78%]">
-            <RefreshCw className="w-4 h-4 animate-spin text-[var(--text-primary)]" />
-            <span className="text-xs text-[var(--text-muted)] font-medium">Quick AI inferring locally...</span>
+          <div className="flex items-center gap-3 p-3 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] max-w-xs shadow-2xs">
+            <RefreshCw className="w-4 h-4 animate-spin text-emerald-500" />
+            <span className="text-xs text-[var(--text-muted)] font-medium">OMNIRA is thinking...</span>
           </div>
         )}
 
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Floating Bottom Input Bar (ChatGPT & Gemini Style) */}
-      <div className="absolute bottom-4 left-4 right-4 max-w-3xl mx-auto z-20">
-        
-        {/* Attached File Pill Badge */}
-        {attachedFile && (
-          <div className="mb-2 p-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl text-xs flex items-center justify-between shadow-sm">
-            <div className="flex items-center gap-2 truncate">
-              <FileText className="w-4 h-4 text-[var(--text-primary)]" />
-              <span className="font-mono text-[var(--text-primary)] truncate">{attachedFile.name}</span>
-              <span className="text-[var(--text-muted)]">({(attachedFile.size / 1024).toFixed(1)} KB)</span>
+      {/* Floating Bottom Composer Bar */}
+      {messages.length > 0 && (
+        <div className="absolute bottom-4 left-4 right-4 max-w-3xl mx-auto z-20 select-none">
+          
+          {attachedFile && (
+            <div className="mb-2 p-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl text-xs flex items-center justify-between shadow-2xs">
+              <div className="flex items-center gap-2 truncate">
+                <FileText className="w-4 h-4 text-[var(--text-primary)]" />
+                <span className="font-mono text-[var(--text-primary)] truncate">{attachedFile.name}</span>
+                <span className="text-[var(--text-muted)]">({(attachedFile.size / 1024).toFixed(1)} KB)</span>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setAttachedFile(null)} 
+                className="text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <button 
-              type="button" 
-              onClick={() => setAttachedFile(null)} 
-              className="text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+          )}
 
-        <form 
-          onSubmit={handleSubmit}
-          className="rounded-[26px] border border-[var(--border-color)] bg-[var(--bg-card)] shadow-lg p-2 sm:p-3 transition-all focus-within:border-[var(--text-primary)]"
-        >
-          <div className="flex items-center gap-2">
-            
-            {/* Left + Attach Button */}
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileUpload} 
-              className="hidden" 
-              accept=".txt,.md,.csv,.json,.js,.py,.html,.css"
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors shrink-0"
-              title="Attach File"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
-
-            {/* Input Field */}
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit();
-                }
-              }}
-              placeholder="Ask anything..."
-              rows={1}
-              className="w-full bg-transparent border-none outline-none resize-none text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] py-1.5"
-            />
-
-            {/* Right Buttons Inside Input Bar */}
-            <div className="flex items-center gap-1 shrink-0">
+          <form 
+            onSubmit={handleSubmit}
+            className="rounded-[28px] border border-[var(--border-color)] bg-[var(--bg-input)] shadow-lg p-2 sm:p-3 transition-all focus-within:border-[var(--border-strong)]"
+          >
+            <div className="flex items-center gap-2">
               
-              {/* Think Mode Pill (ChatGPT style) */}
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileUpload} 
+                className="hidden" 
+                accept=".txt,.md,.csv,.json,.js,.py,.html,.css"
+              />
               <button
                 type="button"
-                onClick={() => setIsThinkingMode(!isThinkingMode)}
-                className={`hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                  isThinkingMode 
-                    ? 'border-[var(--border-color)] bg-[var(--bg-hover)] text-[var(--text-primary)]' 
-                    : 'border-transparent text-[var(--text-muted)]'
-                }`}
-                title="Deep Local Reasoning Engine"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors shrink-0"
+                title="Add attachment"
               >
-                <Brain className="w-3.5 h-3.5" />
-                <span>Think</span>
+                <Plus className="w-5 h-5" />
               </button>
 
-              {/* Mic Voice Button */}
-              <button
-                type="button"
-                onClick={toggleVoiceInput}
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                  isListening 
-                    ? 'bg-red-500 text-white animate-pulse' 
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
-                }`}
-                title="Voice Dictation"
-              >
-                {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-              </button>
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit();
+                  }
+                }}
+                placeholder="Ask anything"
+                rows={1}
+                className="w-full bg-transparent border-none outline-none resize-none text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] py-1.5"
+              />
 
-              {/* Send Button */}
-              <button
-                type="submit"
-                disabled={(!input.trim() && !attachedFile) || isGenerating}
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                  input.trim() || attachedFile
-                    ? 'bg-[var(--text-primary)] text-[var(--bg-primary)]'
-                    : 'bg-[var(--bg-hover)] text-[var(--text-muted)] cursor-not-allowed'
-                }`}
-              >
-                <Send className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={toggleVoiceInput}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                    isListening 
+                      ? 'bg-red-500 text-white animate-pulse' 
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+                  }`}
+                  title="Voice Dictation"
+                >
+                  {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={(!input.trim() && !attachedFile) || isGenerating}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                    input.trim() || attachedFile
+                      ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] shadow-2xs'
+                      : 'bg-[var(--bg-hover)] text-[var(--text-muted)] cursor-not-allowed'
+                  }`}
+                >
+                  <ArrowUp className="w-5 h-5 stroke-[2.5]" />
+                </button>
+              </div>
 
             </div>
+          </form>
 
+          <div className="text-[11px] text-center text-[var(--text-muted)] mt-2">
+            OMNIRA can make mistakes. Check important info.
           </div>
-        </form>
 
-        {/* Footer Subtext */}
-        <div className="text-[11px] text-center text-[var(--text-muted)] mt-2">
-          Quick AI can make mistakes. Created by <a href="https://bishalcodes.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--text-primary)]">bishalcodes.com</a>.
         </div>
-
-      </div>
+      )}
 
     </div>
   );

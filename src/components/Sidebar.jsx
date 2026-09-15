@@ -40,7 +40,7 @@ export default function Sidebar({
     { id: 'images', label: 'Images', icon: ImageIcon, badge: 'UPDATED', modeTarget: 'svg' },
     { id: 'library', label: 'Library', icon: BookOpen, modeTarget: 'doc' },
     { id: 'scheduled', label: 'Scheduled', icon: Clock, modeTarget: 'math' },
-    { id: 'plugins', label: 'Plugins', icon: Plug, action: 'settings' },
+    { id: 'plugins', label: 'Plugins', icon: Plug, modeTarget: 'plugins' },
     { id: 'projects', label: 'Projects', icon: Folder, action: 'settings' },
     { id: 'codex', label: 'Codex', icon: Terminal, modeTarget: 'code' },
     { id: 'more', label: 'More', icon: MoreHorizontal, action: 'settings' }

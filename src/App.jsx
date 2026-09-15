@@ -6,6 +6,7 @@ import CodeStudio from './components/CodeStudio';
 import DocStudio from './components/DocStudio';
 import MathStudio from './components/MathStudio';
 import SvgStudio from './components/SvgStudio';
+import PluginsStudio from './components/PluginsStudio';
 import SettingsModal from './components/SettingsModal';
 import AuthScreen from './components/AuthScreen';
 import { queryQuickAi } from './engine/quickAiEngine';
@@ -348,6 +349,12 @@ export default function App() {
           {activeMode === 'svg' && (
             <div className="h-full overflow-hidden">
               <SvgStudio settings={settings} />
+            </div>
+          )}
+
+          {activeMode === 'plugins' && (
+            <div className="h-full overflow-hidden">
+              <PluginsStudio onSelectChat={(id) => setCurrentChatId(id)} />
             </div>
           )}
         </div>

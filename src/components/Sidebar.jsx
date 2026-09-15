@@ -69,7 +69,7 @@ export default function Sidebar({
       )}
 
       <aside 
-        className={`fixed lg:static inset-y-0 left-0 z-40 flex flex-col bg-[var(--bg-sidebar)] border-r border-[var(--border-color)] transition-all duration-200 select-none ${
+        className={`fixed lg:static inset-y-0 left-0 z-40 flex flex-col bg-[var(--bg-sidebar)] border-r border-[var(--border-color)] transition-all duration-200 select-none pt-[env(safe-area-inset-top,0px)] ${
           isOpen ? 'w-64' : 'w-0 lg:w-0 overflow-hidden border-none'
         }`}
       >

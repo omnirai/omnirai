@@ -132,7 +132,7 @@ export default function ChatStudio({
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)] w-full max-w-3xl mx-auto px-4 relative select-none">
+    <div className="flex flex-col h-full w-full max-w-3xl mx-auto px-4 relative select-none">
       
       {/* Thread Messages Stream */}
       <div className="flex-1 overflow-y-auto pt-4 pb-44 space-y-6">
@@ -199,7 +199,7 @@ export default function ChatStudio({
                     }}
                     placeholder="Ask anything"
                     rows={1}
-                    className="w-full bg-transparent border-none outline-none resize-none text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] py-1.5 font-normal"
+                    className="w-full bg-transparent border-none outline-none resize-none text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] py-1.5 font-normal"
                   />
 
                   <div className="flex items-center gap-1.5 shrink-0">
@@ -405,7 +405,7 @@ export default function ChatStudio({
                 }}
                 placeholder="Ask anything"
                 rows={1}
-                className="w-full bg-transparent border-none outline-none resize-none text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] py-1.5"
+                className="w-full bg-transparent border-none outline-none resize-none text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] py-1.5"
               />
 
               <div className="flex items-center gap-1.5 shrink-0">

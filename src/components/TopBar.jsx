@@ -174,7 +174,7 @@ export default function TopBar({
   }, []);
 
   return (
-    <header className="h-14 px-3 flex items-center justify-between bg-[var(--bg-primary)] border-b border-transparent transition-colors z-20 shrink-0 select-none">
+    <header className="min-h-[3.5rem] py-2 px-3 flex items-center justify-between bg-[var(--bg-primary)] border-b border-[var(--border-color)] transition-colors z-20 shrink-0 select-none">
       
       {/* Left: Sidebar Toggle + Model Selector Pill Dropdown */}
       <div className="flex items-center gap-2">

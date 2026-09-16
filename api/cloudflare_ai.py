@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import sqlite3
 import base64
@@ -91,11 +92,46 @@ def check_quota(user_id: str) -> dict:
 
 def prepare_model_prompt(raw_prompt: str) -> str:
     """
-    Direct prompt preservation: modelPrompt = userPrompt.
-    No artificial styles, no generic prefixes, no forced keywords or re-writing.
-    Preserves exact subjects, counts, colors, styles, and details requested by user.
+    Cleans conversational chatbot command prefixes so that conversational speech
+    (e.g., "please make", "can you generate", "draw an image of") is not literally
+    rendered as English text inside the image.
+    Preserves all subjects, colors, counts, locations, and user-specified styles faithfully.
     """
-    return raw_prompt.strip()
+    cleaned = raw_prompt.strip()
+    if not cleaned:
+        return ""
+
+    # 1. Strip conversational filler/polite commands
+    # e.g., "please make", "can you create", "kindly generate", "please draw"
+    cleaned = re.sub(
+        r'^(?:can\s+you\s+|could\s+you\s+|would\s+you\s+)?(?:please\s+|kindly\s+)?(?:make|create|generate|draw|design|render|produce)\s+(?:me\s+)?',
+        '',
+        cleaned,
+        flags=re.IGNORECASE
+    ).strip()
+
+    # 2. If the user prompt starts with "an image of", "a photo of", "a picture of"
+    cleaned = re.sub(
+        r'^(?:an?\s+)?(?:image|picture|photo|photograph|drawing|illustration)\s+(?:of|showing|depicting)\s+',
+        '',
+        cleaned,
+        flags=re.IGNORECASE
+    ).strip()
+
+    # 3. Special handling for LOGO requests:
+    # If the user asked for a logo, e.g. "logo of bt care" or "a logo for bishal codes"
+    # Ensure the text/brand name is clearly demarcated with quotes so FLUX renders
+    # the typography cleanly instead of generating arbitrary words or split collages.
+    logo_match = re.match(
+        r'^(?:a\s+)?(?:modern\s+)?logo\s+(?:of|for)\s+["\']?([^"\']+)["\']?$',
+        cleaned,
+        flags=re.IGNORECASE
+    )
+    if logo_match:
+        brand = logo_match.group(1).strip()
+        cleaned = f'modern vector logo design for "{brand}", clean typography'
+
+    return cleaned if cleaned else raw_prompt.strip()
 
 def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
     """

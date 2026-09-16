@@ -141,7 +141,7 @@ def prepare_model_prompt(raw_prompt: str) -> str:
     )
     if logo_match_1:
         brand = logo_match_1.group(1).strip().strip('"\'')
-        return f'modern vector logo design for "{brand}", clean emblem, minimalist typography "{brand}"'
+        return f'professional modern vector logo design for "{brand}", clean iconic emblem, centered composition, sharp precise typography "{brand}", minimalist corporate graphic identity, crisp geometric contours, 8k resolution'
 
     logo_match_2 = re.match(
         r'^["\']?([^"\']+)["\']?\s+logo$',
@@ -150,7 +150,12 @@ def prepare_model_prompt(raw_prompt: str) -> str:
     )
     if logo_match_2:
         brand = logo_match_2.group(1).strip().strip('"\'')
-        return f'modern vector logo design for "{brand}", clean emblem, minimalist typography "{brand}"'
+        return f'professional modern vector logo design for "{brand}", clean iconic emblem, centered composition, sharp precise typography "{brand}", minimalist corporate graphic identity, crisp geometric contours, 8k resolution'
+
+    # 5. For general prompts, ensure high definition detail if not already present
+    detail_keywords = ['detail', '8k', '4k', 'sharp', 'resolution', 'photorealistic', 'hyperrealistic']
+    if not any(kw in cleaned.lower() for kw in detail_keywords) and len(cleaned) > 3:
+        return f"{cleaned}, high resolution, intricate details, sharp focus, 8k render"
 
     return cleaned if cleaned else raw_prompt.strip()
 
@@ -177,7 +182,7 @@ def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
             "error": "Cloudflare Workers AI credentials missing on server. Please configure CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN."
         }, 500, check_quota(user_id)
 
-    # 1. PRESERVE THE USER'S PROMPT FAITHFULLY
+    # 1. PRESERVE THE USER'S PROMPT FAITHFULLY WITH HIGH DETAIL
     model_prompt = prepare_model_prompt(user_prompt)
 
     # 2. SAFE SERVER-SIDE LOGGING (No API keys, tokens, or credentials logged)
@@ -227,7 +232,15 @@ def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
                 "Content-Type": "application/json",
                 "User-Agent": "OMNIRA-AI-Chat/1.0"
             }
-            body_data = json.dumps({"prompt": model_prompt}).encode("utf-8")
+            # Provide maximum quality steps so the model takes full deliberation
+            # and renders rich, exact, high-definition details
+            payload = {"prompt": model_prompt}
+            if "flux-1-schnell" in target_model:
+                payload["steps"] = 8  # Max quality allowed by Cloudflare for FLUX Schnell
+            elif "stable-diffusion" in target_model:
+                payload["num_steps"] = 8
+
+            body_data = json.dumps(payload).encode("utf-8")
             req = urllib.request.Request(url, data=body_data, headers=headers, method="POST")
             with urllib.request.urlopen(req, timeout=50) as response:
                 content_type = response.headers.get("Content-Type", "")

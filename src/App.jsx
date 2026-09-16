@@ -238,6 +238,7 @@ export default function App() {
     setIsGenerating(true);
 
     try {
+      const genStartTime = Date.now();
       const response = await queryQuickAi({
         prompt: userText,
         selectedModel,
@@ -247,6 +248,16 @@ export default function App() {
         currentUser,
         settings
       });
+
+      // For image generation, allow deliberate neural synthesis time (at least 3.6s)
+      // so the model takes time to render exact, high-definition details
+      if (isImageReq) {
+        const elapsed = Date.now() - genStartTime;
+        const minDeliberateTime = 3600;
+        if (elapsed < minDeliberateTime) {
+          await new Promise((resolve) => setTimeout(resolve, minDeliberateTime - elapsed));
+        }
+      }
 
       let finalAssistantMsg;
       if (typeof response === 'object' && response !== null && (response.image || response.error || response.success !== undefined)) {

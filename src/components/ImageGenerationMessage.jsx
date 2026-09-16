@@ -8,20 +8,27 @@ export default function ImageGenerationMessage({ message, onRegenerate, onImageL
 
   const { prompt = '', imageUrl = '', error = null, isLoading = false, timestamp } = message;
 
-  // Live Percentage Progress Counter during Image Creation
+  // Live Percentage Progress Counter during Image Creation - smooth and deliberate
   useEffect(() => {
     if (isLoading) {
-      setProgressPercent(14);
+      setProgressPercent(8);
       const interval = setInterval(() => {
         setProgressPercent((prev) => {
-          if (prev >= 96) return 96;
-          const inc = Math.floor(Math.random() * 9) + 4;
-          return Math.min(96, prev + inc);
+          if (prev >= 94) return 94;
+          const inc = Math.floor(Math.random() * 4) + 2;
+          return Math.min(94, prev + inc);
         });
-      }, 350);
+      }, 240);
       return () => clearInterval(interval);
     }
   }, [isLoading]);
+
+  const getStageText = () => {
+    if (progressPercent < 28) return 'Analyzing composition & structure...';
+    if (progressPercent < 58) return 'Computing high-precision vector contours...';
+    if (progressPercent < 82) return 'Rendering sharp typography & micro-details...';
+    return 'Polishing master resolution...';
+  };
 
   const handleCopyPrompt = () => {
     if (!prompt) return;
@@ -115,8 +122,8 @@ export default function ImageGenerationMessage({ message, onRegenerate, onImageL
                 })}
               </div>
 
-              <div className="text-[11px] text-neutral-500 dark:text-neutral-400 text-center font-medium">
-                Synthesizing high-resolution details...
+              <div className="text-[11px] text-neutral-600 dark:text-neutral-400 text-center font-medium">
+                {getStageText()}
               </div>
 
             </div>

@@ -24,7 +24,7 @@
   ],
   "start_url": "/",
   "background_color": "#ffffff",
-  "theme_color": "#10b981",
+  "theme_color": "#ffffff",
   "display": "standalone",
   "orientation": "any",
   "categories": ["ai", "productivity", "utilities", "developer"]

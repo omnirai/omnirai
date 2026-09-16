@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   SquarePen, 
   Search, 
@@ -13,7 +13,12 @@ import {
   Trash2,
   MessageSquare,
   LogOut,
-  LogIn
+  LogIn,
+  Pin,
+  Pencil,
+  Archive,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import { GoogleLogo } from './AuthScreen';
 
@@ -25,6 +30,9 @@ export default function Sidebar({
   currentChatId,
   onSelectChat,
   onDeleteChat,
+  onPinChat,
+  onRenameChat,
+  onArchiveChat,
   openSettings,
   openAuth,
   activeMode,
@@ -34,6 +42,71 @@ export default function Sidebar({
 }) {
   const userName = currentUser?.name || "Guest User";
   const isGuest = !currentUser || currentUser.provider === 'guest' || userName === "Guest User";
+
+  // Context Menu State (Pin, Rename, Archive, Delete)
+  const [contextMenu, setContextMenu] = useState(null); // { chat, x, y }
+  const [renameModal, setRenameModal] = useState(null); // { chat, title }
+  const [showArchived, setShowArchived] = useState(false);
+  const touchTimerRef = useRef(null);
+  const touchStartPos = useRef({ x: 0, y: 0 });
+
+  // Close context menu on outside click or escape
+  useEffect(() => {
+    const handleGlobalClick = () => setContextMenu(null);
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setContextMenu(null);
+        setRenameModal(null);
+      }
+    };
+    window.addEventListener('click', handleGlobalClick);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('click', handleGlobalClick);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  // Long-press Touch Handlers for Mobile
+  const handleTouchStart = (chat, e) => {
+    const touch = e.touches[0];
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+    touchTimerRef.current = setTimeout(() => {
+      if (navigator.vibrate) {
+        try { navigator.vibrate(40); } catch (_) {}
+      }
+      setContextMenu({
+        chat,
+        x: touch.clientX,
+        y: touch.clientY
+      });
+    }, 500);
+  };
+
+  const handleTouchMove = (e) => {
+    const touch = e.touches[0];
+    const dx = Math.abs(touch.clientX - touchStartPos.current.x);
+    const dy = Math.abs(touch.clientY - touchStartPos.current.y);
+    // If scrolled more than 10px, cancel long-press
+    if (dx > 10 || dy > 10) {
+      if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+  };
+
+  // Right-click context menu handler for desktop
+  const handleContextMenu = (chat, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      chat,
+      x: e.clientX,
+      y: e.clientY
+    });
+  };
 
   const mainNavItems = [
     { id: 'chat', label: 'Chat', icon: MessageSquare, modeTarget: 'chat' },
@@ -56,6 +129,61 @@ export default function Sidebar({
         window.location.reload();
       }
     }
+  };
+
+  // Separate pinned, active recents, and archived chats
+  const pinnedChats = chatHistory.filter((c) => c.pinned && !c.archived);
+  const recentChats = chatHistory.filter((c) => !c.pinned && !c.archived);
+  const archivedChats = chatHistory.filter((c) => c.archived);
+
+  // Render individual chat item
+  const renderChatItem = (chat) => {
+    const isSelected = currentChatId === chat.id && activeMode === 'chat';
+    return (
+      <div
+        key={chat.id}
+        onClick={() => {
+          onSelectChat(chat.id);
+          setActiveMode('chat');
+        }}
+        onTouchStart={(e) => handleTouchStart(chat, e)}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onContextMenu={(e) => handleContextMenu(chat, e)}
+        className={`group relative flex items-center justify-between px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-all select-none ${
+          isSelected 
+            ? 'bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold shadow-2xs' 
+            : 'text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+        }`}
+      >
+        <div className="flex items-center gap-2 min-w-0 pr-6">
+          {chat.pinned && (
+            <Pin className="w-3 h-3 text-emerald-500 fill-emerald-500 shrink-0" />
+          )}
+          <span className="truncate">
+            {chat.title || 'New Chat'}
+          </span>
+        </div>
+
+        {/* Action Button: triggers context popup */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            const rect = e.currentTarget.getBoundingClientRect();
+            setContextMenu({
+              chat,
+              x: rect.left,
+              y: rect.bottom + 4
+            });
+          }}
+          className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all absolute right-1.5 shrink-0"
+          title="Chat options"
+        >
+          <MoreHorizontal className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    );
   };
 
   return (
@@ -107,7 +235,7 @@ export default function Sidebar({
               onNewChat();
               setActiveMode('chat');
             }}
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-all text-sm font-medium shadow-2xs group"
+            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-all text-sm font-medium shadow-2xs group cursor-pointer"
           >
             <div className="flex items-center gap-2.5">
               <SquarePen className="w-4 h-4 text-[var(--text-primary)]" />
@@ -131,7 +259,7 @@ export default function Sidebar({
                     setActiveMode(item.modeTarget);
                   }
                 }}
-                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors ${
+                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                   isActive 
                     ? 'bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold' 
                     : 'text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
@@ -151,50 +279,58 @@ export default function Sidebar({
           })}
         </div>
 
-        {/* Recent Chat Threads History */}
-        <div className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
-          <div className="px-2.5 text-[11px] font-semibold text-[var(--text-muted)] tracking-wider uppercase mb-1">
-            Recents
+        {/* Chat History Threads Area */}
+        <div className="flex-1 overflow-y-auto px-2 py-3 space-y-2">
+          
+          {/* Pinned Chats Section */}
+          {pinnedChats.length > 0 && (
+            <div className="space-y-0.5">
+              <div className="px-2.5 text-[10px] font-bold text-[var(--text-muted)] tracking-wider uppercase flex items-center gap-1.5 mb-1">
+                <Pin className="w-3 h-3 text-emerald-500 fill-emerald-500" />
+                <span>Pinned</span>
+              </div>
+              {pinnedChats.map(renderChatItem)}
+            </div>
+          )}
+
+          {/* Recent Chats Section */}
+          <div className="space-y-0.5">
+            <div className="px-2.5 text-[10px] font-bold text-[var(--text-muted)] tracking-wider uppercase mb-1">
+              Recents
+            </div>
+
+            {recentChats.length === 0 && pinnedChats.length === 0 ? (
+              <div className="px-2.5 py-2 text-xs text-[var(--text-muted)] italic">
+                No recent conversations
+              </div>
+            ) : (
+              recentChats.map(renderChatItem)
+            )}
           </div>
 
-          {chatHistory.length === 0 ? (
-            <div className="px-2.5 py-2 text-xs text-[var(--text-muted)] italic">
-              No recent conversations
-            </div>
-          ) : (
-            chatHistory.map((chat) => {
-              const isSelected = currentChatId === chat.id && activeMode === 'chat';
-              return (
-                <div
-                  key={chat.id}
-                  onClick={() => {
-                    onSelectChat(chat.id);
-                    setActiveMode('chat');
-                  }}
-                  className={`group relative flex items-center justify-between px-2.5 py-2 rounded-lg text-xs cursor-pointer transition-colors ${
-                    isSelected 
-                      ? 'bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold' 
-                      : 'text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
-                  }`}
-                >
-                  <span className="truncate pr-6">
-                    {chat.title || 'New Chat'}
-                  </span>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteChat(chat.id);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/20 text-neutral-400 hover:text-red-500 transition-all absolute right-2"
-                    title="Delete Chat"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+          {/* Archived Chats Section */}
+          {archivedChats.length > 0 && (
+            <div className="pt-2 border-t border-[var(--border-color)]/60 space-y-1">
+              <button
+                type="button"
+                onClick={() => setShowArchived(!showArchived)}
+                className="w-full flex items-center justify-between px-2.5 py-1 text-[11px] font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Archive className="w-3 h-3" />
+                  <span>Archived ({archivedChats.length})</span>
                 </div>
-              );
-            })
+                {showArchived ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+              </button>
+
+              {showArchived && (
+                <div className="space-y-0.5 pl-1">
+                  {archivedChats.map(renderChatItem)}
+                </div>
+              )}
+            </div>
           )}
+
         </div>
 
         {/* Bottom User Profile Section with Sign In / Log Out */}
@@ -250,6 +386,123 @@ export default function Sidebar({
         </div>
 
       </aside>
+
+      {/* Context Menu Popup (Matches User Screenshot: Pin, Rename, Archive, Delete) */}
+      {contextMenu && (
+        <div 
+          className="fixed z-50 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl shadow-2xl py-2 w-48 backdrop-blur-md animate-fade-in text-sm font-medium"
+          style={{
+            top: Math.max(16, Math.min(contextMenu.y, window.innerHeight - 230)),
+            left: Math.max(16, Math.min(contextMenu.x, window.innerWidth - 210))
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* 1. Pin */}
+          <button
+            onClick={() => {
+              onPinChat?.(contextMenu.chat.id);
+              setContextMenu(null);
+            }}
+            className="w-full flex items-center gap-3.5 px-4 py-2.5 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
+          >
+            <Pin className={`w-4 h-4 shrink-0 ${contextMenu.chat.pinned ? 'fill-emerald-500 text-emerald-500' : 'text-[var(--text-primary)]'}`} />
+            <span>{contextMenu.chat.pinned ? 'Unpin' : 'Pin'}</span>
+          </button>
+
+          {/* 2. Rename */}
+          <button
+            onClick={() => {
+              const chatToRename = contextMenu.chat;
+              setContextMenu(null);
+              setRenameModal({ chat: chatToRename, title: chatToRename.title || '' });
+            }}
+            className="w-full flex items-center gap-3.5 px-4 py-2.5 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
+          >
+            <Pencil className="w-4 h-4 shrink-0 text-[var(--text-primary)]" />
+            <span>Rename</span>
+          </button>
+
+          {/* 3. Archive */}
+          <button
+            onClick={() => {
+              onArchiveChat?.(contextMenu.chat.id);
+              setContextMenu(null);
+            }}
+            className="w-full flex items-center gap-3.5 px-4 py-2.5 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
+          >
+            <Archive className="w-4 h-4 shrink-0 text-[var(--text-primary)]" />
+            <span>{contextMenu.chat.archived ? 'Unarchive' : 'Archive'}</span>
+          </button>
+
+          {/* 4. Delete */}
+          <button
+            onClick={() => {
+              const chatId = contextMenu.chat.id;
+              setContextMenu(null);
+              onDeleteChat(chatId);
+            }}
+            className="w-full flex items-center gap-3.5 px-4 py-2.5 hover:bg-red-500/10 text-red-500 transition-colors text-left border-t border-[var(--border-color)]/60 mt-1 pt-2.5 cursor-pointer"
+          >
+            <Trash2 className="w-4 h-4 shrink-0 text-red-500" />
+            <span className="font-semibold text-red-500">Delete</span>
+          </button>
+        </div>
+      )}
+
+      {/* Real Rename Modal */}
+      {renameModal && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs"
+          onClick={() => setRenameModal(null)}
+        >
+          <div 
+            className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-5 w-full max-w-sm shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2">
+              <Pencil className="w-4 h-4 text-emerald-500" />
+              <h3 className="font-semibold text-sm text-[var(--text-primary)]">Rename Chat</h3>
+            </div>
+            
+            <input
+              type="text"
+              value={renameModal.title}
+              onChange={(e) => setRenameModal({ ...renameModal, title: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  onRenameChat?.(renameModal.chat.id, renameModal.title);
+                  setRenameModal(null);
+                } else if (e.key === 'Escape') {
+                  setRenameModal(null);
+                }
+              }}
+              autoFocus
+              className="w-full px-3 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-sm text-[var(--text-primary)] outline-none focus:border-emerald-500"
+              placeholder="Enter new chat title..."
+            />
+            
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setRenameModal(null)}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-medium text-[var(--text-muted)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onRenameChat?.(renameModal.chat.id, renameModal.title);
+                  setRenameModal(null);
+                }}
+                className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-xs cursor-pointer"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

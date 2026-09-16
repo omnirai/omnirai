@@ -308,6 +308,28 @@ export default function App() {
     setActiveMode('chat');
   };
 
+  // Pin / Unpin Chat
+  const handlePinChat = (idToPin) => {
+    setChatSessions((prev) =>
+      prev.map((s) => (s.id === idToPin ? { ...s, pinned: !s.pinned } : s))
+    );
+  };
+
+  // Rename Chat
+  const handleRenameChat = (idToRename, newTitle) => {
+    if (!newTitle || !newTitle.trim()) return;
+    setChatSessions((prev) =>
+      prev.map((s) => (s.id === idToRename ? { ...s, title: newTitle.trim() } : s))
+    );
+  };
+
+  // Archive / Unarchive Chat
+  const handleArchiveChat = (idToArchive) => {
+    setChatSessions((prev) =>
+      prev.map((s) => (s.id === idToArchive ? { ...s, archived: !s.archived } : s))
+    );
+  };
+
   // Delete Chat
   const handleDeleteChat = (idToDelete) => {
     const filtered = chatSessions.filter(s => s.id !== idToDelete);
@@ -335,6 +357,9 @@ export default function App() {
         currentChatId={currentChatId}
         onSelectChat={(id) => setCurrentChatId(id)}
         onDeleteChat={handleDeleteChat}
+        onPinChat={handlePinChat}
+        onRenameChat={handleRenameChat}
+        onArchiveChat={handleArchiveChat}
         openSettings={() => setIsSettingsOpen(true)}
         openAuth={() => setIsAuthModalOpen(true)}
         activeMode={activeMode}

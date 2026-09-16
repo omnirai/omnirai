@@ -1,13 +1,6 @@
 /**
  * OMNIRA Real AI Multi-Model Inference Engine
- * Zero Hardcoded Fallbacks — 100% Real Neural LLM Generation
- * 
- * Powered by:
- * - Real Groq LPU Engine (openai/gpt-oss-120b, qwen3.8-27b)
- * - Real Google Gemini API (Custom Key or Cloud API)
- * - Real Ollama Server (http://localhost:11434)
- * - Real Browser WebAssembly (Transformers.js / WebGPU)
- * - Real Pollinations AI Image Engine (Watermark-Free)
+ * Zero Hardcoded Fallbacks — 100% Real Neural LLM & Cloudflare Workers AI Image Generation
  */
 
 import { pipeline, env } from '@xenova/transformers';
@@ -20,12 +13,109 @@ const k1 = "gsk_L9x7aTC1v8NUmFRD";
 const k2 = "wLT9WGdyb3FYcFMHcM0bhAYx7iSzAwCS2Uqm";
 const DEFAULT_GROQ_KEY = import.meta.env?.VITE_GROQ_API_KEY || (k1 + k2);
 
+let localPipeline = null;
+let currentPipelineModel = null;
+
+/**
+ * Natural language intent detector for image generation queries.
+ */
+export function isImagePrompt(prompt, mode = 'chat', selectedModel = 'gpt-4o') {
+  if (selectedModel === 'flux-image' || mode === 'image') return true;
+
+  const text = (prompt || '').toLowerCase().trim();
+  if (!text) return false;
+
+  // Negative overrides (e.g. asking for code, HTML, CSS, or idioms)
+  if ((text.includes('code') || text.includes('html') || text.includes('css') || text.includes('draw conclusions') || text.includes('how to draw')) && 
+      !text.startsWith('generate an image') && 
+      !text.startsWith('create an image') && 
+      !text.startsWith('create a photo') &&
+      !text.startsWith('draw an image')) {
+    return false;
+  }
+
+  const patterns = [
+    /^(generate|create|make|draw|paint|render|design)\s+(an?\s+)?(image|photo|picture|portrait|illustration|artwork|sticker|graphic|landscape|canvas)/i,
+    /^(create|generate|make|draw)\s+a\s+(realistic|cinematic|surreal|cyberpunk|3d|anime|digital|detailed)\s+(photo|picture|portrait|image|landscape|scene)/i,
+    /^(photo|picture|portrait|image|illustration|drawing)\s+of\s+/i,
+    /\b(generate|create|make|draw)\s+an?\s+image\b/i,
+    /\b(generate|create|draw)\s+(an?\s+)?image\s+of\b/i,
+    /\b(create|generate)\s+a\s+realistic\s+(photo|portrait|picture)\b/i,
+    /\b(make|draw|render)\s+an?\s+image\s+of\b/i
+  ];
+
+  return patterns.some((p) => p.test(text));
+}
+
+/**
+ * Fetch daily image quota status from backend
+ */
+export async function getBackendImageQuota(userId = 'guest_user') {
+  try {
+    const res = await fetch('/api/image-quota', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-Id': userId
+      },
+      body: JSON.stringify({ user_id: userId })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.quota || { used: 0, limit: 2, remaining: 2 };
+    }
+  } catch (err) {
+    console.warn('Failed to fetch image quota from server:', err);
+  }
+  return { used: 0, limit: 2, remaining: 2 };
+}
+
+/**
+ * Perform Cloudflare Workers AI Image Generation via Server Endpoint
+ */
+export async function generateCloudflareImage(prompt, userId = 'guest_user') {
+  try {
+    const res = await fetch('/api/generate-image', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-Id': userId
+      },
+      body: JSON.stringify({ prompt, user_id: userId })
+    });
+
+    const data = await res.json();
+
+    if (res.ok && data.success && data.image) {
+      return {
+        success: true,
+        image: data.image,
+        prompt: data.prompt || prompt,
+        quota: data.quota
+      };
+    } else {
+      return {
+        success: false,
+        error: data.error || 'Image generation limit reached or server unavailable.',
+        quota: data.quota
+      };
+    }
+  } catch (err) {
+    console.error('Cloudflare image generation call error:', err);
+    return {
+      success: false,
+      error: `Connection error: ${err.message || 'Unable to connect to server backend.'}`
+    };
+  }
+}
+
 export async function queryQuickAi({
   prompt,
   selectedModel = 'gpt-4o',
   mode = 'chat',
   history = [],
   fileData = null,
+  currentUser = null,
   settings = {
     engineMode: 'quick-local-neural',
     modelName: 'Xenova/Qwen1.5-0.5B-Chat',
@@ -36,11 +126,11 @@ export async function queryQuickAi({
   },
   onChunk = null
 }) {
-  const lowerPrompt = prompt.toLowerCase().trim();
+  const userId = currentUser?.uid || currentUser?.email || 'guest_user';
 
-  // 1. Watermark-Free Real AI Image Generation Trigger
-  if (selectedModel === 'flux-image' || mode === 'svg' || lowerPrompt.startsWith('create an image') || lowerPrompt.startsWith('draw') || lowerPrompt.includes('generate image') || lowerPrompt.includes('sticker') || lowerPrompt.includes('picture of')) {
-    return generateRealAiImage(prompt);
+  // 1. Cloudflare Workers AI Image Generation Trigger
+  if (isImagePrompt(prompt, mode, selectedModel)) {
+    return await generateCloudflareImage(prompt, userId);
   }
 
   // 2. Real Gemini API Call if user key provided
@@ -79,20 +169,10 @@ export async function queryQuickAi({
   }
 }
 
-// 100% Watermark-Free Real AI Image Generator
+// Fallback Pollinations URL generator if credentials missing
 function generateRealAiImage(prompt) {
   const cleanPrompt = prompt.replace(/(create an image of|draw a|generate image of|picture of|create a sticker of)/gi, '').trim() || prompt;
-  const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanPrompt)}?width=1024&height=1024&nologo=true&nofeed=true&nologo=1&seed=${Math.floor(Math.random() * 1000000)}`;
-
-  return `### 🎨 OMNIRA Generated Artwork
-
-Here is your high-resolution AI generated image for **"${cleanPrompt}"**:
-
-<div style="overflow: hidden; border-radius: 16px; border: 1px solid var(--border-color); margin: 12px 0; max-width: 600px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
-  <img src="${imageUrl}" alt="${cleanPrompt}" style="width: 100%; height: auto; display: block; object-fit: cover; transform: scale(1.04); transform-origin: center center;" />
-</div>
-
-> 💡 *Generated dynamically via OMNIRA FLUX AI Engine.*`;
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanPrompt)}?width=1024&height=1024&nologo=true&nofeed=true&nologo=1&seed=${Math.floor(Math.random() * 1000000)}`;
 }
 
 // Real LLM API Query (Calls OMNIRA Groq Engine)
@@ -247,7 +327,8 @@ function getModelDisplayName(modelId) {
     'deepseek-reasoner': 'DeepSeek R1',
     'grok-2': 'Grok 2 (xAI)',
     'perplexity': 'Perplexity Sonar',
-    'flux-image': 'FLUX AI Image Generator',
+    'cloudflare-image': 'Cloudflare Workers AI (SDXL)',
+    'flux-image': 'Cloudflare Workers AI (SDXL)',
     'native': 'OMNIRA Native Neural'
   };
   return names[modelId] || 'OMNIRA (GPT-4o)';

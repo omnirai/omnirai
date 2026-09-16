@@ -10,6 +10,7 @@ import json
 import urllib.parse
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from quick_ai_engine import QuickAiEngine
+from api.cloudflare_ai import generate_image_with_quota, check_quota
 
 PORT = 5050
 engine = QuickAiEngine()
@@ -2107,9 +2108,41 @@ class QuickAiRequestHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         return
 
+    def send_json(self, status_code, data):
+        res_bytes = json.dumps(data, ensure_ascii=False).encode('utf-8')
+        self.send_response(status_code)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(res_bytes)))
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS, GET')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id')
+        self.end_headers()
+        self.wfile.write(res_bytes)
+
+    def get_auth_user_id(self, data=None):
+        user_id = self.headers.get('X-User-Id')
+        if not user_id and isinstance(data, dict):
+            user_id = data.get('user_id') or data.get('userId')
+        if not user_id:
+            user_id = 'guest_user'
+        return str(user_id).strip()
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS, GET')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id')
+        self.end_headers()
+
     def do_GET(self):
         try:
-            # If request URL path starts with /api/, redirect to /
+            path = self.path.split('?')[0].rstrip('/')
+            if path in ['/api/image-quota', '/image-quota']:
+                user_id = self.get_auth_user_id()
+                quota = check_quota(user_id)
+                self.send_json(200, {"quota": quota})
+                return
+
             if self.path.startswith('/api/'):
                 self.send_response(302)
                 self.send_header('Location', '/')
@@ -2128,37 +2161,45 @@ class QuickAiRequestHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         try:
-            if self.path == '/api/chat':
-                content_length = int(self.headers.get('Content-Length', 0))
-                body_raw = self.rfile.read(content_length).decode('utf-8', errors='ignore') if content_length > 0 else ''
-                try:
-                    data = json.loads(body_raw, strict=False) if body_raw else {}
-                except Exception:
-                    data = {'prompt': body_raw}
+            content_length = int(self.headers.get('Content-Length', 0))
+            body_raw = self.rfile.read(content_length).decode('utf-8', errors='ignore') if content_length > 0 else ''
+            try:
+                data = json.loads(body_raw, strict=False) if body_raw else {}
+            except Exception:
+                data = {'prompt': body_raw}
 
+            path = self.path.split('?')[0].rstrip('/')
+
+            # 1. Image Generation Route
+            if path in ['/api/generate-image', '/generate-image']:
+                prompt = data.get('prompt', '') if isinstance(data, dict) else str(body_raw)
+                user_id = self.get_auth_user_id(data if isinstance(data, dict) else None)
+                
+                success, payload, status_code, quota_info = generate_image_with_quota(user_id, prompt)
+                self.send_json(status_code if not success else 200, payload)
+                return
+
+            # 2. Image Quota Check Route
+            if path in ['/api/image-quota', '/image-quota']:
+                user_id = self.get_auth_user_id(data if isinstance(data, dict) else None)
+                quota = check_quota(user_id)
+                self.send_json(200, {"quota": quota})
+                return
+
+            # 3. Standard Chat Route
+            if path in ['/api/chat', '/chat']:
                 prompt = data.get('prompt', '') if isinstance(data, dict) else str(body_raw)
                 mode = data.get('mode', 'chat') if isinstance(data, dict) else 'chat'
                 model = data.get('model', 'gpt-4o') if isinstance(data, dict) else 'gpt-4o'
 
                 response_text = engine.process_query(prompt, mode=mode, model=model)
-                res_bytes = json.dumps({'response': response_text}, ensure_ascii=False).encode('utf-8')
-
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json; charset=utf-8')
-                self.send_header('Content-Length', str(len(res_bytes)))
-                self.end_headers()
-                self.wfile.write(res_bytes)
+                self.send_json(200, {'response': response_text})
             else:
                 self.send_response(404)
                 self.end_headers()
         except Exception as e:
             try:
-                err_bytes = json.dumps({'response': f"⚠️ **Server Error:** {str(e)}"}).encode('utf-8')
-                self.send_response(500)
-                self.send_header('Content-Type', 'application/json; charset=utf-8')
-                self.send_header('Content-Length', str(len(err_bytes)))
-                self.end_headers()
-                self.wfile.write(err_bytes)
+                self.send_json(500, {'response': f"⚠️ **Server Error:** {str(e)}", 'error': str(e)})
             except Exception:
                 pass
 

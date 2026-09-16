@@ -60,12 +60,12 @@ export const AI_MODELS = [
     description: 'Live web search with real-time web citations.'
   },
   {
-    id: 'flux-image',
-    name: 'FLUX AI Image Generator',
-    badge: 'Image Studio',
-    color: '#10b981',
-    iconType: 'flux',
-    description: 'Generates photorealistic AI images & art.'
+    id: 'cloudflare-image',
+    name: 'Cloudflare Workers AI (SDXL)',
+    badge: 'Cloudflare AI',
+    color: '#f38020',
+    iconType: 'cloudflare',
+    description: 'Generates photorealistic AI images via Cloudflare Workers AI.'
   },
   {
     id: 'native',
@@ -78,6 +78,13 @@ export const AI_MODELS = [
 ];
 
 export function ModelIcon({ type, className = "w-4 h-4" }) {
+  if (type === 'cloudflare' || type === 'flux') {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none">
+        <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" fill="#f38020"/>
+      </svg>
+    );
+  }
   if (type === 'omnira' || type === 'openai') {
     return (
       <svg className={className} viewBox="0 0 24 24" fill="none">

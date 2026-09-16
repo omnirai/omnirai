@@ -26,3 +26,5 @@ Thumbs.db
 # Logs & scratch files
 *.log
 scratch/
+data/
+*.db

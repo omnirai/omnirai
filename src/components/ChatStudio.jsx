@@ -15,22 +15,31 @@ import {
   Brain,
   RefreshCw,
   Sparkles,
-  ArrowUp
+  ArrowUp,
+  Image as ImageSvg,
+  AlertCircle
 } from 'lucide-react';
 import { marked } from 'marked';
+import ImageGenerationMessage from './ImageGenerationMessage';
+import { isImagePrompt } from '../engine/quickAiEngine';
 
 export default function ChatStudio({ 
   messages, 
   setMessages, 
   onSendMessage, 
   isGenerating, 
-  settings 
+  settings,
+  userQuota = { used: 0, limit: 2, remaining: 2 },
+  currentUser
 }) {
   const [input, setInput] = useState('');
   const [attachedFile, setAttachedFile] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [isListening, setIsListening] = useState(false);
   const [isThinkingMode, setIsThinkingMode] = useState(true);
+  const [isImageMode, setIsImageMode] = useState(false);
+  const [lastUserPrompt, setLastUserPrompt] = useState('');
+
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -86,7 +95,13 @@ export default function ChatStudio({
     e?.preventDefault();
     if ((!input.trim() && !attachedFile) || isGenerating) return;
 
-    onSendMessage(input.trim(), attachedFile);
+    let finalPrompt = input.trim();
+    if (isImageMode && !isImagePrompt(finalPrompt)) {
+      finalPrompt = `Create an image of ${finalPrompt}`;
+    }
+
+    setLastUserPrompt(finalPrompt);
+    onSendMessage(finalPrompt, attachedFile);
     setInput('');
     setAttachedFile(null);
   };
@@ -117,7 +132,7 @@ export default function ChatStudio({
     {
       icon: ImageIcon,
       label: 'Create an image or sticker',
-      prompt: 'Create an image of a cybernetic futuristic cat with glowing cyan neon eyes'
+      prompt: 'Create a realistic photo of Mount Everest at sunrise'
     },
     {
       icon: PenTool,
@@ -131,6 +146,8 @@ export default function ChatStudio({
     }
   ];
 
+  const isCurrentGeneratingImage = isGenerating && isImagePrompt(lastUserPrompt || input || '');
+
   return (
     <div className="flex flex-col h-full w-full max-w-3xl mx-auto px-4 relative select-none">
       
@@ -141,10 +158,22 @@ export default function ChatStudio({
           /* Empty Chat View */
           <div className="h-full flex flex-col items-center justify-center text-center my-auto px-4 max-w-xl mx-auto">
             
-            {/* Title: Ready when you are. */}
-            <h1 className="text-2xl sm:text-3xl font-medium tracking-tight mb-8 text-[var(--text-primary)]">
+            {/* Title */}
+            <h1 className="text-2xl sm:text-3xl font-medium tracking-tight mb-2 text-[var(--text-primary)]">
               Ready when you are.
             </h1>
+
+            {/* Quota Counter Badge */}
+            <div className="mb-6 flex items-center justify-center gap-2">
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${
+                userQuota.used >= userQuota.limit 
+                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400' 
+                  : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+              }`}>
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Images today: {userQuota.used}/{userQuota.limit}</span>
+              </span>
+            </div>
 
             {/* Main Floating Input Composer Box */}
             <div className="w-full mb-6">
@@ -197,13 +226,28 @@ export default function ChatStudio({
                         handleSubmit();
                       }
                     }}
-                    placeholder="Ask anything"
+                    placeholder={isImageMode ? "Describe the image you want..." : "Ask anything or type 'Create an image of...'"}
                     rows={1}
                     className="w-full bg-transparent border-none outline-none resize-none text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] py-1.5 font-normal"
                   />
 
                   <div className="flex items-center gap-1.5 shrink-0">
                     
+                    {/* Explicit Image Mode Toggle */}
+                    <button
+                      type="button"
+                      onClick={() => setIsImageMode(!isImageMode)}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                        isImageMode 
+                          ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-2xs font-semibold' 
+                          : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+                      }`}
+                      title="Toggle Explicit Image Mode"
+                    >
+                      <ImageSvg className="w-3.5 h-3.5" />
+                      <span>Image</span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => setIsThinkingMode(!isThinkingMode)}
@@ -212,7 +256,7 @@ export default function ChatStudio({
                           ? 'border-[var(--border-color)] bg-[var(--bg-hover)] text-[var(--text-primary)] shadow-2xs' 
                           : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--bg-hover)]'
                       }`}
-                      title="Deep Local Thinking Model"
+                      title="Deep Thinking Model"
                     >
                       <Brain className="w-3.5 h-3.5 text-[var(--text-muted)]" />
                       <span>Think</span>
@@ -263,7 +307,10 @@ export default function ChatStudio({
                 return (
                   <button
                     key={idx}
-                    onClick={() => onSendMessage(opt.prompt, null)}
+                    onClick={() => {
+                      setLastUserPrompt(opt.prompt);
+                      onSendMessage(opt.prompt, null);
+                    }}
                     className="flex items-center gap-3 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors py-1 group"
                   >
                     <Icon className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)]" />
@@ -278,6 +325,8 @@ export default function ChatStudio({
           /* Active Messages Thread */
           messages.map((m, index) => {
             const isUser = m.role === 'user';
+            const isImageMsg = !isUser && (m.type === 'image_generation' || m.imageUrl || m.error?.includes('image') || m.error?.includes('limit'));
+
             return (
               <div 
                 key={index} 
@@ -293,29 +342,39 @@ export default function ChatStudio({
 
                 <div className={`space-y-1.5 max-w-[85%] sm:max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
                   
-                  <div 
-                    className={`p-4 rounded-2xl text-sm leading-relaxed ${
-                      isUser 
-                        ? 'bg-neutral-200 dark:bg-neutral-800 text-[var(--text-primary)] rounded-tr-xs' 
-                        : 'bg-transparent text-[var(--text-primary)]'
-                    }`}
-                  >
-                    {m.attachedFile && (
-                      <div className="mb-3 p-2 bg-[var(--bg-hover)] border border-[var(--border-color)] rounded-xl text-xs flex items-center gap-2 text-[var(--text-muted)]">
-                        <FileText className="w-4 h-4 text-[var(--text-primary)]" />
-                        <span className="font-mono font-medium truncate">{m.attachedFile.name}</span>
-                      </div>
-                    )}
-
-                    <div 
-                      className="markdown-body"
-                      dangerouslySetInnerHTML={{ 
-                        __html: marked.parse(m.content || '') 
+                  {isImageMsg ? (
+                    <ImageGenerationMessage 
+                      message={m} 
+                      onRegenerate={(promptToRegen) => {
+                        setLastUserPrompt(promptToRegen);
+                        onSendMessage(promptToRegen, null);
                       }} 
                     />
-                  </div>
+                  ) : (
+                    <div 
+                      className={`p-4 rounded-2xl text-sm leading-relaxed ${
+                        isUser 
+                          ? 'bg-neutral-200 dark:bg-neutral-800 text-[var(--text-primary)] rounded-tr-xs' 
+                          : 'bg-transparent text-[var(--text-primary)]'
+                      }`}
+                    >
+                      {m.attachedFile && (
+                        <div className="mb-3 p-2 bg-[var(--bg-hover)] border border-[var(--border-color)] rounded-xl text-xs flex items-center gap-2 text-[var(--text-muted)]">
+                          <FileText className="w-4 h-4 text-[var(--text-primary)]" />
+                          <span className="font-mono font-medium truncate">{m.attachedFile.name}</span>
+                        </div>
+                      )}
 
-                  {!isUser && (
+                      <div 
+                        className="markdown-body"
+                        dangerouslySetInnerHTML={{ 
+                          __html: marked.parse(m.content || '') 
+                        }} 
+                      />
+                    </div>
+                  )}
+
+                  {!isUser && !isImageMsg && (
                     <div className="flex items-center gap-3 px-1 text-xs text-[var(--text-muted)]">
                       <button
                         onClick={() => handleCopy(m.content, index)}
@@ -341,10 +400,20 @@ export default function ChatStudio({
           })
         )}
 
+        {/* Loading Generation State */}
         {isGenerating && (
-          <div className="flex items-center gap-3 p-3 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] max-w-xs shadow-2xs">
-            <RefreshCw className="w-4 h-4 animate-spin text-emerald-500" />
-            <span className="text-xs text-[var(--text-muted)] font-medium">OMNIRA is thinking...</span>
+          <div className="flex items-center gap-3 p-3 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] max-w-sm shadow-2xs animate-pulse">
+            {isCurrentGeneratingImage ? (
+              <>
+                <Sparkles className="w-4 h-4 animate-spin text-emerald-500" />
+                <span className="text-xs text-[var(--text-primary)] font-medium">OMNIRA is creating your image...</span>
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin text-emerald-500" />
+                <span className="text-xs text-[var(--text-muted)] font-medium">OMNIRA is thinking...</span>
+              </>
+            )}
           </div>
         )}
 
@@ -403,12 +472,27 @@ export default function ChatStudio({
                     handleSubmit();
                   }
                 }}
-                placeholder="Ask anything"
+                placeholder={isImageMode ? "Describe the image you want..." : "Ask anything"}
                 rows={1}
                 className="w-full bg-transparent border-none outline-none resize-none text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] py-1.5"
               />
 
               <div className="flex items-center gap-1.5 shrink-0">
+                {/* Image Mode Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsImageMode(!isImageMode)}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    isImageMode 
+                      ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold' 
+                      : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+                  }`}
+                  title="Toggle Image Mode"
+                >
+                  <ImageSvg className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Image</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={toggleVoiceInput}
@@ -438,8 +522,19 @@ export default function ChatStudio({
             </div>
           </form>
 
-          <div className="text-[11px] text-center text-[var(--text-muted)] mt-2">
-            OMNIRA can make mistakes. Check important info.
+          {/* Daily Quota Counter Bar */}
+          <div className="flex items-center justify-between px-2 mt-2 text-[11px] text-[var(--text-muted)]">
+            <div>
+              {userQuota.used >= userQuota.limit ? (
+                <span className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  Daily image limit reached (2/2). You can generate more images tomorrow.
+                </span>
+              ) : (
+                <span>Images today: {userQuota.used}/{userQuota.limit} ({userQuota.remaining} remaining)</span>
+              )}
+            </div>
+            <div>OMNIRA AI Engine</div>
           </div>
 
         </div>

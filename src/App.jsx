@@ -9,7 +9,7 @@ import SvgStudio from './components/SvgStudio';
 import PluginsStudio from './components/PluginsStudio';
 import SettingsModal from './components/SettingsModal';
 import AuthScreen from './components/AuthScreen';
-import { queryQuickAi } from './engine/quickAiEngine';
+import { queryQuickAi, getBackendImageQuota } from './engine/quickAiEngine';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('chat');
@@ -20,6 +20,7 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [userQuota, setUserQuota] = useState({ used: 0, limit: 2, remaining: 2 });
 
   // Authentication State - Default to ACTIVE (Guest User) so anyone enters app directly!
   const [currentUser, setCurrentUser] = useState(() => {
@@ -125,6 +126,14 @@ export default function App() {
     localStorage.setItem('chatgpt_current_id', currentChatId);
   }, [currentChatId]);
 
+  // Fetch Backend Image Quota on user change / mount
+  useEffect(() => {
+    const userId = currentUser?.uid || currentUser?.email || 'guest_user';
+    getBackendImageQuota(userId).then((quota) => {
+      if (quota) setUserQuota(quota);
+    });
+  }, [currentUser]);
+
   // Firebase Auth state change listener
   useEffect(() => {
     import('./firebase').then(({ auth, onAuthStateChanged }) => {
@@ -214,14 +223,30 @@ export default function App() {
         mode: activeMode,
         history: updatedMessages,
         fileData: attachedFile,
+        currentUser,
         settings
       });
 
-      const assistantMsg = {
-        role: 'assistant',
-        content: response,
-        timestamp: new Date().toLocaleTimeString()
-      };
+      let assistantMsg;
+      if (typeof response === 'object' && response !== null && (response.image || response.error || response.success !== undefined)) {
+        if (response.quota) {
+          setUserQuota(response.quota);
+        }
+        assistantMsg = {
+          role: 'assistant',
+          type: 'image_generation',
+          prompt: response.prompt || userText,
+          imageUrl: response.image || '',
+          error: response.success === false ? (response.error || 'Image generation failed.') : null,
+          timestamp: new Date().toLocaleTimeString()
+        };
+      } else {
+        assistantMsg = {
+          role: 'assistant',
+          content: typeof response === 'string' ? response : JSON.stringify(response),
+          timestamp: new Date().toLocaleTimeString()
+        };
+      }
 
       setChatSessions((prevSessions) =>
         prevSessions.map((s) =>
@@ -325,6 +350,8 @@ export default function App() {
               onSendMessage={handleSendMessage}
               isGenerating={isGenerating}
               settings={settings}
+              userQuota={userQuota}
+              currentUser={currentUser}
             />
           )}
 

@@ -44,11 +44,23 @@ export default function ChatStudio({
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const emptyTextareaRef = useRef(null);
+  const activeTextareaRef = useRef(null);
 
   // Auto-scroll to bottom of thread
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isGenerating]);
+
+  // Dynamic auto-resize textareas as content expands
+  useEffect(() => {
+    [emptyTextareaRef.current, activeTextareaRef.current].forEach((el) => {
+      if (el) {
+        el.style.height = 'auto';
+        el.style.height = `${Math.min(Math.max(el.scrollHeight, 36), 180)}px`;
+      }
+    });
+  }, [input]);
 
   // Speech Recognition (Voice Dictation)
   const toggleVoiceInput = () => {
@@ -224,71 +236,77 @@ export default function ChatStudio({
 
               <form 
                 onSubmit={handleSubmit}
-                className="rounded-[28px] border border-[var(--border-color)] bg-[var(--bg-input)] shadow-lg p-2 sm:p-3 transition-all focus-within:border-[var(--border-strong)]"
+                className="rounded-[26px] border border-[var(--border-color)] bg-[var(--bg-input)] shadow-lg p-2.5 sm:p-3 transition-all focus-within:border-[var(--border-strong)] flex flex-col gap-2"
               >
-                <div className="flex items-center gap-2">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileUpload} 
+                  className="hidden" 
+                  accept="*/*"
+                />
+
+                {/* Top: Full-Width Expanding Textarea */}
+                <textarea
+                  ref={emptyTextareaRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmit();
+                    }
+                  }}
+                  placeholder={isImageMode ? "Describe the image you want..." : "Ask anything or type 'Create an image of...'"}
+                  rows={1}
+                  className="w-full bg-transparent border-none outline-none resize-none text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] py-1.5 px-1 font-normal min-h-[36px] max-h-[180px] overflow-y-auto leading-relaxed"
+                />
+
+                {/* Bottom: Dedicated Action Controls Row */}
+                <div className="flex items-center justify-between pt-1 border-t border-[var(--border-color)]/40">
                   
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    onChange={handleFileUpload} 
-                    className="hidden" 
-                    accept="*/*"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors shrink-0"
-                    title="Add attachment"
-                  >
-                    <Plus className="w-5 h-5" />
-                  </button>
+                  {/* Left: Attachment + Mode Toggles */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors shrink-0"
+                      title="Add attachment"
+                    >
+                      <Plus className="w-5 h-5" />
+                    </button>
 
-                  <textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSubmit();
-                      }
-                    }}
-                    placeholder={isImageMode ? "Describe the image you want..." : "Ask anything or type 'Create an image of...'"}
-                    rows={1}
-                    className="w-full bg-transparent border-none outline-none resize-none text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] py-1.5 font-normal"
-                  />
-
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    
-                    {/* Explicit Image Mode Toggle */}
                     <button
                       type="button"
                       onClick={() => setIsImageMode(!isImageMode)}
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
                         isImageMode 
-                          ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-2xs font-semibold' 
+                          ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold shadow-2xs' 
                           : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
                       }`}
-                      title="Toggle Explicit Image Mode"
+                      title="Toggle Image Mode"
                     >
                       <ImageSvg className="w-3.5 h-3.5" />
-                      <span>Image</span>
+                      <span className="hidden xs:inline">Image</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setIsThinkingMode(!isThinkingMode)}
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
                         isThinkingMode 
-                          ? 'border-[var(--border-color)] bg-[var(--bg-hover)] text-[var(--text-primary)] shadow-2xs' 
+                          ? 'border-[var(--border-color)] bg-[var(--bg-hover)] text-[var(--text-primary)] shadow-2xs font-semibold' 
                           : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--bg-hover)]'
                       }`}
                       title="Deep Thinking Model"
                     >
                       <Brain className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                      <span>Think</span>
+                      <span className="hidden xs:inline">Think</span>
                     </button>
+                  </div>
 
+                  {/* Right: Mic Dictation + Send Button */}
+                  <div className="flex items-center gap-2 shrink-0">
                     <button
                       type="button"
                       onClick={toggleVoiceInput}
@@ -305,23 +323,14 @@ export default function ChatStudio({
                     <button
                       type="submit"
                       disabled={(!input.trim() && !attachedFile) || isGenerating}
-                      className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
                         input.trim() || attachedFile
-                          ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] shadow-sm'
-                          : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm'
+                          ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] shadow-sm hover:opacity-90'
+                          : 'bg-neutral-200 dark:bg-neutral-800 text-[var(--text-muted)] cursor-not-allowed'
                       }`}
                     >
-                      {input.trim() || attachedFile ? (
-                        <ArrowUp className="w-5 h-5 stroke-[2.5]" />
-                      ) : (
-                        <div className="flex items-center gap-0.5">
-                          <span className="w-1 h-3 bg-white rounded-full animate-pulse"></span>
-                          <span className="w-1 h-4 bg-white rounded-full animate-pulse delay-75"></span>
-                          <span className="w-1 h-2 bg-white rounded-full animate-pulse delay-150"></span>
-                        </div>
-                      )}
+                      <ArrowUp className="w-4.5 h-4.5 stroke-[2.5]" />
                     </button>
-
                   </div>
 
                 </div>
@@ -489,56 +498,63 @@ export default function ChatStudio({
 
           <form 
             onSubmit={handleSubmit}
-            className="rounded-[28px] border border-[var(--border-color)] bg-[var(--bg-input)] shadow-lg p-2 sm:p-3 transition-all focus-within:border-[var(--border-strong)]"
+            className="rounded-[26px] border border-[var(--border-color)] bg-[var(--bg-input)] shadow-lg p-2.5 sm:p-3 transition-all focus-within:border-[var(--border-strong)] flex flex-col gap-2"
           >
-            <div className="flex items-center gap-2">
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileUpload} 
+              className="hidden" 
+              accept="*/*"
+            />
+
+            {/* Top: Full-Width Expanding Textarea */}
+            <textarea
+              ref={activeTextareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
+              placeholder={isImageMode ? "Describe the image you want..." : "Ask anything"}
+              rows={1}
+              className="w-full bg-transparent border-none outline-none resize-none text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] py-1.5 px-1 min-h-[36px] max-h-[180px] overflow-y-auto leading-relaxed font-normal"
+            />
+
+            {/* Bottom: Dedicated Action Controls Row */}
+            <div className="flex items-center justify-between pt-1 border-t border-[var(--border-color)]/40">
               
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileUpload} 
-                className="hidden" 
-                accept="*/*"
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors shrink-0"
-                title="Add attachment"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
+              {/* Left: Attachment + Mode Toggles */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors shrink-0"
+                  title="Add attachment"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
 
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSubmit();
-                  }
-                }}
-                placeholder={isImageMode ? "Describe the image you want..." : "Ask anything"}
-                rows={1}
-                className="w-full bg-transparent border-none outline-none resize-none text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] py-1.5"
-              />
-
-              <div className="flex items-center gap-1.5 shrink-0">
-                {/* Image Mode Button */}
                 <button
                   type="button"
                   onClick={() => setIsImageMode(!isImageMode)}
                   className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
                     isImageMode 
-                      ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold' 
+                      ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold shadow-2xs' 
                       : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
                   }`}
                   title="Toggle Image Mode"
                 >
                   <ImageSvg className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Image</span>
+                  <span className="hidden xs:inline">Image</span>
                 </button>
+              </div>
 
+              {/* Right: Mic Dictation + Send Button */}
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={toggleVoiceInput}
@@ -555,13 +571,13 @@ export default function ChatStudio({
                 <button
                   type="submit"
                   disabled={(!input.trim() && !attachedFile) || isGenerating}
-                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
                     input.trim() || attachedFile
-                      ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] shadow-2xs'
-                      : 'bg-[var(--bg-hover)] text-[var(--text-muted)] cursor-not-allowed'
+                      ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] shadow-sm hover:opacity-90'
+                      : 'bg-neutral-200 dark:bg-neutral-800 text-[var(--text-muted)] cursor-not-allowed'
                   }`}
                 >
-                  <ArrowUp className="w-5 h-5 stroke-[2.5]" />
+                  <ArrowUp className="w-4.5 h-4.5 stroke-[2.5]" />
                 </button>
               </div>
 

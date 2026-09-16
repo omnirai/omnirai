@@ -19,7 +19,8 @@ import {
   Image as ImageSvg,
   AlertCircle,
   Video,
-  Music
+  Music,
+  Code
 } from 'lucide-react';
 import { marked } from 'marked';
 import ImageGenerationMessage from './ImageGenerationMessage';

@@ -60,7 +60,8 @@ export async function getBackendImageQuota(userId = 'guest_user') {
       },
       body: JSON.stringify({ user_id: userId })
     });
-    if (res.ok) {
+    const contentType = res.headers.get('content-type') || '';
+    if (res.ok && contentType.includes('application/json')) {
       const data = await res.json();
       return data.quota || { used: 0, limit: 2, remaining: 2 };
     }
@@ -84,7 +85,19 @@ export async function generateCloudflareImage(prompt, userId = 'guest_user') {
       body: JSON.stringify({ prompt, user_id: userId })
     });
 
-    const data = await res.json();
+    const contentType = res.headers.get('content-type') || '';
+    let data;
+
+    if (contentType.includes('application/json')) {
+      data = await res.json();
+    } else {
+      const rawText = await res.text();
+      console.error('Non-JSON response from server endpoint:', rawText);
+      return {
+        success: false,
+        error: rawText ? `Server Error: ${rawText.slice(0, 120)}` : 'Server Error: Invalid response from image generation endpoint.'
+      };
+    }
 
     if (res.ok && data.success && data.image) {
       return {

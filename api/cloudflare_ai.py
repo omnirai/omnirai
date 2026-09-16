@@ -2,20 +2,46 @@ import os
 import json
 import sqlite3
 import base64
+import tempfile
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone
 
-# Database path for persistent quota tracking
-DB_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
-os.makedirs(DB_DIR, exist_ok=True)
-DB_PATH = os.path.join(DB_DIR, "omnira_quota.db")
+# Load local .env if present (for local dev)
+def load_env_file():
+    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        if k.strip() not in os.environ:
+                            os.environ[k.strip()] = v.strip().strip('"').strip("'")
+        except Exception:
+            pass
 
+load_env_file()
+
+# Database path for persistent quota tracking (Uses /tmp on Vercel/serverless for write permissions)
+try:
+    if os.name != "nt" or (os.path.exists("/tmp") and os.access("/tmp", os.W_OK)):
+        DB_DIR = "/tmp"
+    else:
+        DB_DIR = tempfile.gettempdir()
+except Exception:
+    DB_DIR = tempfile.gettempdir()
+
+DB_PATH = os.path.join(DB_DIR, "omnira_quota.db")
 DAILY_LIMIT = 2
 
 def get_db():
     conn = sqlite3.connect(DB_PATH, timeout=10.0)
-    conn.execute("PRAGMA journal_mode=WAL;")
+    try:
+        conn.execute("PRAGMA journal_mode=WAL;")
+    except Exception:
+        pass
     conn.execute("""
         CREATE TABLE IF NOT EXISTS daily_quota (
             user_id TEXT NOT NULL,
@@ -34,24 +60,33 @@ def check_quota(user_id: str) -> dict:
     if not user_id:
         user_id = "guest_user"
     date_str = get_utc_date_str()
-    conn = get_db()
     try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT image_count FROM daily_quota WHERE user_id = ? AND date_str = ?",
-            (user_id, date_str)
-        )
-        row = cursor.fetchone()
-        used = row[0] if row else 0
-        remaining = max(0, DAILY_LIMIT - used)
+        conn = get_db()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT image_count FROM daily_quota WHERE user_id = ? AND date_str = ?",
+                (user_id, date_str)
+            )
+            row = cursor.fetchone()
+            used = row[0] if row else 0
+            remaining = max(0, DAILY_LIMIT - used)
+            return {
+                "used": used,
+                "limit": DAILY_LIMIT,
+                "remaining": remaining,
+                "date": date_str
+            }
+        finally:
+            conn.close()
+    except Exception as e:
+        print("Database quota check warning:", e)
         return {
-            "used": used,
+            "used": 0,
             "limit": DAILY_LIMIT,
-            "remaining": remaining,
+            "remaining": DAILY_LIMIT,
             "date": date_str
         }
-    finally:
-        conn.close()
 
 def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
     """
@@ -75,10 +110,14 @@ def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
         }, 500, check_quota(user_id)
 
     date_str = get_utc_date_str()
-    conn = get_db()
+    
+    try:
+        conn = get_db()
+    except Exception as db_err:
+        return False, {"error": f"Database initialization error: {str(db_err)}"}, 500, check_quota(user_id)
 
     try:
-        # 1. ATOMIC TRANSACTION: Check Quota with SQLite Immediate Lock
+        # 1. ATOMIC TRANSACTION: Check Quota with SQLite Lock
         conn.execute("BEGIN IMMEDIATE;")
         cursor = conn.cursor()
         cursor.execute(
@@ -185,4 +224,7 @@ def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
             pass
         return False, {"error": f"Server processing error: {str(ex)}"}, 500, check_quota(user_id)
     finally:
-        conn.close()
+        try:
+            conn.close()
+        except Exception:
+            pass

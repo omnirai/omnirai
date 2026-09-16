@@ -192,7 +192,7 @@ export default function TopBar({
   }, []);
 
   return (
-    <header className="sticky top-0 left-0 right-0 z-50 w-full pt-[max(16px,env(safe-area-inset-top,16px))] pb-2.5 px-2.5 sm:px-4 flex items-center justify-between bg-[var(--bg-primary)] border-b border-[var(--border-color)] transition-colors shrink-0 gap-1.5 sm:gap-4 overflow-hidden shadow-2xs">
+    <header className="sticky top-0 left-0 right-0 z-50 w-full pt-[max(16px,env(safe-area-inset-top,16px))] pb-2.5 px-2.5 sm:px-4 flex items-center justify-between bg-[var(--bg-primary)] border-b border-[var(--border-color)] transition-colors shrink-0 gap-1.5 sm:gap-4 overflow-visible shadow-2xs">
 
       {/* Left: Back Arrow + Sidebar Toggle + Model Selector Pill Dropdown */}
       <div className="flex items-center gap-1 sm:gap-2 min-w-0 shrink">
@@ -220,7 +220,7 @@ export default function TopBar({
         <div className="relative min-w-0" ref={dropdownRef}>
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-xs font-semibold text-[var(--text-primary)] shadow-2xs transition-all min-w-0 max-w-[125px] xs:max-w-[170px] sm:max-w-none"
+            className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-xs font-semibold text-[var(--text-primary)] shadow-2xs transition-all min-w-0 max-w-[125px] xs:max-w-[170px] sm:max-w-none cursor-pointer"
           >
             <ModelIcon type={currentModelObj.iconType} className="w-4 h-4 shrink-0" />
             <span className="font-semibold text-xs tracking-tight truncate">
@@ -232,7 +232,7 @@ export default function TopBar({
 
           {/* Model Selector Menu */}
           {isDropdownOpen && (
-            <div className="absolute top-full left-0 mt-2 w-72 max-w-[85vw] bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-1.5 shadow-2xl z-50 animate-fade-in space-y-0.5">
+            <div className="absolute top-full left-0 mt-2 w-72 max-w-[85vw] bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-1.5 shadow-2xl z-[100] animate-fade-in space-y-0.5">
               <div className="px-3 py-1.5 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
                 Select Active AI Model
               </div>

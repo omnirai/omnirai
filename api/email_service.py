@@ -12,6 +12,8 @@ SMTP_USER = os.getenv("SMTP_USER", "bishaldev949@gmail.com").strip()
 SMTP_PASS = os.getenv("SMTP_PASS", "xvakizmkikamlssr").strip()
 SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "OMNIRA AI").strip()
 SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", "bishaldev949@gmail.com").strip()
+APP_URL = os.getenv("APP_URL", "https://omnira-chat.vercel.app").strip().rstrip("/")
+APP_LOGO_URL = f"{APP_URL}/icon-192.png"
 
 def send_smtp_email_sync(to_email: str, subject: str, html_content: str, text_content: str = "") -> bool:
     """
@@ -60,7 +62,7 @@ def send_email_async(to_email: str, subject: str, html_content: str, text_conten
     t.start()
 
 # ==============================================================================
-# HUMAN-CRAFTED CLEAN EMAIL TEMPLATES (No Gemini gradients, no nested card clutter)
+# HUMAN-CRAFTED CLEAN EMAIL TEMPLATES (With official AI icon and working buttons)
 # ==============================================================================
 
 def get_base_html(title: str, content: str) -> str:
@@ -74,12 +76,21 @@ def get_base_html(title: str, content: str) -> str:
 <body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111827; line-height: 1.6;">
   <div style="max-width: 580px; margin: 0 auto; padding: 40px 24px;">
     
-    <!-- Brand Header -->
-    <div style="margin-bottom: 32px;">
-      <span style="font-size: 18px; font-weight: 700; letter-spacing: -0.5px; color: #0f172a;">
-        OMNIRA <span style="font-weight: 400; color: #059669;">AI</span>
-      </span>
-    </div>
+    <!-- Official OMNIRA AI Brand Header with Official Icon -->
+    <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 28px;">
+      <tr>
+        <td style="vertical-align: middle; padding-right: 12px;">
+          <a href="{APP_URL}/" style="text-decoration: none; display: inline-block;">
+            <img src="{APP_LOGO_URL}" width="40" height="40" alt="OMNIRA AI" style="display: block; width: 40px; height: 40px; border-radius: 10px; border: 0; outline: none; background-color: #0f172a;" />
+          </a>
+        </td>
+        <td style="vertical-align: middle;">
+          <a href="{APP_URL}/" style="text-decoration: none; color: #0f172a; font-size: 20px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2; display: inline-block;">
+            OMNIRA <span style="font-weight: 600; color: #059669;">AI</span>
+          </a>
+        </td>
+      </tr>
+    </table>
 
     <!-- Main Message Body -->
     <div style="font-size: 15px; color: #1f2937;">
@@ -95,7 +106,7 @@ def get_base_html(title: str, content: str) -> str:
     <!-- Minimal Footer -->
     <div style="margin-top: 24px; font-size: 12px; color: #9ca3af; line-height: 1.5;">
       <p style="margin: 0;">You are receiving this message because of your activity on your OMNIRA AI account.</p>
-      <p style="margin: 4px 0 0 0;">OMNIRA AI • Kathmandu, Nepal • <a href="https://quickai.vercel.app" style="color: #6b7280; text-decoration: underline;">Visit OMNIRA</a></p>
+      <p style="margin: 4px 0 0 0;">OMNIRA AI • Kathmandu, Nepal • <a href="{APP_URL}/" style="color: #6b7280; text-decoration: underline;">{APP_URL}</a></p>
     </div>
 
   </div>
@@ -133,11 +144,19 @@ def get_welcome_template(name: str) -> tuple:
         <li style="margin-bottom: 8px;"><strong>Dedicated studios:</strong> Switch modes anytime between Chat, Code, Docs, Math, and SVG.</li>
       </ul>
 
-      <div style="margin: 28px 0;">
-        <a href="https://quickai.vercel.app" style="display: inline-block; background-color: #059669; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 24px; border-radius: 8px;">
-          Start Chatting in OMNIRA &rarr;
-        </a>
-      </div>
+      <!-- Bulletproof CTA Button -->
+      <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin: 28px 0 12px 0;">
+        <tr>
+          <td align="left" style="border-radius: 8px; background-color: #059669;">
+            <a href="{APP_URL}/" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 14px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; font-weight: 600; color: #ffffff !important; text-decoration: none; border-radius: 8px; background-color: #059669; line-height: 100%;">
+              Start Using OMNIRA &rarr;
+            </a>
+          </td>
+        </tr>
+      </table>
+      <p style="margin: 0 0 20px 0; font-size: 12px; color: #6b7280; line-height: 1.5;">
+        Button not opening? Click here directly: <a href="{APP_URL}/" target="_blank" rel="noopener noreferrer" style="color: #059669; text-decoration: underline; word-break: break-all;">{APP_URL}</a>
+      </p>
 
       <p style="margin: 20px 0 0 0; color: #4b5563;">
         If you ever have any questions, ideas, or need a hand, just hit reply to this email. I read every reply personally.
@@ -152,7 +171,7 @@ I'm Bishal, the creator of OMNIRA AI. I'm excited to have you join us.
 
 Your account is now ready with FLUX image generation, deep reasoning, and creative studios.
 
-Get started here: https://quickai.vercel.app
+Start using OMNIRA: {APP_URL}/
 
 If you have any questions or feedback, just reply directly to this email.
 
@@ -187,16 +206,26 @@ def get_signin_template(name: str, email: str) -> tuple:
         If you did not perform this sign-in, please reset your password or reply to this email immediately so we can secure your account.
       </p>
 
-      <div style="margin: 24px 0;">
-        <a href="https://quickai.vercel.app" style="display: inline-block; background-color: #111827; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 600; padding: 10px 20px; border-radius: 6px;">
-          Open OMNIRA Dashboard
-        </a>
-      </div>
+      <!-- Bulletproof CTA Button -->
+      <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin: 24px 0 12px 0;">
+        <tr>
+          <td align="left" style="border-radius: 6px; background-color: #111827;">
+            <a href="{APP_URL}/" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 12px 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600; color: #ffffff !important; text-decoration: none; border-radius: 6px; background-color: #111827; line-height: 100%;">
+              Open OMNIRA Dashboard &rarr;
+            </a>
+          </td>
+        </tr>
+      </table>
+      <p style="margin: 0 0 20px 0; font-size: 12px; color: #6b7280; line-height: 1.5;">
+        Direct link: <a href="{APP_URL}/" target="_blank" rel="noopener noreferrer" style="color: #059669; text-decoration: underline; word-break: break-all;">{APP_URL}</a>
+      </p>
     """
     
     text = f"""New sign-in detected for your OMNIRA AI account ({email}) on {now_str}.
 If this was you, you can safely ignore this message.
 If you did not sign in, please contact us immediately.
+
+Open OMNIRA: {APP_URL}/
 
 Best regards,
 OMNIRA AI Security Team
@@ -232,11 +261,19 @@ def get_subscribe_template(name: str, plan: str = "Pro") -> tuple:
         We're working hard to add new features every single week. As a {plan} member, your feedback directly shapes what we build next.
       </p>
 
-      <div style="margin: 28px 0;">
-        <a href="https://quickai.vercel.app" style="display: inline-block; background-color: #059669; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 24px; border-radius: 8px;">
-          Go to OMNIRA Pro Studio &rarr;
-        </a>
-      </div>
+      <!-- Bulletproof CTA Button -->
+      <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin: 28px 0 12px 0;">
+        <tr>
+          <td align="left" style="border-radius: 8px; background-color: #059669;">
+            <a href="{APP_URL}/" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 14px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; font-weight: 600; color: #ffffff !important; text-decoration: none; border-radius: 8px; background-color: #059669; line-height: 100%;">
+              Open OMNIRA Pro Studio &rarr;
+            </a>
+          </td>
+        </tr>
+      </table>
+      <p style="margin: 0 0 20px 0; font-size: 12px; color: #6b7280; line-height: 1.5;">
+        Button not opening? Click here directly: <a href="{APP_URL}/" target="_blank" rel="noopener noreferrer" style="color: #059669; text-decoration: underline; word-break: break-all;">{APP_URL}</a>
+      </p>
 
       <p style="margin: 20px 0 0 0; color: #4b5563;">
         Thank you for supporting independent software. If you have any feedback or requests, reply right here anytime.
@@ -254,7 +291,7 @@ Your benefits include:
 - Full Thinking & Deep Reasoning Mode
 - Full access to all studio tools
 
-Open OMNIRA: https://quickai.vercel.app
+Open OMNIRA: {APP_URL}/
 
 Warm regards,
 Bishal & The OMNIRA Team

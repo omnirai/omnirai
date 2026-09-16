@@ -181,34 +181,34 @@ export default function TopBar({
   }, []);
 
   return (
-    <header className="min-h-[3.5rem] py-2 px-3 flex items-center justify-between bg-[var(--bg-primary)] border-b border-[var(--border-color)] transition-colors z-20 shrink-0 select-none">
+    <header className="min-h-[3.75rem] pt-[env(safe-area-inset-top,12px)] pb-2 px-3 flex items-center justify-between bg-[var(--bg-primary)] border-b border-[var(--border-color)] transition-colors z-20 shrink-0">
       
       {/* Left: Sidebar Toggle + Model Selector Pill Dropdown */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 min-w-0">
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
+          className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors shrink-0"
           title={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
         >
           {isSidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeft className="w-4 h-4" />}
         </button>
 
         {/* Interactive Model Switcher Dropdown */}
-        <div className="relative" ref={dropdownRef}>
+        <div className="relative min-w-0" ref={dropdownRef}>
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-xs font-semibold text-[var(--text-primary)] shadow-2xs transition-all"
+            className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-xs font-semibold text-[var(--text-primary)] shadow-2xs transition-all min-w-0"
           >
             <ModelIcon type={currentModelObj.iconType} className="w-4 h-4 shrink-0" />
-            <span className="font-semibold text-xs tracking-tight">
+            <span className="font-semibold text-xs tracking-tight truncate max-w-[100px] xs:max-w-[140px] sm:max-w-none">
               {currentModelObj.name}
             </span>
-            <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] ml-0.5" />
+            <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0 ml-0.5" />
           </button>
 
           {/* Model Selector Menu */}
           {isDropdownOpen && (
-            <div className="absolute top-full left-0 mt-2 w-72 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-1.5 shadow-2xl z-50 animate-fade-in space-y-0.5">
+            <div className="absolute top-full left-0 mt-2 w-72 max-w-[85vw] bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-1.5 shadow-2xl z-50 animate-fade-in space-y-0.5">
               <div className="px-3 py-1.5 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
                 Select Active AI Model
               </div>

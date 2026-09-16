@@ -88,6 +88,31 @@ def check_quota(user_id: str) -> dict:
             "date": date_str
         }
 
+def enhance_prompt_for_cloudflare(raw_prompt: str) -> str:
+    import re
+    cleaned = raw_prompt.strip()
+    
+    # Strip duplicate or nested phrase prefixes
+    prefix_pattern = r'^(create|generate|make|draw|paint)\s+(an?\s+)?(image|photo|picture|logo|sticker)\s+of\s+'
+    while re.search(prefix_pattern, cleaned, re.IGNORECASE):
+        cleaned = re.sub(prefix_pattern, '', cleaned, flags=re.IGNORECASE).strip()
+    
+    cleaned = re.sub(r'^(create|generate|draw|make)\s+', '', cleaned, flags=re.IGNORECASE).strip()
+
+    lower_c = cleaned.lower()
+    if 'logo' in lower_c:
+        # Strip duplicate "create logo of" or "logo of"
+        clean_brand = re.sub(r'^(create\s+)?(logo\s+of\s+)?', '', cleaned, flags=re.IGNORECASE).strip()
+        enhanced = f"Professional modern vector logo for '{clean_brand}', minimalist icon mark, sharp typography, clean lines, high resolution 8k graphic design, vector art on clean studio background"
+    elif 'photo' in lower_c or 'portrait' in lower_c or 'realistic' in lower_c:
+        enhanced = f"High quality realistic photograph of {cleaned}, 8k resolution, detailed texture, professional camera shot, cinematic lighting, masterpiece"
+    elif len(cleaned.split()) <= 4:
+        enhanced = f"Detailed high-resolution artwork of {cleaned}, 8k resolution, vibrant color palette, masterpiece"
+    else:
+        enhanced = cleaned
+
+    return enhanced
+
 def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
     """
     Atomically checks quota, calls Cloudflare Workers AI, and increments count if successful.
@@ -138,6 +163,9 @@ def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
                 "date": date_str
             }
 
+        # Enhance Prompt for Cloudflare AI Model Quality
+        enhanced_prompt = enhance_prompt_for_cloudflare(prompt)
+
         # 2. Call Cloudflare Workers AI Endpoint
         url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/{model}"
         headers = {
@@ -145,7 +173,7 @@ def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
             "Content-Type": "application/json",
             "User-Agent": "OMNIRA-AI-Chat/1.0"
         }
-        body_data = json.dumps({"prompt": prompt}).encode("utf-8")
+        body_data = json.dumps({"prompt": enhanced_prompt}).encode("utf-8")
 
         req = urllib.request.Request(url, data=body_data, headers=headers, method="POST")
 

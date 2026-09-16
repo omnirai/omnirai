@@ -9,7 +9,7 @@ import SvgStudio from './components/SvgStudio';
 import PluginsStudio from './components/PluginsStudio';
 import SettingsModal from './components/SettingsModal';
 import AuthScreen from './components/AuthScreen';
-import { queryQuickAi, getBackendImageQuota } from './engine/quickAiEngine';
+import { queryQuickAi, getBackendImageQuota, isImagePrompt } from './engine/quickAiEngine';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('chat');
@@ -197,8 +197,20 @@ export default function App() {
       timestamp: new Date().toLocaleTimeString()
     };
 
-    // Update Session with User Message
-    const updatedMessages = [...messages, userMsg];
+    const isImageReq = isImagePrompt(userText, activeMode, selectedModel);
+    const loadingId = `img-loading-${Date.now()}`;
+
+    const placeholderImageMsg = isImageReq ? {
+      id: loadingId,
+      role: 'assistant',
+      type: 'image_generation',
+      prompt: userText,
+      isLoading: true,
+      timestamp: new Date().toLocaleTimeString()
+    } : null;
+
+    // Update Session with User Message & Placeholder loading card
+    const updatedMessages = isImageReq ? [...messages, userMsg, placeholderImageMsg] : [...messages, userMsg];
     
     // Generate Title if first message
     let sessionTitle = currentSession?.title || 'New chat';
@@ -206,9 +218,11 @@ export default function App() {
       sessionTitle = userText.slice(0, 30) + (userText.length > 30 ? '...' : '');
     }
 
+    const targetSessionId = currentSession?.id || currentChatId;
+
     setChatSessions((prevSessions) =>
       prevSessions.map((s) =>
-        s.id === (currentSession?.id || currentChatId)
+        s.id === targetSessionId
           ? { ...s, title: sessionTitle, messages: updatedMessages }
           : s
       )
@@ -221,27 +235,28 @@ export default function App() {
         prompt: userText,
         selectedModel,
         mode: activeMode,
-        history: updatedMessages,
+        history: messages,
         fileData: attachedFile,
         currentUser,
         settings
       });
 
-      let assistantMsg;
+      let finalAssistantMsg;
       if (typeof response === 'object' && response !== null && (response.image || response.error || response.success !== undefined)) {
         if (response.quota) {
           setUserQuota(response.quota);
         }
-        assistantMsg = {
+        finalAssistantMsg = {
           role: 'assistant',
           type: 'image_generation',
           prompt: response.prompt || userText,
           imageUrl: response.image || '',
+          isLoading: false,
           error: response.success === false ? (response.error || 'Image generation failed.') : null,
           timestamp: new Date().toLocaleTimeString()
         };
       } else {
-        assistantMsg = {
+        finalAssistantMsg = {
           role: 'assistant',
           content: typeof response === 'string' ? response : JSON.stringify(response),
           timestamp: new Date().toLocaleTimeString()
@@ -249,11 +264,17 @@ export default function App() {
       }
 
       setChatSessions((prevSessions) =>
-        prevSessions.map((s) =>
-          s.id === (currentSession?.id || currentChatId)
-            ? { ...s, messages: [...s.messages, assistantMsg] }
-            : s
-        )
+        prevSessions.map((s) => {
+          if (s.id !== targetSessionId) return s;
+          
+          if (isImageReq) {
+            // Replace loading placeholder card with final result
+            const filtered = s.messages.filter(m => m.id !== loadingId);
+            return { ...s, messages: [...filtered, finalAssistantMsg] };
+          } else {
+            return { ...s, messages: [...s.messages, finalAssistantMsg] };
+          }
+        })
       );
     } catch (err) {
       console.error('Inference error:', err);
@@ -264,11 +285,14 @@ export default function App() {
       };
 
       setChatSessions((prevSessions) =>
-        prevSessions.map((s) =>
-          s.id === (currentSession?.id || currentChatId)
-            ? { ...s, messages: [...s.messages, errorMsg] }
-            : s
-        )
+        prevSessions.map((s) => {
+          if (s.id !== targetSessionId) return s;
+          if (isImageReq) {
+            const filtered = s.messages.filter(m => m.id !== loadingId);
+            return { ...s, messages: [...filtered, errorMsg] };
+          }
+          return { ...s, messages: [...s.messages, errorMsg] };
+        })
       );
     } finally {
       setIsGenerating(false);

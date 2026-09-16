@@ -325,7 +325,7 @@ export default function ChatStudio({
           /* Active Messages Thread */
           messages.map((m, index) => {
             const isUser = m.role === 'user';
-            const isImageMsg = !isUser && (m.type === 'image_generation' || m.imageUrl || m.error?.includes('image') || m.error?.includes('limit'));
+            const isImageMsg = !isUser && (m.type === 'image_generation' || m.imageUrl || m.isLoading || m.error?.includes('image') || m.error?.includes('limit'));
 
             return (
               <div 

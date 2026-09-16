@@ -168,10 +168,10 @@ export default function ChatStudio({
   const isCurrentGeneratingImage = isGenerating && isImagePrompt(lastUserPrompt || input || '');
 
   return (
-    <div className="flex flex-col h-full w-full max-w-3xl mx-auto px-4 relative">
+    <div className="flex flex-col h-full w-full max-w-3xl mx-auto px-4 relative overflow-hidden">
       
       {/* Thread Messages Stream */}
-      <div className="flex-1 overflow-y-auto pt-4 pb-44 space-y-6">
+      <div className="flex-1 overflow-y-auto pt-4 pb-44 space-y-6 overscroll-contain">
         
         {messages.length === 0 ? (
           /* Empty Chat View */

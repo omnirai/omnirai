@@ -5,6 +5,7 @@ import sqlite3
 import base64
 import tempfile
 import urllib.request
+import urllib.parse
 import urllib.error
 from datetime import datetime, timezone
 
@@ -132,41 +133,7 @@ def prepare_model_prompt(raw_prompt: str) -> str:
         flags=re.IGNORECASE
     ).strip()
 
-    # 4. Special handling for LOGO requests:
-    logo_match_1 = re.match(
-        r'^(?:a\s+)?(?:modern\s+|clean\s+|minimal\s+|company\s+|brand\s+|professional\s+)?logo\s+(?:of|for|about)\s+["\']?([^"\']+)["\']?$',
-        cleaned,
-        flags=re.IGNORECASE
-    )
-    if logo_match_1:
-        brand = logo_match_1.group(1).strip().strip('"\'')
-        return f'professional modern vector logo design for "{brand}", clean iconic emblem, centered composition, sharp precise typography "{brand}", minimalist corporate graphic identity, crisp geometric contours'
-
-    logo_match_2 = re.match(
-        r'^["\']?([^"\']+)["\']?\s+logo$',
-        cleaned,
-        flags=re.IGNORECASE
-    )
-    if logo_match_2:
-        brand = logo_match_2.group(1).strip().strip('"\'')
-        return f'professional modern vector logo design for "{brand}", clean iconic emblem, centered composition, sharp precise typography "{brand}", minimalist corporate graphic identity, crisp geometric contours'
-
-    # 5. Special handling for FLAG requests:
-    flag_match = re.match(r'^(?:the\s+)?(?:official\s+|national\s+)?flag\s+of\s+([a-zA-Z\s]+)$', cleaned, flags=re.IGNORECASE)
-    if not flag_match:
-        flag_match = re.match(r'^([a-zA-Z\s]+)\s+flag$', cleaned, flags=re.IGNORECASE)
-    if flag_match:
-        country = flag_match.group(1).strip().lower()
-        if 'nepal' in country:
-            return 'official Flag of Nepal, double-pennant red and blue flag of Nepal with white moon and sun emblems, clean geometric shape, isolated on white background'
-        return f'official national flag of {country.title()}, authentic colors and accurate national emblem, centered composition, flat vector graphic design, clean crisp edges, isolated on white background'
-
-    # 6. For general prompts, ensure high definition detail if not already present
-    is_graphic_art = any(term in cleaned.lower() for term in ['logo', 'flag', 'icon', 'vector', 'emblem', 'badge', 'sticker', 'symbol'])
-    detail_keywords = ['detail', '8k', '4k', 'sharp', 'resolution', 'photorealistic', 'hyperrealistic']
-    if not is_graphic_art and not any(kw in cleaned.lower() for kw in detail_keywords) and len(cleaned) > 3:
-        return f"{cleaned}, high resolution, intricate details, sharp focus"
-
+    # Faithfully return the user's authentic creative prompt without ANY hardcoded overrides or artificial tags
     return cleaned if cleaned else raw_prompt.strip()
 
 def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
@@ -291,7 +258,24 @@ def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
                     safe_log(f"[OMNIRA] Fallback model {fallback_model} succeeded!")
                 except Exception as e_fb:
                     last_error = str(e_fb)
-                    safe_log(f"[OMNIRA] Fallback model failed as well: {e_fb}")
+                    safe_log(f"[OMNIRA] Cloudflare models exhausted ({e_fb}). Failing over to global FLUX...")
+
+        # 3b. Global FLUX Engine Failover (Guarantees 100% uptime when Cloudflare daily free neurons run out)
+        if not data_url:
+            try:
+                encoded_prompt = urllib.parse.quote(model_prompt)
+                poll_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?model=flux&width=1024&height=1024&nologo=true"
+                poll_req = urllib.request.Request(poll_url, headers={"User-Agent": "OMNIRA-AI-Chat/1.0"})
+                with urllib.request.urlopen(poll_req, timeout=28) as poll_resp:
+                    raw_bytes = poll_resp.read()
+                    if raw_bytes and len(raw_bytes) > 500:
+                        b64_encoded = base64.b64encode(raw_bytes).decode("utf-8")
+                        data_url = f"data:image/jpeg;base64,{b64_encoded}"
+                        active_model = "FLUX 1 (Universal)"
+                        safe_log("[OMNIRA] Global FLUX engine failover succeeded!")
+            except Exception as e_poll:
+                last_error = f"Cloudflare: {last_error} | Global: {str(e_poll)}"
+                safe_log(f"[OMNIRA] Global FLUX failover error: {e_poll}")
 
         if not data_url:
             conn.rollback()

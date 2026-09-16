@@ -147,8 +147,34 @@ export default function ImageGenerationMessage({ message, onRegenerate }) {
 
               {/* Prompt Caption */}
               {prompt && (
-                <div className="text-xs text-[var(--text-primary)] font-normal italic bg-[var(--bg-hover)]/30 p-2.5 rounded-xl border border-[var(--border-color)]/40">
-                  “{prompt}”
+                <div className="space-y-1">
+                  <div className="text-xs text-[var(--text-primary)] font-normal italic bg-[var(--bg-hover)]/30 p-2.5 rounded-xl border border-[var(--border-color)]/40">
+                    “{prompt}”
+                  </div>
+                  <div className="text-[10px] text-[var(--text-muted)] px-1">
+                    Image generated based on your description.
+                  </div>
+                </div>
+              )}
+
+              {/* Development Image Prompt Debug Panel */}
+              {import.meta.env.DEV && (
+                <div className="p-3 rounded-xl bg-neutral-900 text-neutral-300 font-mono text-[11px] border border-neutral-700/60 space-y-2 select-text">
+                  <div className="flex items-center justify-between text-[10px] uppercase font-bold text-amber-400 tracking-wider">
+                    <span>⚙️ Image Prompt Debug Panel (Dev Mode)</span>
+                  </div>
+                  <div>
+                    <div className="text-neutral-400 font-semibold text-[10px] uppercase">Original user prompt:</div>
+                    <div className="text-white mt-0.5 whitespace-pre-wrap">{message.userPrompt || message.prompt || prompt}</div>
+                  </div>
+                  <div>
+                    <div className="text-neutral-400 font-semibold text-[10px] uppercase">Prompt sent to model:</div>
+                    <div className="text-emerald-400 mt-0.5 whitespace-pre-wrap">{message.modelPrompt || message.prompt || prompt}</div>
+                  </div>
+                  <div>
+                    <div className="text-neutral-400 font-semibold text-[10px] uppercase">Model:</div>
+                    <div className="text-sky-400 mt-0.5">{message.model || '@cf/bytedance/stable-diffusion-xl-lightning'}</div>
+                  </div>
                 </div>
               )}
 

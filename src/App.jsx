@@ -189,7 +189,7 @@ export default function App() {
   const messages = currentSession ? currentSession.messages : [];
 
   // Send Message Handler
-  const handleSendMessage = async (userText, attachedFile = null) => {
+  const handleSendMessage = async (userText, attachedFile = null, options = {}) => {
     const userMsg = {
       role: 'user',
       content: userText,
@@ -197,7 +197,7 @@ export default function App() {
       timestamp: new Date().toLocaleTimeString()
     };
 
-    const isImageReq = isImagePrompt(userText, activeMode, selectedModel);
+    const isImageReq = options.isImage || isImagePrompt(userText, activeMode, selectedModel);
     const loadingId = `img-loading-${Date.now()}`;
 
     const placeholderImageMsg = isImageReq ? {
@@ -205,6 +205,8 @@ export default function App() {
       role: 'assistant',
       type: 'image_generation',
       prompt: userText,
+      userPrompt: userText,
+      modelPrompt: userText,
       isLoading: true,
       timestamp: new Date().toLocaleTimeString()
     } : null;
@@ -234,7 +236,7 @@ export default function App() {
       const response = await queryQuickAi({
         prompt: userText,
         selectedModel,
-        mode: activeMode,
+        mode: options.isImage ? 'image' : activeMode,
         history: messages,
         fileData: attachedFile,
         currentUser,
@@ -250,6 +252,9 @@ export default function App() {
           role: 'assistant',
           type: 'image_generation',
           prompt: response.prompt || userText,
+          userPrompt: response.userPrompt || response.prompt || userText,
+          modelPrompt: response.modelPrompt || response.prompt || userText,
+          model: response.model || '@cf/bytedance/stable-diffusion-xl-lightning',
           imageUrl: response.image || '',
           isLoading: false,
           error: response.success === false ? (response.error || 'Image generation failed.') : null,

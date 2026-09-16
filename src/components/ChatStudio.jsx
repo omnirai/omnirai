@@ -109,13 +109,9 @@ export default function ChatStudio({
     e?.preventDefault();
     if ((!input.trim() && !attachedFile) || isGenerating) return;
 
-    let finalPrompt = input.trim();
-    if (isImageMode && !isImagePrompt(finalPrompt)) {
-      finalPrompt = `Create an image of ${finalPrompt}`;
-    }
-
+    const finalPrompt = input.trim();
     setLastUserPrompt(finalPrompt);
-    onSendMessage(finalPrompt, attachedFile);
+    onSendMessage(finalPrompt, attachedFile, { isImage: isImageMode });
     setInput('');
     setAttachedFile(null);
   };
@@ -383,7 +379,7 @@ export default function ChatStudio({
                       message={m} 
                       onRegenerate={(promptToRegen) => {
                         setLastUserPrompt(promptToRegen);
-                        onSendMessage(promptToRegen, null);
+                        onSendMessage(promptToRegen, null, { isImage: true });
                       }} 
                     />
                   ) : (

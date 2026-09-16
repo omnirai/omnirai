@@ -25,8 +25,8 @@ export function isImagePrompt(prompt, mode = 'chat', selectedModel = 'gpt-4o') {
   const text = (prompt || '').toLowerCase().trim();
   if (!text) return false;
 
-  // Negative overrides (e.g. asking for code, HTML, CSS, or idioms)
-  if ((text.includes('code') || text.includes('html') || text.includes('css') || text.includes('draw conclusions') || text.includes('how to draw')) && 
+  // Negative overrides (e.g. asking for code, HTML, CSS, instructions, recipes)
+  if ((text.includes('code') || text.includes('html') || text.includes('css') || text.includes('draw conclusions') || text.includes('how to draw') || text.includes('how to create') || text.includes('how to make')) && 
       !text.startsWith('generate an image') && 
       !text.startsWith('create an image') && 
       !text.startsWith('create a photo') &&
@@ -35,9 +35,13 @@ export function isImagePrompt(prompt, mode = 'chat', selectedModel = 'gpt-4o') {
   }
 
   const patterns = [
-    /^(generate|create|make|draw|paint|render|design)\s+(an?\s+)?(image|photo|picture|portrait|illustration|artwork|sticker|graphic|landscape|canvas)/i,
-    /^(create|generate|make|draw)\s+a\s+(realistic|cinematic|surreal|cyberpunk|3d|anime|digital|detailed)\s+(photo|picture|portrait|image|landscape|scene)/i,
-    /^(photo|picture|portrait|image|illustration|drawing)\s+of\s+/i,
+    /^(generate|create|make|draw|paint|render|design)\s+(an?\s+)?(image|photo|picture|portrait|illustration|artwork|sticker|graphic|landscape|canvas|wallpaper|drawing|painting)/i,
+    /^(create|generate|make|draw|paint)\s+a\s+(realistic|cinematic|surreal|cyberpunk|3d|anime|digital|detailed|simple)\s+(photo|picture|portrait|image|landscape|scene)/i,
+    /^(photo|picture|portrait|image|illustration|drawing|painting|artwork)\s+of\s+/i,
+    // Direct requests to depict/create an object: "Create a...", "Generate a...", "Draw a...", "Paint a...", "Create exactly..."
+    /^(create|generate|draw|paint|render)\s+(a|an|the|exactly|\d+)\s+[a-z0-9]/i,
+    // Direct requests without article: "Create Mount Everest...", "Draw Eiffel Tower...", etc.
+    /^(create|generate|draw|paint|render)\s+([A-Z][a-z]+|[a-z]+)\s+(at|in|on|with|by|under|over|beside|near|during)\s+/i,
     /\b(generate|create|make|draw)\s+an?\s+image\b/i,
     /\b(generate|create|draw)\s+(an?\s+)?image\s+of\b/i,
     /\b(create|generate)\s+a\s+realistic\s+(photo|portrait|picture)\b/i,
@@ -63,12 +67,12 @@ export async function getBackendImageQuota(userId = 'guest_user') {
     const contentType = res.headers.get('content-type') || '';
     if (res.ok && contentType.includes('application/json')) {
       const data = await res.json();
-      return data.quota || { used: 0, limit: 2, remaining: 2 };
+      return data.quota || { used: 0, limit: 25, remaining: 25 };
     }
   } catch (err) {
     console.warn('Failed to fetch image quota from server:', err);
   }
-  return { used: 0, limit: 2, remaining: 2 };
+  return { used: 0, limit: 25, remaining: 25 };
 }
 
 /**
@@ -104,6 +108,9 @@ export async function generateCloudflareImage(prompt, userId = 'guest_user') {
         success: true,
         image: data.image,
         prompt: data.prompt || prompt,
+        userPrompt: data.user_prompt || data.prompt || prompt,
+        modelPrompt: data.model_prompt || data.prompt || prompt,
+        model: data.model || '@cf/bytedance/stable-diffusion-xl-lightning',
         quota: data.quota
       };
     } else {

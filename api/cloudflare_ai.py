@@ -34,7 +34,7 @@ except Exception:
     DB_DIR = tempfile.gettempdir()
 
 DB_PATH = os.path.join(DB_DIR, "omnira_quota.db")
-DAILY_LIMIT = 2
+DAILY_LIMIT = int(os.getenv("DAILY_IMAGE_LIMIT", "25"))
 
 def get_db():
     conn = sqlite3.connect(DB_PATH, timeout=10.0)
@@ -42,6 +42,7 @@ def get_db():
         conn.execute("PRAGMA journal_mode=WAL;")
     except Exception:
         pass
+    
     conn.execute("""
         CREATE TABLE IF NOT EXISTS daily_quota (
             user_id TEXT NOT NULL,
@@ -88,41 +89,25 @@ def check_quota(user_id: str) -> dict:
             "date": date_str
         }
 
-def enhance_prompt_for_cloudflare(raw_prompt: str) -> str:
-    import re
-    cleaned = raw_prompt.strip()
-    
-    # Strip duplicate or nested phrase prefixes
-    prefix_pattern = r'^(create|generate|make|draw|paint)\s+(an?\s+)?(image|photo|picture|logo|sticker)\s+of\s+'
-    while re.search(prefix_pattern, cleaned, re.IGNORECASE):
-        cleaned = re.sub(prefix_pattern, '', cleaned, flags=re.IGNORECASE).strip()
-    
-    cleaned = re.sub(r'^(create|generate|draw|make)\s+', '', cleaned, flags=re.IGNORECASE).strip()
-
-    lower_c = cleaned.lower()
-    if 'logo' in lower_c:
-        # Strip duplicate "create logo of" or "logo of"
-        clean_brand = re.sub(r'^(create\s+)?(logo\s+of\s+)?', '', cleaned, flags=re.IGNORECASE).strip()
-        enhanced = f"Professional modern vector logo for '{clean_brand}', minimalist icon mark, sharp typography, clean lines, high resolution 8k graphic design, vector art on clean studio background"
-    elif 'photo' in lower_c or 'portrait' in lower_c or 'realistic' in lower_c:
-        enhanced = f"High quality realistic photograph of {cleaned}, 8k resolution, detailed texture, professional camera shot, cinematic lighting, masterpiece"
-    elif len(cleaned.split()) <= 4:
-        enhanced = f"Detailed high-resolution artwork of {cleaned}, 8k resolution, vibrant color palette, masterpiece"
-    else:
-        enhanced = cleaned
-
-    return enhanced
+def prepare_model_prompt(raw_prompt: str) -> str:
+    """
+    Direct prompt preservation: modelPrompt = userPrompt.
+    No artificial styles, no generic prefixes, no forced keywords or re-writing.
+    Preserves exact subjects, counts, colors, styles, and details requested by user.
+    """
+    return raw_prompt.strip()
 
 def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
     """
-    Atomically checks quota, calls Cloudflare Workers AI, and increments count if successful.
+    Atomically checks quota, calls Cloudflare Workers AI with faithfully preserved prompt,
+    and increments count if successful.
     Returns (success: bool, payload: str or dict, status_code: int, quota_info: dict)
     """
     if not user_id:
         user_id = "guest_user"
         
-    prompt = prompt.strip()
-    if not prompt:
+    user_prompt = prompt.strip()
+    if not user_prompt:
         return False, {"error": "Please describe the image you'd like me to create."}, 400, check_quota(user_id)
 
     account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").strip()
@@ -134,6 +119,19 @@ def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
             "error": "Cloudflare Workers AI credentials missing on server. Please configure CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN."
         }, 500, check_quota(user_id)
 
+    # 1. PRESERVE THE USER'S PROMPT FAITHFULLY
+    model_prompt = prepare_model_prompt(user_prompt)
+
+    # 2. SAFE SERVER-SIDE LOGGING (No API keys, tokens, or credentials logged)
+    print("\n================ [OMNIRA IMAGE GENERATION] ================", flush=True)
+    print("USER PROMPT:")
+    print(user_prompt, flush=True)
+    print("MODEL PROMPT:")
+    print(model_prompt, flush=True)
+    print("MODEL:")
+    print(model, flush=True)
+    print("===========================================================\n", flush=True)
+
     date_str = get_utc_date_str()
     
     try:
@@ -142,7 +140,7 @@ def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
         return False, {"error": f"Database initialization error: {str(db_err)}"}, 500, check_quota(user_id)
 
     try:
-        # 1. ATOMIC TRANSACTION: Check Quota with SQLite Lock
+        # ATOMIC TRANSACTION: Check Quota with SQLite Lock
         conn.execute("BEGIN IMMEDIATE;")
         cursor = conn.cursor()
         cursor.execute(
@@ -163,17 +161,14 @@ def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
                 "date": date_str
             }
 
-        # Enhance Prompt for Cloudflare AI Model Quality
-        enhanced_prompt = enhance_prompt_for_cloudflare(prompt)
-
-        # 2. Call Cloudflare Workers AI Endpoint
+        # 3. Call Cloudflare Workers AI Endpoint with Native Parameters
         url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/{model}"
         headers = {
             "Authorization": f"Bearer {api_token}",
             "Content-Type": "application/json",
             "User-Agent": "OMNIRA-AI-Chat/1.0"
         }
-        body_data = json.dumps({"prompt": enhanced_prompt}).encode("utf-8")
+        body_data = json.dumps({"prompt": model_prompt}).encode("utf-8")
 
         req = urllib.request.Request(url, data=body_data, headers=headers, method="POST")
 
@@ -219,7 +214,7 @@ def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
             conn.rollback()
             return False, {"error": f"Failed to connect to image generation server: {str(net_err)}"}, 500, check_quota(user_id)
 
-        # 3. SUCCESS — ATOMICALLY INCREMENT QUOTA COUNT
+        # 4. SUCCESS — ATOMICALLY INCREMENT QUOTA COUNT
         cursor.execute(
             """
             INSERT INTO daily_quota (user_id, date_str, image_count)
@@ -241,7 +236,10 @@ def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
         return True, {
             "success": True,
             "image": data_url,
-            "prompt": prompt,
+            "prompt": user_prompt,
+            "user_prompt": user_prompt,
+            "model_prompt": model_prompt,
+            "model": model,
             "quota": new_quota
         }, 200, new_quota
 

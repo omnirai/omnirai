@@ -232,17 +232,16 @@ def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
                 "Content-Type": "application/json",
                 "User-Agent": "OMNIRA-AI-Chat/1.0"
             }
-            # Provide maximum quality steps so the model takes full deliberation
-            # and renders rich, exact, high-definition details
+            # FLUX.1-schnell & SDXL-Lightning are 4-step distilled models (optimal speed & clarity)
             payload = {"prompt": model_prompt}
             if "flux-1-schnell" in target_model:
-                payload["steps"] = 8  # Max quality allowed by Cloudflare for FLUX Schnell
+                payload["steps"] = 4
             elif "stable-diffusion" in target_model:
-                payload["num_steps"] = 8
+                payload["num_steps"] = 4
 
             body_data = json.dumps(payload).encode("utf-8")
             req = urllib.request.Request(url, data=body_data, headers=headers, method="POST")
-            with urllib.request.urlopen(req, timeout=50) as response:
+            with urllib.request.urlopen(req, timeout=30) as response:
                 content_type = response.headers.get("Content-Type", "")
                 raw_bytes = response.read()
 

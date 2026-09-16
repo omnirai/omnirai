@@ -4,30 +4,46 @@ import { Download, RefreshCw, Copy, Check, Sparkles, AlertCircle } from 'lucide-
 export default function ImageGenerationMessage({ message, onRegenerate, onImageLoaded }) {
   const [isCopied, setIsCopied] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [progressPercent, setProgressPercent] = useState(14);
+  const [progressPercent, setProgressPercent] = useState(12);
 
   const { prompt = '', imageUrl = '', error = null, isLoading = false, timestamp } = message;
 
-  // Live Percentage Progress Counter during Image Creation - smooth and deliberate
+  // Live Fluid Progress Counter - continuously active, never freezes on 94%
   useEffect(() => {
     if (isLoading) {
-      setProgressPercent(8);
+      setProgressPercent(12);
       const interval = setInterval(() => {
         setProgressPercent((prev) => {
-          if (prev >= 94) return 94;
-          const inc = Math.floor(Math.random() * 4) + 2;
-          return Math.min(94, prev + inc);
+          if (prev < 50) {
+            // Initial fast start
+            return prev + Math.floor(Math.random() * 4) + 3;
+          } else if (prev < 80) {
+            // Steady neural synthesis
+            return prev + Math.floor(Math.random() * 3) + 2;
+          } else if (prev < 93) {
+            // Detailed refinement
+            return prev + 1;
+          } else if (prev < 98) {
+            // High-resolution polishing (continues ticking, never stuck!)
+            return prev + 1;
+          } else if (prev === 98) {
+            return 99;
+          }
+          return 99;
         });
-      }, 240);
+      }, 320);
       return () => clearInterval(interval);
+    } else if (imageUrl) {
+      setProgressPercent(100);
     }
-  }, [isLoading]);
+  }, [isLoading, imageUrl]);
 
   const getStageText = () => {
-    if (progressPercent < 28) return 'Analyzing composition & structure...';
-    if (progressPercent < 58) return 'Computing high-precision vector contours...';
-    if (progressPercent < 82) return 'Rendering sharp typography & micro-details...';
-    return 'Polishing master resolution...';
+    if (progressPercent < 30) return 'Analyzing prompt composition & contours...';
+    if (progressPercent < 60) return 'Computing high-precision neural vectors...';
+    if (progressPercent < 85) return 'Rendering sharp typography & textures...';
+    if (progressPercent < 96) return 'Polishing master resolution...';
+    return 'Finalizing image synthesis...';
   };
 
   const handleCopyPrompt = () => {

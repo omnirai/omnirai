@@ -79,6 +79,9 @@ export async function getBackendImageQuota(userId = 'guest_user') {
  * Perform Cloudflare Workers AI Image Generation via Server Endpoint
  */
 export async function generateCloudflareImage(prompt, userId = 'guest_user') {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 28000);
+
   try {
     const res = await fetch('/api/generate-image', {
       method: 'POST',
@@ -86,8 +89,11 @@ export async function generateCloudflareImage(prompt, userId = 'guest_user') {
         'Content-Type': 'application/json',
         'X-User-Id': userId
       },
-      body: JSON.stringify({ prompt, user_id: userId })
+      body: JSON.stringify({ prompt, user_id: userId }),
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
 
     const contentType = res.headers.get('content-type') || '';
     let data;
@@ -110,7 +116,7 @@ export async function generateCloudflareImage(prompt, userId = 'guest_user') {
         prompt: data.prompt || prompt,
         userPrompt: data.user_prompt || data.prompt || prompt,
         modelPrompt: data.model_prompt || data.prompt || prompt,
-        model: data.model || '@cf/bytedance/stable-diffusion-xl-lightning',
+        model: data.model || '@cf/black-forest-labs/flux-1-schnell',
         quota: data.quota
       };
     } else {
@@ -121,7 +127,14 @@ export async function generateCloudflareImage(prompt, userId = 'guest_user') {
       };
     }
   } catch (err) {
+    clearTimeout(timeoutId);
     console.error('Cloudflare image generation call error:', err);
+    if (err.name === 'AbortError') {
+      return {
+        success: false,
+        error: 'Image generation timed out. The AI server is experiencing high traffic, please try again.'
+      };
+    }
     return {
       success: false,
       error: `Connection error: ${err.message || 'Unable to connect to server backend.'}`

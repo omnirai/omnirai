@@ -347,3 +347,22 @@ function getModelDisplayName(modelId) {
   };
   return names[modelId] || 'OMNIRA (GPT-4o)';
 }
+
+/**
+ * Trigger Auto-Email Notification for User Events (Welcome, Signin, Subscribe)
+ */
+export async function triggerAutoEmail({ type, email, name, plan = 'Pro' }) {
+  if (!email || !email.includes('@')) return { success: false, message: 'Invalid recipient email' };
+  try {
+    const res = await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, email, name, plan })
+    });
+    const data = await res.json().catch(() => ({}));
+    return { success: res.ok, message: data.message || (res.ok ? 'Sent successfully' : 'Failed to send') };
+  } catch (err) {
+    console.warn('Auto-email dispatch warning:', err);
+    return { success: false, message: err.message || 'Network error' };
+  }
+}

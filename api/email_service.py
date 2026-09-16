@@ -1,0 +1,283 @@
+import os
+import smtplib
+import threading
+from datetime import datetime, timezone
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+# Load credentials from environment or defaults
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com").strip()
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER", "bishaldev949@gmail.com").strip()
+SMTP_PASS = os.getenv("SMTP_PASS", "xvakizmkikamlssr").strip()
+SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "OMNIRA AI").strip()
+SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", "bishaldev949@gmail.com").strip()
+
+def send_smtp_email_sync(to_email: str, subject: str, html_content: str, text_content: str = "") -> bool:
+    """
+    Sends an email using standard Gmail SMTP TLS.
+    """
+    if not to_email or not SMTP_USER or not SMTP_PASS:
+        return False
+
+    sender_header = f"{SMTP_FROM_NAME} <{SMTP_FROM_EMAIL}>"
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = sender_header
+    msg["To"] = to_email
+    msg["Reply-To"] = SMTP_FROM_EMAIL
+
+    if text_content:
+        msg.attach(MIMEText(text_content, "plain", "utf-8"))
+    msg.attach(MIMEText(html_content, "html", "utf-8"))
+
+    try:
+        server = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20)
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(SMTP_USER, SMTP_PASS)
+        server.sendmail(SMTP_FROM_EMAIL, [to_email], msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        # Silently fail or log without crashing
+        try:
+            print(f"[OMNIRA SMTP ERROR] Failed to send email to {to_email}: {e}")
+        except Exception:
+            pass
+        return False
+
+def send_email_async(to_email: str, subject: str, html_content: str, text_content: str = ""):
+    """
+    Dispatches email in a background daemon thread so it never blocks HTTP responses.
+    """
+    t = threading.Thread(
+        target=send_smtp_email_sync,
+        args=(to_email, subject, html_content, text_content),
+        daemon=True
+    )
+    t.start()
+
+# ==============================================================================
+# HUMAN-CRAFTED CLEAN EMAIL TEMPLATES (No Gemini gradients, no nested card clutter)
+# ==============================================================================
+
+def get_base_html(title: str, content: str) -> str:
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{title}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111827; line-height: 1.6;">
+  <div style="max-width: 580px; margin: 0 auto; padding: 40px 24px;">
+    
+    <!-- Brand Header -->
+    <div style="margin-bottom: 32px;">
+      <span style="font-size: 18px; font-weight: 700; letter-spacing: -0.5px; color: #0f172a;">
+        OMNIRA <span style="font-weight: 400; color: #059669;">AI</span>
+      </span>
+    </div>
+
+    <!-- Main Message Body -->
+    <div style="font-size: 15px; color: #1f2937;">
+      {content}
+    </div>
+
+    <!-- Human Sign-off -->
+    <div style="margin-top: 36px; padding-top: 24px; border-top: 1px solid #e5e7eb; font-size: 14px; color: #4b5563;">
+      <p style="margin: 0 0 4px 0; font-weight: 600; color: #111827;">Bishal & The OMNIRA Team</p>
+      <p style="margin: 0; color: #6b7280; font-size: 13px;">Created with passion by bishalcodes.com</p>
+    </div>
+
+    <!-- Minimal Footer -->
+    <div style="margin-top: 24px; font-size: 12px; color: #9ca3af; line-height: 1.5;">
+      <p style="margin: 0;">You are receiving this message because of your activity on your OMNIRA AI account.</p>
+      <p style="margin: 4px 0 0 0;">OMNIRA AI • Kathmandu, Nepal • <a href="https://quickai.vercel.app" style="color: #6b7280; text-decoration: underline;">Visit OMNIRA</a></p>
+    </div>
+
+  </div>
+</body>
+</html>"""
+
+def get_welcome_template(name: str) -> tuple:
+    display_name = name.strip() if name and name.strip() else "there"
+    subject = "Welcome to OMNIRA AI"
+    
+    content = f"""
+      <h1 style="font-size: 22px; font-weight: 600; color: #111827; margin: 0 0 16px 0; letter-spacing: -0.4px;">
+        Welcome to OMNIRA, {display_name}!
+      </h1>
+
+      <p style="margin: 0 0 16px 0;">
+        Hi {display_name},
+      </p>
+
+      <p style="margin: 0 0 16px 0;">
+        I'm Bishal, the creator of OMNIRA AI. I'm excited to have you join us.
+      </p>
+
+      <p style="margin: 0 0 16px 0;">
+        OMNIRA gives you instant access to fast neural intelligence, world-class image generation with FLUX, and creative studio tools. Everything is built to be clean, fast, and completely distraction-free.
+      </p>
+
+      <p style="margin: 0 0 8px 0; font-weight: 600; color: #111827;">
+        Here are three things you can try right away:
+      </p>
+
+      <ul style="margin: 0 0 24px 0; padding-left: 20px; color: #374151;">
+        <li style="margin-bottom: 8px;"><strong>Create clean logos & photos:</strong> Ask OMNIRA to <em>"make a logo for my brand"</em> or <em>"generate a realistic photo of Mount Everest"</em>.</li>
+        <li style="margin-bottom: 8px;"><strong>Deep reasoning & code:</strong> Ask complex coding problems, debug scripts, or design system components.</li>
+        <li style="margin-bottom: 8px;"><strong>Dedicated studios:</strong> Switch modes anytime between Chat, Code, Docs, Math, and SVG.</li>
+      </ul>
+
+      <div style="margin: 28px 0;">
+        <a href="https://quickai.vercel.app" style="display: inline-block; background-color: #059669; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 24px; border-radius: 8px;">
+          Start Chatting in OMNIRA &rarr;
+        </a>
+      </div>
+
+      <p style="margin: 20px 0 0 0; color: #4b5563;">
+        If you ever have any questions, ideas, or need a hand, just hit reply to this email. I read every reply personally.
+      </p>
+    """
+    
+    text = f"""Welcome to OMNIRA, {display_name}!
+
+Hi {display_name},
+
+I'm Bishal, the creator of OMNIRA AI. I'm excited to have you join us.
+
+Your account is now ready with FLUX image generation, deep reasoning, and creative studios.
+
+Get started here: https://quickai.vercel.app
+
+If you have any questions or feedback, just reply directly to this email.
+
+Best,
+Bishal & The OMNIRA Team
+"""
+    return subject, get_base_html(subject, content), text
+
+def get_signin_template(name: str, email: str) -> tuple:
+    display_name = name.strip() if name and name.strip() else "there"
+    subject = "New sign-in to your OMNIRA AI account"
+    now_str = datetime.now(timezone.utc).strftime("%B %d, %Y at %H:%M UTC")
+
+    content = f"""
+      <h1 style="font-size: 20px; font-weight: 600; color: #111827; margin: 0 0 16px 0;">
+        New sign-in detected
+      </h1>
+
+      <p style="margin: 0 0 16px 0;">
+        Hi {display_name},
+      </p>
+
+      <p style="margin: 0 0 16px 0;">
+        We detected a successful sign-in to your OMNIRA AI account (<strong>{email}</strong>) on <strong>{now_str}</strong>.
+      </p>
+
+      <p style="margin: 0 0 16px 0; color: #4b5563;">
+        If you signed in just now, you're all set and can safely ignore this notification.
+      </p>
+
+      <p style="margin: 0 0 20px 0; color: #4b5563;">
+        If you did not perform this sign-in, please reset your password or reply to this email immediately so we can secure your account.
+      </p>
+
+      <div style="margin: 24px 0;">
+        <a href="https://quickai.vercel.app" style="display: inline-block; background-color: #111827; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 600; padding: 10px 20px; border-radius: 6px;">
+          Open OMNIRA Dashboard
+        </a>
+      </div>
+    """
+    
+    text = f"""New sign-in detected for your OMNIRA AI account ({email}) on {now_str}.
+If this was you, you can safely ignore this message.
+If you did not sign in, please contact us immediately.
+
+Best regards,
+OMNIRA AI Security Team
+"""
+    return subject, get_base_html(subject, content), text
+
+def get_subscribe_template(name: str, plan: str = "Pro") -> tuple:
+    display_name = name.strip() if name and name.strip() else "there"
+    subject = f"Your OMNIRA AI {plan} Plan is now active"
+
+    content = f"""
+      <h1 style="font-size: 22px; font-weight: 600; color: #111827; margin: 0 0 16px 0;">
+        You're officially on OMNIRA {plan}!
+      </h1>
+
+      <p style="margin: 0 0 16px 0;">
+        Hi {display_name},
+      </p>
+
+      <p style="margin: 0 0 16px 0;">
+        Thank you for subscribing to <strong>OMNIRA {plan}</strong>. Your upgrade has been applied to your account.
+      </p>
+
+      <div style="margin: 20px 0; padding: 16px; background-color: #f9fafb; border-left: 3px solid #059669; font-size: 14px;">
+        <p style="margin: 0 0 6px 0; font-weight: 600; color: #111827;">Active Subscription Summary</p>
+        <p style="margin: 0 0 4px 0; color: #4b5563;">• Plan: <strong>OMNIRA {plan}</strong></p>
+        <p style="margin: 0 0 4px 0; color: #4b5563;">• Image Generation: <strong>High-Resolution FLUX 1 Schnell (25 images / day)</strong></p>
+        <p style="margin: 0 0 4px 0; color: #4b5563;">• Reasoning: <strong>Full Thinking & Deep Analysis Mode</strong></p>
+        <p style="margin: 0; color: #4b5563;">• Studios: <strong>Full access to Chat, Code, Docs, Math & SVG</strong></p>
+      </div>
+
+      <p style="margin: 0 0 20px 0; color: #4b5563;">
+        We're working hard to add new features every single week. As a {plan} member, your feedback directly shapes what we build next.
+      </p>
+
+      <div style="margin: 28px 0;">
+        <a href="https://quickai.vercel.app" style="display: inline-block; background-color: #059669; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 24px; border-radius: 8px;">
+          Go to OMNIRA Pro Studio &rarr;
+        </a>
+      </div>
+
+      <p style="margin: 20px 0 0 0; color: #4b5563;">
+        Thank you for supporting independent software. If you have any feedback or requests, reply right here anytime.
+      </p>
+    """
+
+    text = f"""Your OMNIRA AI {plan} Plan is now active!
+
+Hi {display_name},
+
+Thank you for subscribing to OMNIRA {plan}. Your upgrade has been successfully applied to your account.
+
+Your benefits include:
+- High-Resolution FLUX 1 Schnell (25 daily images)
+- Full Thinking & Deep Reasoning Mode
+- Full access to all studio tools
+
+Open OMNIRA: https://quickai.vercel.app
+
+Warm regards,
+Bishal & The OMNIRA Team
+"""
+    return subject, get_base_html(subject, content), text
+
+def send_auto_email(event_type: str, to_email: str, name: str = "", plan: str = "Pro") -> bool:
+    """
+    Main entrypoint for sending auto-emails.
+    Supported event_type: 'welcome' | 'signup' | 'signin' | 'subscribe' | 'upgrade'
+    """
+    if not to_email:
+        return False
+
+    evt = event_type.lower().strip()
+    if evt in ["welcome", "signup", "sign_up"]:
+        subject, html, text = get_welcome_template(name)
+    elif evt in ["signin", "sign_in", "login"]:
+        subject, html, text = get_signin_template(name, to_email)
+    elif evt in ["subscribe", "upgrade", "pro"]:
+        subject, html, text = get_subscribe_template(name, plan)
+    else:
+        subject, html, text = get_welcome_template(name)
+
+    send_email_async(to_email, subject, html, text)
+    return True

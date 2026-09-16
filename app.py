@@ -11,6 +11,7 @@ import urllib.parse
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from quick_ai_engine import QuickAiEngine
 from api.cloudflare_ai import generate_image_with_quota, check_quota
+from api.email_service import send_auto_email
 
 PORT = 5050
 engine = QuickAiEngine()
@@ -2186,7 +2187,22 @@ class QuickAiRequestHandler(BaseHTTPRequestHandler):
                 self.send_json(200, {"quota": quota})
                 return
 
-            # 3. Standard Chat Route
+            # 3. Auto Email Dispatch Route (Welcome, Sign-in, Subscribe)
+            if path in ['/api/send-email', '/send-email']:
+                email = data.get('email', '').strip() if isinstance(data, dict) else ''
+                name = data.get('name', '').strip() if isinstance(data, dict) else ''
+                event_type = data.get('type', 'welcome').strip() if isinstance(data, dict) else 'welcome'
+                plan = data.get('plan', 'Pro').strip() if isinstance(data, dict) else 'Pro'
+
+                if not email or '@' not in email:
+                    self.send_json(400, {'success': False, 'error': 'Valid recipient email required.'})
+                    return
+
+                dispatched = send_auto_email(event_type, email, name, plan)
+                self.send_json(200, {'success': dispatched, 'message': f'Auto-email {event_type} queued for {email}.'})
+                return
+
+            # 4. Standard Chat Route
             if path in ['/api/chat', '/chat']:
                 prompt = data.get('prompt', '') if isinstance(data, dict) else str(body_raw)
                 mode = data.get('mode', 'chat') if isinstance(data, dict) else 'chat'

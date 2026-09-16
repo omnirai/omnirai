@@ -18,6 +18,11 @@ export default function App() {
     return typeof window !== 'undefined' ? window.innerWidth >= 1024 : false;
   });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState('account');
+  const handleOpenSettings = (tab = 'account') => {
+    setSettingsInitialTab(tab);
+    setIsSettingsOpen(true);
+  };
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [userQuota, setUserQuota] = useState({ used: 0, limit: 25, remaining: 25 });
@@ -365,7 +370,7 @@ export default function App() {
         onPinChat={handlePinChat}
         onRenameChat={handleRenameChat}
         onArchiveChat={handleArchiveChat}
-        openSettings={() => setIsSettingsOpen(true)}
+        openSettings={handleOpenSettings}
         openAuth={() => setIsAuthModalOpen(true)}
         activeMode={activeMode}
         setActiveMode={setActiveMode}
@@ -384,7 +389,7 @@ export default function App() {
           setSelectedModel={setSelectedModel}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          openSettings={() => setIsSettingsOpen(true)}
+          openSettings={handleOpenSettings}
           openAuth={() => setIsAuthModalOpen(true)}
           darkMode={darkMode}
           setDarkMode={setDarkMode}
@@ -455,6 +460,7 @@ export default function App() {
         currentUser={currentUser}
         onUpdateUser={handleUpdateUser}
         onLogout={handleLogout}
+        initialTab={settingsInitialTab}
       />
 
       {/* Auth Modal (Google & Email Login) */}

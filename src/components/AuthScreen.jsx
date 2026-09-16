@@ -7,6 +7,7 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword 
 } from '../firebase';
+import { triggerAutoEmail } from '../engine/quickAiEngine';
 
 export function GoogleLogo({ className = "w-4 h-4" }) {
   return (
@@ -62,6 +63,16 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
       };
       setIsLoading(false);
       onLogin(loggedInUser);
+
+      // Trigger automatic notification email
+      if (user.email) {
+        triggerAutoEmail({
+          type: 'signin',
+          email: user.email,
+          name: loggedInUser.name
+        });
+      }
+
       if (onClose) onClose();
     } catch (err) {
       console.error('Firebase Google Auth error:', err);
@@ -98,6 +109,16 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
       };
       setIsLoading(false);
       onLogin(loggedInUser);
+
+      // Trigger automatic welcome or signin email
+      if (u.email) {
+        triggerAutoEmail({
+          type: isSignUp ? 'welcome' : 'signin',
+          email: u.email,
+          name: loggedInUser.name
+        });
+      }
+
       if (onClose) onClose();
     } catch (err) {
       console.error('Firebase Email Auth error:', err);

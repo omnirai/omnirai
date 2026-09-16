@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import GithubConnectModal from './GithubConnectModal';
 import DomainVerifyModal from './DomainVerifyModal';
+import { triggerAutoEmail } from '../engine/quickAiEngine';
 
 export default function SettingsModal({ 
   isOpen, 
@@ -44,21 +45,29 @@ export default function SettingsModal({
   setDarkMode,
   currentUser,
   onUpdateUser,
-  onLogout
+  onLogout,
+  initialTab = 'account'
 }) {
-  const [activeTab, setActiveTab] = useState('account');
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [mobileView, setMobileView] = useState('menu'); // 'menu' | 'detail'
   const [searchQuery, setSearchQuery] = useState('');
   const [showMfaCard, setShowMfaCard] = useState(true);
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
   const [receiveEmails, setReceiveEmails] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
+  const [subscribeMessage, setSubscribeMessage] = useState(null);
+  const [sendingTestEmail, setSendingTestEmail] = useState(false);
+  const [testEmailStatus, setTestEmailStatus] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
+      setActiveTab(initialTab);
       setMobileView('menu');
       setSearchQuery('');
+      setSubscribeMessage(null);
+      setTestEmailStatus(null);
     }
-  }, [isOpen]);
+  }, [isOpen, initialTab]);
 
   // Modals state
   const [isGithubModalOpen, setIsGithubModalOpen] = useState(false);
@@ -160,6 +169,64 @@ export default function SettingsModal({
     setIsAgeVerified(true);
     localStorage.setItem('omnira_age_verified', 'true');
     setIsAgeModalOpen(false);
+  };
+
+  const handleSubscribePlan = async (planName) => {
+    setSubscribing(true);
+    setSubscribeMessage(null);
+    try {
+      const updated = {
+        ...currentUser,
+        plan: planName
+      };
+      if (onUpdateUser) {
+        onUpdateUser(updated);
+      }
+      const targetEmail = currentUser?.email || 'user@example.com';
+      const targetName = currentUser?.name || currentUser?.username || 'OMNIRA User';
+
+      const result = await triggerAutoEmail({
+        type: 'subscribe',
+        email: targetEmail,
+        name: targetName,
+        plan: planName
+      });
+
+      if (result && result.success) {
+        setSubscribeMessage({ type: 'success', text: `Subscribed to ${planName}! Confirmation email sent to ${targetEmail}.` });
+      } else {
+        setSubscribeMessage({ type: 'info', text: `Plan updated to ${planName}. Email status: ${result?.message || 'Queued'}.` });
+      }
+    } catch (e) {
+      console.error('Subscription error:', e);
+      setSubscribeMessage({ type: 'error', text: 'Error updating plan. Please try again.' });
+    } finally {
+      setSubscribing(false);
+    }
+  };
+
+  const handleSendTestEmail = async (type = 'welcome') => {
+    setSendingTestEmail(true);
+    setTestEmailStatus(null);
+    try {
+      const targetEmail = currentUser?.email || 'user@example.com';
+      const targetName = currentUser?.name || currentUser?.username || 'OMNIRA User';
+      const res = await triggerAutoEmail({
+        type,
+        email: targetEmail,
+        name: targetName,
+        plan: currentUser?.plan || 'Pro'
+      });
+      if (res && res.success) {
+        setTestEmailStatus({ ok: true, text: `Test ${type} email sent to ${targetEmail}!` });
+      } else {
+        setTestEmailStatus({ ok: false, text: res?.message || 'Email delivery failed' });
+      }
+    } catch (err) {
+      setTestEmailStatus({ ok: false, text: err.message });
+    } finally {
+      setSendingTestEmail(false);
+    }
   };
 
   const menuItems = [
@@ -606,6 +673,24 @@ export default function SettingsModal({
                         Receive feedback emails
                       </label>
                     </div>
+
+                    <div className="pt-2 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSendTestEmail('welcome')}
+                        disabled={sendingTestEmail}
+                        className="px-3 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-xs text-[var(--text-primary)] font-medium transition-colors cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Mail className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>{sendingTestEmail ? 'Sending...' : 'Send Test Welcome Email'}</span>
+                      </button>
+
+                      {testEmailStatus && (
+                        <span className={`text-[11px] font-medium ${testEmailStatus.ok ? 'text-emerald-500' : 'text-amber-500'}`}>
+                          {testEmailStatus.text}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Log Out of All Devices */}
@@ -696,8 +781,101 @@ export default function SettingsModal({
               </div>
             )}
 
+            {/* Billing Tab */}
+            {activeTab === 'billing' && (
+              <div className="space-y-6 text-xs sm:text-sm">
+                <div>
+                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                    Billing & Subscription
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">
+                    Manage your OMNIRA AI membership, model limits, and auto-email confirmation.
+                  </p>
+                </div>
+
+                {subscribeMessage && (
+                  <div className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${
+                    subscribeMessage.type === 'success' 
+                      ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                      : subscribeMessage.type === 'error'
+                      ? 'bg-red-500/10 border-red-500/20 text-red-400'
+                      : 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                  }`}>
+                    <Check className="w-4 h-4 shrink-0" />
+                    <span>{subscribeMessage.text}</span>
+                  </div>
+                )}
+
+                {/* Plan Options */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Free Plan */}
+                  <div className={`p-4 rounded-xl border transition-all ${
+                    (currentUser?.plan || 'Free') === 'Free'
+                      ? 'border-emerald-500/40 bg-[var(--bg-sidebar)]'
+                      : 'border-[var(--border-color)] bg-[var(--bg-card)]'
+                  }`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-sm text-[var(--text-primary)]">Free Plan</span>
+                      {(currentUser?.plan || 'Free') === 'Free' && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-neutral-700 text-neutral-300 font-semibold">Current</span>
+                      )}
+                    </div>
+                    <div className="text-lg font-bold text-[var(--text-primary)] mb-3">$0 <span className="text-xs font-normal text-[var(--text-muted)]">/ month</span></div>
+                    <ul className="space-y-1.5 text-xs text-[var(--text-muted)] mb-4">
+                      <li>• Standard model reasoning</li>
+                      <li>• 50 messages per day</li>
+                      <li>• Standard response speed</li>
+                    </ul>
+                    <button
+                      type="button"
+                      onClick={() => handleSubscribePlan('Free')}
+                      disabled={(currentUser?.plan || 'Free') === 'Free' || subscribing}
+                      className="w-full py-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-xs font-semibold text-[var(--text-primary)] transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      {(currentUser?.plan || 'Free') === 'Free' ? 'Active Plan' : 'Downgrade to Free'}
+                    </button>
+                  </div>
+
+                  {/* Pro Plan */}
+                  <div className={`p-4 rounded-xl border transition-all ${
+                    currentUser?.plan === 'Pro'
+                      ? 'border-emerald-500/60 bg-[var(--bg-sidebar)] ring-1 ring-emerald-500/30'
+                      : 'border-emerald-500/30 bg-[var(--bg-sidebar)]'
+                  }`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-sm text-emerald-400">Pro Plan</span>
+                      {currentUser?.plan === 'Pro' ? (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold">Active</span>
+                      ) : (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold">Recommended</span>
+                      )}
+                    </div>
+                    <div className="text-lg font-bold text-[var(--text-primary)] mb-3">$0 <span className="text-xs font-normal text-emerald-400">Beta Access (Normally $19/mo)</span></div>
+                    <ul className="space-y-1.5 text-xs text-[var(--text-muted)] mb-4">
+                      <li>• Unlimited AI messages & deep reasoning</li>
+                      <li>• Photorealistic image generation (FLUX)</li>
+                      <li>• Document Studio & Code assistant</li>
+                      <li>• Automatic SMTP confirmation email</li>
+                    </ul>
+                    <button
+                      type="button"
+                      onClick={() => handleSubscribePlan('Pro')}
+                      disabled={subscribing}
+                      className="w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors disabled:opacity-50 cursor-pointer shadow-sm"
+                    >
+                      {subscribing ? 'Processing...' : currentUser?.plan === 'Pro' ? 'Re-send Pro Confirmation Email' : 'Subscribe to Pro Plan'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pt-2 text-[11px] text-[var(--text-muted)] leading-relaxed">
+                  Subscribing automatically triggers a confirmation receipt from <strong>OMNIRA AI &lt;bishaldev949@gmail.com&gt;</strong> to your account email address.
+                </div>
+              </div>
+            )}
+
             {/* Other Settings Tabs */}
-            {activeTab !== 'general' && activeTab !== 'account' && (
+            {activeTab !== 'general' && activeTab !== 'account' && activeTab !== 'billing' && (
               <div className="p-8 text-center text-xs text-[var(--text-muted)] space-y-2">
                 <Settings className="w-8 h-8 mx-auto text-[var(--text-muted)] opacity-50" />
                 <div className="font-semibold text-sm text-[var(--text-primary)]">

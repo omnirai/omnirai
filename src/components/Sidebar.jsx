@@ -336,7 +336,7 @@ export default function Sidebar({
         {/* Bottom User Profile Section with Sign In / Log Out */}
         <div className="p-3 border-t border-[var(--border-color)] mt-auto space-y-1.5">
           <div 
-            onClick={openSettings}
+            onClick={() => openSettings && openSettings('account')}
             className="flex items-center justify-between p-2 rounded-xl hover:bg-[var(--bg-hover)] cursor-pointer transition-colors"
           >
             <div className="flex items-center gap-2.5 min-w-0">
@@ -357,7 +357,7 @@ export default function Sidebar({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                openSettings();
+                if (openSettings) openSettings('billing');
               }}
               className="px-2.5 py-1 rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] text-[11px] font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-hover)] shadow-2xs shrink-0"
             >

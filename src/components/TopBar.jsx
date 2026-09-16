@@ -313,14 +313,14 @@ export default function TopBar({
         )}
 
         <button
-          onClick={openSettings}
+          onClick={() => openSettings && openSettings('billing')}
           className="flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-full text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer"
         >
           <span>Upgrade</span>
         </button>
 
         <button
-          onClick={openSettings}
+          onClick={() => openSettings && openSettings('account')}
           className="w-7 h-7 rounded-full bg-emerald-700 text-white font-semibold text-xs flex items-center justify-center hover:opacity-90 transition-opacity shadow-2xs cursor-pointer overflow-hidden shrink-0"
           title={displayUserName}
         >

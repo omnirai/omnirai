@@ -23,6 +23,12 @@ def load_env_file():
         except Exception:
             pass
 
+def safe_log(*args, **kwargs):
+    try:
+        print(*args, **kwargs)
+    except Exception:
+        pass
+
 load_env_file()
 
 # Database path for persistent quota tracking (Uses /tmp on Vercel/serverless for write permissions)
@@ -82,7 +88,7 @@ def check_quota(user_id: str) -> dict:
         finally:
             conn.close()
     except Exception as e:
-        print("Database quota check warning:", e)
+        safe_log("Database quota check warning:", e)
         return {
             "used": 0,
             "limit": DAILY_LIMIT,
@@ -160,14 +166,14 @@ def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
     model_prompt = prepare_model_prompt(user_prompt)
 
     # 2. SAFE SERVER-SIDE LOGGING (No API keys, tokens, or credentials logged)
-    print("\n================ [OMNIRA IMAGE GENERATION] ================", flush=True)
-    print("USER PROMPT:")
-    print(user_prompt, flush=True)
-    print("MODEL PROMPT:")
-    print(model_prompt, flush=True)
-    print("PRIMARY MODEL:")
-    print(primary_model, flush=True)
-    print("===========================================================\n", flush=True)
+    safe_log("\n================ [OMNIRA IMAGE GENERATION] ================")
+    safe_log("USER PROMPT:")
+    safe_log(user_prompt)
+    safe_log("MODEL PROMPT:")
+    safe_log(model_prompt)
+    safe_log("PRIMARY MODEL:")
+    safe_log(primary_model)
+    safe_log("===========================================================\n")
 
     date_str = get_utc_date_str()
     
@@ -240,15 +246,15 @@ def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
             data_url = call_cf_model(primary_model)
         except Exception as e_prim:
             last_error = str(e_prim)
-            print(f"[OMNIRA] Primary model {primary_model} failed: {e_prim}. Trying fallback...", flush=True)
+            safe_log(f"[OMNIRA] Primary model {primary_model} failed: {e_prim}. Trying fallback...")
             if primary_model != fallback_model:
                 try:
                     data_url = call_cf_model(fallback_model)
                     active_model = fallback_model
-                    print(f"[OMNIRA] Fallback model {fallback_model} succeeded!", flush=True)
+                    safe_log(f"[OMNIRA] Fallback model {fallback_model} succeeded!")
                 except Exception as e_fb:
                     last_error = str(e_fb)
-                    print(f"[OMNIRA] Fallback model failed as well: {e_fb}", flush=True)
+                    safe_log(f"[OMNIRA] Fallback model failed as well: {e_fb}")
 
         if not data_url:
             conn.rollback()

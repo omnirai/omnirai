@@ -2198,6 +2198,8 @@ class QuickAiRequestHandler(BaseHTTPRequestHandler):
                 self.send_response(404)
                 self.end_headers()
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             try:
                 self.send_json(500, {'response': f"⚠️ **Server Error:** {str(e)}", 'error': str(e)})
             except Exception:

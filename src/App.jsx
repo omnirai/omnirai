@@ -359,6 +359,8 @@ export default function App() {
           darkMode={darkMode}
           setDarkMode={setDarkMode}
           currentUser={currentUser}
+          onNewChat={handleNewChat}
+          hasMessages={messages.length > 0}
         />
 
         {/* View Switcher: Main ChatGPT View or Studio Views */}

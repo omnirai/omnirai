@@ -54,7 +54,7 @@
 
 /* Header Safe Area Top Inset for iPhone Notch / Status Bar */
 header {
-  padding-top: max(12px, env(safe-area-inset-top, 0px));
+  padding-top: max(16px, env(safe-area-inset-top, 16px)) !important;
 }
 
 /* Disable Auto-Zoom on iOS Safari / Mobile Input Focus */

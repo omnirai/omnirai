@@ -17,7 +17,9 @@ import {
   Sparkles,
   ArrowUp,
   Image as ImageSvg,
-  AlertCircle
+  AlertCircle,
+  Video,
+  Music
 } from 'lucide-react';
 import { marked } from 'marked';
 import ImageGenerationMessage from './ImageGenerationMessage';
@@ -110,16 +112,33 @@ export default function ChatStudio({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const mime = file.type || '';
+    const isBinary = 
+      mime.startsWith('image/') || 
+      mime.startsWith('video/') || 
+      mime.startsWith('audio/') || 
+      mime.includes('pdf') || 
+      mime.includes('zip') || 
+      mime.includes('word') || 
+      mime.includes('excel') || 
+      mime.includes('powerpoint') || 
+      mime.includes('octet-stream');
+
     const reader = new FileReader();
     reader.onload = (event) => {
       setAttachedFile({
         name: file.name,
-        type: file.type,
+        type: file.type || 'application/octet-stream',
         size: file.size,
         content: event.target.result
       });
     };
-    reader.readAsText(file);
+
+    if (isBinary) {
+      reader.readAsDataURL(file);
+    } else {
+      reader.readAsText(file);
+    }
   };
 
   const handleCopy = (text, id) => {
@@ -181,14 +200,22 @@ export default function ChatStudio({
               {attachedFile && (
                 <div className="mb-2 p-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl text-xs flex items-center justify-between shadow-2xs">
                   <div className="flex items-center gap-2 truncate">
-                    <FileText className="w-4 h-4 text-[var(--text-primary)]" />
-                    <span className="font-mono text-[var(--text-primary)] truncate">{attachedFile.name}</span>
+                    {attachedFile.type?.startsWith('image/') || attachedFile.content?.startsWith('data:image/') ? (
+                      <img src={attachedFile.content} alt={attachedFile.name} className="w-8 h-8 object-cover rounded-lg shrink-0 border border-[var(--border-color)]" />
+                    ) : attachedFile.type?.startsWith('video/') || attachedFile.content?.startsWith('data:video/') ? (
+                      <Video className="w-4 h-4 text-purple-500 shrink-0" />
+                    ) : attachedFile.type?.startsWith('audio/') || attachedFile.content?.startsWith('data:audio/') ? (
+                      <Music className="w-4 h-4 text-amber-500 shrink-0" />
+                    ) : (
+                      <FileText className="w-4 h-4 text-emerald-500 shrink-0" />
+                    )}
+                    <span className="font-mono text-[var(--text-primary)] truncate max-w-[200px]">{attachedFile.name}</span>
                     <span className="text-[var(--text-muted)]">({(attachedFile.size / 1024).toFixed(1)} KB)</span>
                   </div>
                   <button 
                     type="button" 
                     onClick={() => setAttachedFile(null)} 
-                    className="text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                    className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded-full hover:bg-[var(--bg-hover)]"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -206,7 +233,7 @@ export default function ChatStudio({
                     ref={fileInputRef} 
                     onChange={handleFileUpload} 
                     className="hidden" 
-                    accept=".txt,.md,.csv,.json,.js,.py,.html,.css"
+                    accept="*/*"
                   />
                   <button
                     type="button"
@@ -359,9 +386,20 @@ export default function ChatStudio({
                       }`}
                     >
                       {m.attachedFile && (
-                        <div className="mb-3 p-2 bg-[var(--bg-hover)] border border-[var(--border-color)] rounded-xl text-xs flex items-center gap-2 text-[var(--text-muted)]">
-                          <FileText className="w-4 h-4 text-[var(--text-primary)]" />
-                          <span className="font-mono font-medium truncate">{m.attachedFile.name}</span>
+                        <div className="mb-3 p-2 bg-[var(--bg-hover)] border border-[var(--border-color)] rounded-xl text-xs flex flex-col gap-2 text-[var(--text-muted)]">
+                          {m.attachedFile.type?.startsWith('image/') || m.attachedFile.content?.startsWith('data:image/') ? (
+                            <img src={m.attachedFile.content} alt={m.attachedFile.name} className="max-w-full max-h-64 rounded-xl object-contain shadow-md border border-[var(--border-color)]" />
+                          ) : m.attachedFile.type?.startsWith('video/') || m.attachedFile.content?.startsWith('data:video/') ? (
+                            <video src={m.attachedFile.content} controls className="max-w-full max-h-64 rounded-xl shadow-md" />
+                          ) : m.attachedFile.type?.startsWith('audio/') || m.attachedFile.content?.startsWith('data:audio/') ? (
+                            <audio src={m.attachedFile.content} controls className="w-full max-w-md" />
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <FileText className="w-4 h-4 text-[var(--text-primary)] shrink-0" />
+                              <span className="font-mono font-medium truncate">{m.attachedFile.name}</span>
+                              <span className="text-[10px] text-[var(--text-muted)]">({(m.attachedFile.size / 1024).toFixed(1)} KB)</span>
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -427,14 +465,22 @@ export default function ChatStudio({
           {attachedFile && (
             <div className="mb-2 p-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl text-xs flex items-center justify-between shadow-2xs">
               <div className="flex items-center gap-2 truncate">
-                <FileText className="w-4 h-4 text-[var(--text-primary)]" />
-                <span className="font-mono text-[var(--text-primary)] truncate">{attachedFile.name}</span>
+                {attachedFile.type?.startsWith('image/') || attachedFile.content?.startsWith('data:image/') ? (
+                  <img src={attachedFile.content} alt={attachedFile.name} className="w-8 h-8 object-cover rounded-lg shrink-0 border border-[var(--border-color)]" />
+                ) : attachedFile.type?.startsWith('video/') || attachedFile.content?.startsWith('data:video/') ? (
+                  <Video className="w-4 h-4 text-purple-500 shrink-0" />
+                ) : attachedFile.type?.startsWith('audio/') || attachedFile.content?.startsWith('data:audio/') ? (
+                  <Music className="w-4 h-4 text-amber-500 shrink-0" />
+                ) : (
+                  <FileText className="w-4 h-4 text-emerald-500 shrink-0" />
+                )}
+                <span className="font-mono text-[var(--text-primary)] truncate max-w-[200px]">{attachedFile.name}</span>
                 <span className="text-[var(--text-muted)]">({(attachedFile.size / 1024).toFixed(1)} KB)</span>
               </div>
               <button 
                 type="button" 
                 onClick={() => setAttachedFile(null)} 
-                className="text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded-full hover:bg-[var(--bg-hover)]"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -452,7 +498,7 @@ export default function ChatStudio({
                 ref={fileInputRef} 
                 onChange={handleFileUpload} 
                 className="hidden" 
-                accept=".txt,.md,.csv,.json,.js,.py,.html,.css"
+                accept="*/*"
               />
               <button
                 type="button"

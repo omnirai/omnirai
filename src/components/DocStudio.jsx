@@ -79,7 +79,7 @@ export default function DocStudio({ settings }) {
         <div className="flex flex-wrap items-center gap-1.5">
           <label className="btn btn-sm text-xs cursor-pointer">
             <Upload className="w-3 h-3" /> Upload File
-            <input type="file" onChange={handleFileUpload} accept=".txt,.md,.csv,.json" className="hidden" />
+            <input type="file" onChange={handleFileUpload} accept="*/*" className="hidden" />
           </label>
           <button onClick={() => handleTransform('summarize')} disabled={isGenerating || !inputDoc.trim()} className="btn btn-sm text-xs">
             ⚡ Summarize

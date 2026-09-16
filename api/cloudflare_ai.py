@@ -98,8 +98,8 @@ def check_quota(user_id: str) -> dict:
 
 def prepare_model_prompt(raw_prompt: str) -> str:
     """
-    Cleans conversational chatbot command prefixes so that conversational speech
-    (e.g., "please make", "can you generate", "draw an image of") is not literally
+    Cleans conversational chatbot command prefixes and typos (e.g., "crete", "create",
+    "make", "generate", "draw an image of") so that command words are not literally
     rendered as English text inside the image.
     Preserves all subjects, colors, counts, locations, and user-specified styles faithfully.
     """
@@ -107,35 +107,50 @@ def prepare_model_prompt(raw_prompt: str) -> str:
     if not cleaned:
         return ""
 
-    # 1. Strip conversational filler/polite commands
-    # e.g., "please make", "can you create", "kindly generate", "please draw"
+    # 1. Strip conversational lead-ins
+    # e.g., "can you please", "could you kindly", "i want a", "please", "kindly"
     cleaned = re.sub(
-        r'^(?:can\s+you\s+|could\s+you\s+|would\s+you\s+)?(?:please\s+|kindly\s+)?(?:make|create|generate|draw|design|render|produce)\s+(?:me\s+)?',
+        r'^(?:can\s+you\s+(?:please\s+)?|could\s+you\s+(?:please\s+)?|would\s+you\s+(?:please\s+)?|i\s+want\s+(?:you\s+to\s+)?|i\s+need\s+(?:you\s+to\s+)?|i\'d\s+like\s+(?:you\s+to\s+)?|please\s+|kindly\s+)',
         '',
         cleaned,
         flags=re.IGNORECASE
     ).strip()
 
-    # 2. If the user prompt starts with "an image of", "a photo of", "a picture of"
+    # 2. Strip command verbs including common typos: create, crete, creat, creaet, make, mak, generate, genrate, draw, design, render, show, give me
     cleaned = re.sub(
-        r'^(?:an?\s+)?(?:image|picture|photo|photograph|drawing|illustration)\s+(?:of|showing|depicting)\s+',
+        r'^(?:cr(?:ea|e)te?|crwate|m(?:ak|ake|aek)|gen(?:er)?ate|draw|darw|design|desing|render|produce|show|paint|give\s+me|build)\s+(?:me\s+)?(?:an?\s+)?',
         '',
         cleaned,
         flags=re.IGNORECASE
     ).strip()
 
-    # 3. Special handling for LOGO requests:
-    # If the user asked for a logo, e.g. "logo of bt care" or "a logo for bishal codes"
-    # Ensure the text/brand name is clearly demarcated with quotes so FLUX renders
-    # the typography cleanly instead of generating arbitrary words or split collages.
-    logo_match = re.match(
-        r'^(?:a\s+)?(?:modern\s+)?logo\s+(?:of|for)\s+["\']?([^"\']+)["\']?$',
+    # 3. If the user prompt starts with "an image of", "a photo of", "a picture of"
+    cleaned = re.sub(
+        r'^(?:an?\s+)?(?:image|picture|photo|photograph|drawing|illustration|pic)\s+(?:of|showing|depicting)\s+',
+        '',
+        cleaned,
+        flags=re.IGNORECASE
+    ).strip()
+
+    # 4. Special handling for LOGO requests:
+    # Handles: "logo of hd electronics", "logo for hd electronics", "brand logo of...", "hd electronics logo"
+    logo_match_1 = re.match(
+        r'^(?:a\s+)?(?:modern\s+|clean\s+|minimal\s+|company\s+|brand\s+|professional\s+)?logo\s+(?:of|for|about)\s+["\']?([^"\']+)["\']?$',
         cleaned,
         flags=re.IGNORECASE
     )
-    if logo_match:
-        brand = logo_match.group(1).strip()
-        cleaned = f'modern vector logo design for "{brand}", clean typography'
+    if logo_match_1:
+        brand = logo_match_1.group(1).strip().strip('"\'')
+        return f'modern vector logo design for "{brand}", clean emblem, minimalist typography "{brand}"'
+
+    logo_match_2 = re.match(
+        r'^["\']?([^"\']+)["\']?\s+logo$',
+        cleaned,
+        flags=re.IGNORECASE
+    )
+    if logo_match_2:
+        brand = logo_match_2.group(1).strip().strip('"\'')
+        return f'modern vector logo design for "{brand}", clean emblem, minimalist typography "{brand}"'
 
     return cleaned if cleaned else raw_prompt.strip()
 

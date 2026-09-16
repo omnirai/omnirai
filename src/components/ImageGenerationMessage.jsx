@@ -79,49 +79,46 @@ export default function ImageGenerationMessage({ message, onRegenerate, onImageL
         <div className="p-4 space-y-3">
           
           {isLoading ? (
-            /* Live Gemini / ChatGPT Dotted Matrix Wave Loading Container */
-            <div className="space-y-3">
-              <div className="relative w-full aspect-square max-h-[420px] rounded-2xl bg-[#090b10] p-6 flex flex-col justify-between overflow-hidden border border-neutral-800 shadow-xl">
-                
-                {/* Header Text */}
-                <div className="flex items-center gap-2 text-white font-medium text-base tracking-tight">
+            /* Live Dotted Matrix Wave Loading Container - adapts cleanly to Light & Dark themes */
+            <div className="relative w-full aspect-square max-h-[420px] rounded-2xl bg-neutral-100 dark:bg-[#090b10] p-5 sm:p-6 flex flex-col justify-between border border-neutral-200 dark:border-neutral-800 shadow-sm transition-colors">
+              
+              {/* Header Row: Status + Percentage Badge (never clipped or cut off) */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-neutral-900 dark:text-white font-semibold text-sm sm:text-base tracking-tight">
+                  <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 animate-spin" />
                   <span>Creating image</span>
                 </div>
 
-                {/* Dotted Wave Matrix Grid */}
-                <div className="my-auto grid grid-cols-[repeat(16,minmax(0,1fr))] gap-2 sm:gap-2.5 justify-center items-center opacity-85 px-2">
-                  {Array.from({ length: 256 }).map((_, i) => {
-                    const row = Math.floor(i / 16);
-                    const col = i % 16;
-                    const delay = ((row + col) % 8) * 120;
-                    return (
-                      <span
-                        key={i}
-                        className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse transition-opacity"
-                        style={{
-                          animationDelay: `${delay}ms`,
-                          animationDuration: '1.4s',
-                          opacity: (i * 7) % 100 > 30 ? 0.85 : 0.35
-                        }}
-                      />
-                    );
-                  })}
+                {/* Progress Percentage Badge */}
+                <div className="px-3 py-1 rounded-full bg-neutral-200/90 dark:bg-white/10 border border-neutral-300/80 dark:border-white/20 text-neutral-800 dark:text-white font-bold text-xs tracking-wide shadow-2xs">
+                  {progressPercent}%
                 </div>
-
-                {/* Progress Percentage Badge Pill */}
-                <div className="flex justify-end">
-                  <div className="px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white font-medium text-xs tracking-wide shadow-sm">
-                    {progressPercent}%
-                  </div>
-                </div>
-
               </div>
 
-              {prompt && (
-                <div className="text-xs text-[var(--text-primary)] font-normal italic bg-[var(--bg-hover)]/30 p-2.5 rounded-xl border border-[var(--border-color)]/40">
-                  “{prompt}”
-                </div>
-              )}
+              {/* Dotted Wave Matrix Grid */}
+              <div className="my-auto grid grid-cols-[repeat(16,minmax(0,1fr))] gap-2 sm:gap-2.5 justify-center items-center opacity-85 px-2">
+                {Array.from({ length: 256 }).map((_, i) => {
+                  const row = Math.floor(i / 16);
+                  const col = i % 16;
+                  const delay = ((row + col) % 8) * 120;
+                  return (
+                    <span
+                      key={i}
+                      className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-500 animate-pulse transition-opacity"
+                      style={{
+                        animationDelay: `${delay}ms`,
+                        animationDuration: '1.4s',
+                        opacity: (i * 7) % 100 > 30 ? 0.85 : 0.35
+                      }}
+                    />
+                  );
+                })}
+              </div>
+
+              <div className="text-[11px] text-neutral-500 dark:text-neutral-400 text-center font-medium">
+                Synthesizing high-resolution details...
+              </div>
+
             </div>
           ) : error ? (
             /* Error State */
@@ -149,39 +146,6 @@ export default function ImageGenerationMessage({ message, onRegenerate, onImageL
                   }}
                 />
               </div>
-
-              {/* Prompt Caption */}
-              {prompt && (
-                <div className="space-y-1">
-                  <div className="text-xs text-[var(--text-primary)] font-normal italic bg-[var(--bg-hover)]/30 p-2.5 rounded-xl border border-[var(--border-color)]/40">
-                    “{prompt}”
-                  </div>
-                  <div className="text-[10px] text-[var(--text-muted)] px-1">
-                    Image generated based on your description.
-                  </div>
-                </div>
-              )}
-
-              {/* Development Image Prompt Debug Panel */}
-              {import.meta.env.DEV && (
-                <div className="p-3 rounded-xl bg-neutral-900 text-neutral-300 font-mono text-[11px] border border-neutral-700/60 space-y-2 select-text">
-                  <div className="flex items-center justify-between text-[10px] uppercase font-bold text-amber-400 tracking-wider">
-                    <span>⚙️ Image Prompt Debug Panel (Dev Mode)</span>
-                  </div>
-                  <div>
-                    <div className="text-neutral-400 font-semibold text-[10px] uppercase">Original user prompt:</div>
-                    <div className="text-white mt-0.5 whitespace-pre-wrap">{message.userPrompt || message.prompt || prompt}</div>
-                  </div>
-                  <div>
-                    <div className="text-neutral-400 font-semibold text-[10px] uppercase">Prompt sent to model:</div>
-                    <div className="text-emerald-400 mt-0.5 whitespace-pre-wrap">{message.modelPrompt || message.prompt || prompt}</div>
-                  </div>
-                  <div>
-                    <div className="text-neutral-400 font-semibold text-[10px] uppercase">Model:</div>
-                    <div className="text-sky-400 mt-0.5">{message.model || '@cf/bytedance/stable-diffusion-xl-lightning'}</div>
-                  </div>
-                </div>
-              )}
 
               {/* Action Buttons Row */}
               <div className="flex items-center justify-between pt-1 text-xs">

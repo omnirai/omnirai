@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   Check,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
   Info,
   Globe,
@@ -46,10 +47,18 @@ export default function SettingsModal({
   onLogout
 }) {
   const [activeTab, setActiveTab] = useState('account');
+  const [mobileView, setMobileView] = useState('menu'); // 'menu' | 'detail'
   const [searchQuery, setSearchQuery] = useState('');
   const [showMfaCard, setShowMfaCard] = useState(true);
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
   const [receiveEmails, setReceiveEmails] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setMobileView('menu');
+      setSearchQuery('');
+    }
+  }, [isOpen]);
 
   // Modals state
   const [isGithubModalOpen, setIsGithubModalOpen] = useState(false);
@@ -178,22 +187,25 @@ export default function SettingsModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-2xs flex items-center justify-center p-3 sm:p-6 animate-fade-in select-none">
+      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-2 sm:p-4 md:p-6 animate-fade-in select-none">
         
         {/* Main Settings Dialog Container */}
-        <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl w-full max-w-3xl h-[90vh] max-h-[660px] shadow-2xl flex overflow-hidden text-[var(--text-primary)] relative">
+        <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl w-full max-w-3xl h-[92vh] sm:h-[85vh] max-h-[680px] shadow-2xl flex overflow-hidden text-[var(--text-primary)] relative">
           
           {/* Modal Left Navigation Sidebar */}
-          <div className="w-56 sm:w-64 border-r border-[var(--border-color)] bg-[var(--bg-sidebar)] flex flex-col shrink-0">
+          <div className={`${mobileView === 'menu' ? 'flex w-full' : 'hidden'} md:flex md:w-64 border-r border-[var(--border-color)] bg-[var(--bg-sidebar)] flex-col shrink-0 h-full`}>
             
-            <div className="p-3.5 space-y-3">
-              <button
-                onClick={onClose}
-                className="p-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
-                title="Close Settings"
-              >
-                <X className="w-4 h-4" />
-              </button>
+            <div className="p-3.5 space-y-3 border-b border-[var(--border-color)] shrink-0">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-base text-[var(--text-primary)]">Settings</h3>
+                <button
+                  onClick={onClose}
+                  className="p-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
+                  title="Close Settings"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
 
               <div className="relative">
                 <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-3 top-2.5" />
@@ -207,29 +219,35 @@ export default function SettingsModal({
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-2 py-1 space-y-0.5">
+            <div className="flex-1 overflow-y-auto px-2 py-1.5 space-y-0.5">
               {filteredMenuItems.map((item) => {
                 const Icon = item.icon;
                 const isSelected = activeTab === item.id;
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActiveTab(item.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      setMobileView('detail');
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 sm:py-2 rounded-xl text-xs font-medium transition-colors ${
                       isSelected 
                         ? 'bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold' 
                         : 'text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
                     }`}
                   >
-                    <Icon className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
-                    <span className="truncate">{item.label}</span>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Icon className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                      <span className="truncate">{item.label}</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0 md:hidden opacity-50" />
                   </button>
                 );
               })}
             </div>
 
             {/* Settings Sidebar Bottom Logout */}
-            <div className="p-3 border-t border-[var(--border-color)] mt-auto">
+            <div className="p-3 border-t border-[var(--border-color)] mt-auto shrink-0">
               <button
                 onClick={() => {
                   onClose();
@@ -245,11 +263,34 @@ export default function SettingsModal({
           </div>
 
           {/* Modal Right Content Pane */}
-          <div className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-6">
+          <div className={`${mobileView === 'detail' ? 'flex w-full' : 'hidden'} md:flex md:flex-1 flex-col h-full overflow-hidden bg-[var(--bg-card)]`}>
             
-            <h2 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">
-              {menuItems.find(m => m.id === activeTab)?.label || 'Account'}
-            </h2>
+            {/* Mobile Top Header with Back button */}
+            <div className="flex md:hidden items-center justify-between px-4 py-3 border-b border-[var(--border-color)] bg-[var(--bg-sidebar)] shrink-0">
+              <button
+                onClick={() => setMobileView('menu')}
+                className="flex items-center gap-1 text-xs font-semibold text-[var(--text-primary)] hover:opacity-80 transition-opacity py-1 px-1.5 -ml-1.5 rounded-lg active:bg-[var(--bg-hover)]"
+              >
+                <ChevronLeft className="w-4 h-4 text-[var(--text-muted)]" />
+                <span>Settings</span>
+              </button>
+              <span className="font-bold text-sm text-[var(--text-primary)] truncate max-w-[170px]">
+                {menuItems.find(m => m.id === activeTab)?.label || 'Account'}
+              </span>
+              <button
+                onClick={onClose}
+                className="p-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                title="Close Settings"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-7 space-y-6">
+              
+              <h2 className="hidden md:block text-xl font-bold tracking-tight text-[var(--text-primary)]">
+                {menuItems.find(m => m.id === activeTab)?.label || 'Account'}
+              </h2>
 
             {/* Account Tab */}
             {activeTab === 'account' && (
@@ -259,19 +300,19 @@ export default function SettingsModal({
                 <div className="space-y-4 divide-y divide-[var(--border-color)]">
                   
                   {/* Name */}
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="font-medium text-[var(--text-primary)]">Name</span>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-4 pt-1">
+                    <span className="font-medium text-[var(--text-primary)] shrink-0">Name</span>
                     {editingField === 'name' ? (
                       <div className="flex items-center gap-2">
                         <input
                           type="text"
                           value={tempProfile.name}
                           onChange={(e) => setTempProfile({ ...tempProfile, name: e.target.value })}
-                          className="px-2.5 py-1 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg text-xs outline-none focus:border-emerald-500"
+                          className="px-2.5 py-1 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg text-xs outline-none focus:border-emerald-500 min-w-0"
                         />
                         <button
                           onClick={() => handleSaveProfileField('name')}
-                          className="px-2.5 py-1 bg-emerald-600 text-white font-semibold text-xs rounded-lg hover:bg-emerald-500"
+                          className="px-2.5 py-1 bg-emerald-600 text-white font-semibold text-xs rounded-lg hover:bg-emerald-500 shrink-0"
                         >
                           Save
                         </button>
@@ -279,28 +320,28 @@ export default function SettingsModal({
                     ) : (
                       <button
                         onClick={() => setEditingField('name')}
-                        className="flex items-center gap-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors group"
+                        className="flex items-center gap-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors group truncate text-left sm:text-right"
                       >
-                        <span>{currentUser?.name || 'Guest User'}</span>
-                        <Edit2 className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-emerald-500" />
+                        <span className="truncate">{currentUser?.name || 'Guest User'}</span>
+                        <Edit2 className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-emerald-500 shrink-0" />
                       </button>
                     )}
                   </div>
 
                   {/* Username */}
-                  <div className="flex items-center justify-between pt-3">
-                    <span className="font-medium text-[var(--text-primary)]">Username</span>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-4 pt-3">
+                    <span className="font-medium text-[var(--text-primary)] shrink-0">Username</span>
                     {editingField === 'username' ? (
                       <div className="flex items-center gap-2">
                         <input
                           type="text"
                           value={tempProfile.username}
                           onChange={(e) => setTempProfile({ ...tempProfile, username: e.target.value })}
-                          className="px-2.5 py-1 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg text-xs outline-none focus:border-emerald-500 font-mono"
+                          className="px-2.5 py-1 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg text-xs outline-none focus:border-emerald-500 font-mono min-w-0"
                         />
                         <button
                           onClick={() => handleSaveProfileField('username')}
-                          className="px-2.5 py-1 bg-emerald-600 text-white font-semibold text-xs rounded-lg hover:bg-emerald-500"
+                          className="px-2.5 py-1 bg-emerald-600 text-white font-semibold text-xs rounded-lg hover:bg-emerald-500 shrink-0"
                         >
                           Save
                         </button>
@@ -308,28 +349,28 @@ export default function SettingsModal({
                     ) : (
                       <button
                         onClick={() => setEditingField('username')}
-                        className="flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                        className="flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors truncate text-left sm:text-right"
                       >
-                        <span>{currentUser?.username || '@guest_user'}</span>
-                        <ChevronRight className="w-4 h-4" />
+                        <span className="truncate">{currentUser?.username || '@guest_user'}</span>
+                        <ChevronRight className="w-4 h-4 shrink-0" />
                       </button>
                     )}
                   </div>
 
                   {/* Email */}
-                  <div className="flex items-center justify-between pt-3">
-                    <span className="font-medium text-[var(--text-primary)]">Email</span>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-4 pt-3">
+                    <span className="font-medium text-[var(--text-primary)] shrink-0">Email</span>
                     {editingField === 'email' ? (
                       <div className="flex items-center gap-2">
                         <input
                           type="email"
                           value={tempProfile.email}
                           onChange={(e) => setTempProfile({ ...tempProfile, email: e.target.value })}
-                          className="px-2.5 py-1 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg text-xs outline-none focus:border-emerald-500"
+                          className="px-2.5 py-1 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg text-xs outline-none focus:border-emerald-500 min-w-0"
                         />
                         <button
                           onClick={() => handleSaveProfileField('email')}
-                          className="px-2.5 py-1 bg-emerald-600 text-white font-semibold text-xs rounded-lg hover:bg-emerald-500"
+                          className="px-2.5 py-1 bg-emerald-600 text-white font-semibold text-xs rounded-lg hover:bg-emerald-500 shrink-0"
                         >
                           Save
                         </button>
@@ -337,18 +378,18 @@ export default function SettingsModal({
                     ) : (
                       <button
                         onClick={() => setEditingField('email')}
-                        className="flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                        className="flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors truncate text-left sm:text-right"
                       >
-                        <span>{currentUser?.email || 'user@example.com'}</span>
-                        <ChevronRight className="w-4 h-4" />
+                        <span className="truncate">{currentUser?.email || 'user@example.com'}</span>
+                        <ChevronRight className="w-4 h-4 shrink-0" />
                       </button>
                     )}
                   </div>
 
                   {/* Age Verification */}
-                  <div className="flex items-center justify-between pt-3">
-                    <div className="max-w-xs pr-4">
-                      <div className="font-medium text-[var(--text-primary)] flex items-center gap-1.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3">
+                    <div className="flex-1 min-w-0 pr-0 sm:pr-4">
+                      <div className="font-medium text-[var(--text-primary)] flex flex-wrap items-center gap-1.5">
                         <span>Age verification</span>
                         {isAgeVerified && (
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center gap-1">
@@ -361,26 +402,28 @@ export default function SettingsModal({
                       </div>
                     </div>
 
-                    {isAgeVerified ? (
-                      <span className="px-3.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500 font-semibold text-xs flex items-center gap-1">
-                        <ShieldCheck className="w-3.5 h-3.5" /> Verified
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => setIsAgeModalOpen(true)}
-                        className="px-4 py-1.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-semibold text-xs hover:opacity-90 transition-opacity shrink-0 cursor-pointer"
-                      >
-                        Verify age
-                      </button>
-                    )}
+                    <div className="shrink-0 self-start sm:self-auto">
+                      {isAgeVerified ? (
+                        <span className="px-3.5 py-1.5 rounded-full bg-emerald-500/10 text-emerald-500 font-semibold text-xs flex items-center gap-1">
+                          <ShieldCheck className="w-3.5 h-3.5" /> Verified
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setIsAgeModalOpen(true)}
+                          className="px-4 py-1.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-semibold text-xs hover:opacity-90 transition-opacity cursor-pointer shadow-2xs"
+                        >
+                          Verify age
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Delete Account */}
-                  <div className="flex items-center justify-between pt-3">
+                  <div className="flex items-center justify-between gap-3 pt-3">
                     <span className="font-medium text-[var(--text-primary)]">Delete account</span>
                     <button
                       onClick={() => setIsDeleteModalOpen(true)}
-                      className="px-4 py-1 rounded-full border border-red-500 text-red-500 font-semibold text-xs hover:bg-red-500/10 transition-colors shrink-0 cursor-pointer"
+                      className="px-4 py-1.5 rounded-full border border-red-500 text-red-500 font-semibold text-xs hover:bg-red-500/10 transition-colors shrink-0 cursor-pointer"
                     >
                       Delete
                     </button>
@@ -501,16 +544,16 @@ export default function SettingsModal({
                     </div>
 
                     {/* GitHub Link */}
-                    <div className="flex items-center justify-between pt-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
                       <div className="flex items-center gap-2.5 text-xs text-[var(--text-primary)] font-medium">
-                        <svg className="w-4 h-4 fill-current text-[var(--text-muted)]" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 fill-current text-[var(--text-muted)] shrink-0" viewBox="0 0 24 24">
                           <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
                         </svg>
                         <span>GitHub</span>
                       </div>
 
                       {githubUser ? (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <a
                             href={githubUser.html_url}
                             target="_blank"
@@ -532,7 +575,7 @@ export default function SettingsModal({
                       ) : (
                         <button
                           onClick={() => setIsGithubModalOpen(true)}
-                          className="px-3.5 py-1 rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+                          className="px-3.5 py-1 rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer self-start sm:self-auto"
                         >
                           Add
                         </button>
@@ -566,7 +609,7 @@ export default function SettingsModal({
                   </div>
 
                   {/* Log Out of All Devices */}
-                  <div className="pt-4 border-t border-[var(--border-color)] flex items-center justify-between">
+                  <div className="pt-4 border-t border-[var(--border-color)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <div className="font-semibold text-xs text-[var(--text-primary)]">Log out of all devices</div>
                       <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
@@ -578,7 +621,7 @@ export default function SettingsModal({
                         onClose();
                         onLogout();
                       }}
-                      className="px-4 py-1.5 rounded-full border border-red-500/30 text-red-500 font-semibold text-xs hover:bg-red-500/10 transition-colors shrink-0 cursor-pointer"
+                      className="px-4 py-1.5 rounded-full border border-red-500/30 text-red-500 font-semibold text-xs hover:bg-red-500/10 transition-colors shrink-0 cursor-pointer self-start sm:self-auto"
                     >
                       Log out
                     </button>
@@ -669,6 +712,8 @@ export default function SettingsModal({
         </div>
 
       </div>
+
+    </div>
 
       {/* GitHub Connect Modal */}
       <GithubConnectModal

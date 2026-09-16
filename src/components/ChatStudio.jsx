@@ -180,10 +180,10 @@ export default function ChatStudio({
   const isCurrentGeneratingImage = isGenerating && isImagePrompt(lastUserPrompt || input || '');
 
   return (
-    <div className="flex flex-col h-full w-full max-w-3xl mx-auto px-4 relative overflow-hidden">
+    <div className="flex flex-col h-full w-full max-w-3xl mx-auto px-3 sm:px-4 relative overflow-hidden min-w-0">
       
       {/* Thread Messages Stream */}
-      <div className="flex-1 overflow-y-auto pt-4 pb-52 space-y-6 overscroll-contain">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden pt-4 pb-52 space-y-6 overscroll-contain w-full min-w-0">
         
         {messages.length === 0 ? (
           /* Empty Chat View */
@@ -366,7 +366,7 @@ export default function ChatStudio({
             return (
               <div 
                 key={index} 
-                className={`flex gap-4 ${isUser ? 'justify-end' : 'justify-start'}`}
+                className={`flex gap-3 sm:gap-4 w-full min-w-0 ${isUser ? 'justify-end' : 'justify-start'}`}
               >
                 {!isUser && (
                   <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-1 shadow-2xs">
@@ -376,7 +376,7 @@ export default function ChatStudio({
                   </div>
                 )}
 
-                <div className={`space-y-1.5 max-w-[85%] sm:max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
+                <div className={`space-y-1.5 max-w-[90%] sm:max-w-[80%] min-w-0 ${isUser ? 'items-end' : 'items-start'}`}>
                   
                   {isImageMsg ? (
                     <ImageGenerationMessage 
@@ -388,7 +388,7 @@ export default function ChatStudio({
                     />
                   ) : (
                     <div 
-                      className={`p-4 rounded-2xl text-sm leading-relaxed ${
+                      className={`p-3.5 sm:p-4 rounded-2xl text-sm leading-relaxed overflow-hidden min-w-0 max-w-full ${
                         isUser 
                           ? 'bg-neutral-200 dark:bg-neutral-800 text-[var(--text-primary)] rounded-tr-xs' 
                           : 'bg-transparent text-[var(--text-primary)]'
@@ -413,7 +413,7 @@ export default function ChatStudio({
                       )}
 
                       <div 
-                        className="markdown-body"
+                        className="markdown-body min-w-0 max-w-full overflow-hidden"
                         dangerouslySetInnerHTML={{ 
                           __html: marked.parse(m.content || '') 
                         }} 
@@ -469,7 +469,7 @@ export default function ChatStudio({
 
       {/* Floating Bottom Composer Bar */}
       {messages.length > 0 && (
-        <div className="absolute bottom-4 left-4 right-4 max-w-3xl mx-auto z-20">
+        <div className="absolute bottom-4 left-2 right-2 sm:left-4 sm:right-4 max-w-3xl mx-auto z-20">
           
           {attachedFile && (
             <div className="mb-2 p-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl text-xs flex items-center justify-between shadow-2xs">

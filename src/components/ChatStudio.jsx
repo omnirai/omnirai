@@ -31,7 +31,7 @@ export default function ChatStudio({
   onSendMessage, 
   isGenerating, 
   settings,
-  userQuota = { used: 0, limit: 2, remaining: 2 },
+  userQuota = { used: 0, limit: 25, remaining: 25 },
   currentUser
 }) {
   const [input, setInput] = useState('');
@@ -89,9 +89,14 @@ export default function ChatStudio({
         setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
       };
 
+      recognition.onerror = (event) => {
+        console.warn('Speech recognition error:', event.error);
+        setIsListening(false);
+      };
+
       recognition.start();
     } catch (err) {
-      console.error('Speech recognition error:', err);
+      console.warn('Speech recognition start failed:', err);
       setIsListening(false);
     }
   };
@@ -158,13 +163,18 @@ export default function ChatStudio({
   const quickOptionItems = [
     {
       icon: ImageIcon,
-      label: 'Create an image or sticker',
-      prompt: 'Create a realistic photo of Mount Everest at sunrise'
+      label: 'Create an image',
+      prompt: 'Create an image of a serene mountain landscape at sunrise'
     },
     {
-      icon: PenTool,
-      label: 'Write or edit',
-      prompt: 'Write a persuasive elevator pitch for an AI productivity tool'
+      icon: Code,
+      label: 'Write code',
+      prompt: 'Write a clean, responsive React Tailwind component with animations'
+    },
+    {
+      icon: Sparkles,
+      label: 'Brainstorm ideas',
+      prompt: 'Give me 5 unique product ideas combining AI with productivity tools'
     },
     {
       icon: Globe,
@@ -176,10 +186,10 @@ export default function ChatStudio({
   const isCurrentGeneratingImage = isGenerating && isImagePrompt(lastUserPrompt || input || '');
 
   return (
-    <div className="flex flex-col h-full w-full max-w-3xl mx-auto px-3 sm:px-4 relative overflow-hidden min-w-0">
+    <div className="flex flex-col h-full w-full max-w-3xl mx-auto px-3 sm:px-4 overflow-hidden min-w-0">
       
       {/* Thread Messages Stream */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden pt-4 pb-52 space-y-6 overscroll-contain w-full min-w-0">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pt-4 pb-4 space-y-6 overscroll-contain w-full min-w-0">
         
         {messages.length === 0 ? (
           /* Empty Chat View */
@@ -291,12 +301,12 @@ export default function ChatStudio({
                       onClick={() => setIsThinkingMode(!isThinkingMode)}
                       className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
                         isThinkingMode 
-                          ? 'border-[var(--border-color)] bg-[var(--bg-hover)] text-[var(--text-primary)] shadow-2xs font-semibold' 
-                          : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--bg-hover)]'
+                          ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold shadow-2xs' 
+                          : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
                       }`}
-                      title="Deep Thinking Model"
+                      title="Toggle Reasoning Depth"
                     >
-                      <Brain className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                      <Brain className="w-3.5 h-3.5" />
                       <span className="hidden xs:inline">Think</span>
                     </button>
                   </div>
@@ -381,6 +391,9 @@ export default function ChatStudio({
                         setLastUserPrompt(promptToRegen);
                         onSendMessage(promptToRegen, null, { isImage: true });
                       }} 
+                      onImageLoaded={() => {
+                        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                      }}
                     />
                   ) : (
                     <div 
@@ -460,12 +473,12 @@ export default function ChatStudio({
           </div>
         )}
 
-        <div ref={messagesEndRef} />
+        <div ref={messagesEndRef} className="h-2 shrink-0" />
       </div>
 
-      {/* Floating Bottom Composer Bar */}
+      {/* Docked Bottom Composer Bar (In normal flex flow - CANNOT overlap messages) */}
       {messages.length > 0 && (
-        <div className="absolute bottom-4 left-2 right-2 sm:left-4 sm:right-4 max-w-3xl mx-auto z-20">
+        <div className="shrink-0 w-full pt-2 pb-3 sm:pb-4 z-20">
           
           {attachedFile && (
             <div className="mb-2 p-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl text-xs flex items-center justify-between shadow-2xs">
@@ -586,7 +599,7 @@ export default function ChatStudio({
               {userQuota.used >= userQuota.limit ? (
                 <span className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
-                  Daily image limit reached (2/2). You can generate more images tomorrow.
+                  Daily image limit reached ({userQuota.limit}/{userQuota.limit}). You can generate more images tomorrow.
                 </span>
               ) : (
                 <span>Images today: {userQuota.used}/{userQuota.limit} ({userQuota.remaining} remaining)</span>

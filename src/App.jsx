@@ -20,7 +20,7 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [userQuota, setUserQuota] = useState({ used: 0, limit: 2, remaining: 2 });
+  const [userQuota, setUserQuota] = useState({ used: 0, limit: 25, remaining: 25 });
 
   // Authentication State - Default to ACTIVE (Guest User) so anyone enters app directly!
   const [currentUser, setCurrentUser] = useState(() => {

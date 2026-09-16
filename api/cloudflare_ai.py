@@ -112,7 +112,8 @@ def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
 
     account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").strip()
     api_token = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
-    model = os.getenv("CLOUDFLARE_IMAGE_MODEL", "@cf/bytedance/stable-diffusion-xl-lightning").strip()
+    primary_model = os.getenv("CLOUDFLARE_IMAGE_MODEL", "@cf/black-forest-labs/flux-1-schnell").strip()
+    fallback_model = "@cf/bytedance/stable-diffusion-xl-lightning"
 
     if not account_id or not api_token:
         return False, {
@@ -128,8 +129,8 @@ def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
     print(user_prompt, flush=True)
     print("MODEL PROMPT:")
     print(model_prompt, flush=True)
-    print("MODEL:")
-    print(model, flush=True)
+    print("PRIMARY MODEL:")
+    print(primary_model, flush=True)
     print("===========================================================\n", flush=True)
 
     date_str = get_utc_date_str()
@@ -161,58 +162,61 @@ def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
                 "date": date_str
             }
 
-        # 3. Call Cloudflare Workers AI Endpoint with Native Parameters
-        url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/{model}"
-        headers = {
-            "Authorization": f"Bearer {api_token}",
-            "Content-Type": "application/json",
-            "User-Agent": "OMNIRA-AI-Chat/1.0"
-        }
-        body_data = json.dumps({"prompt": model_prompt}).encode("utf-8")
-
-        req = urllib.request.Request(url, data=body_data, headers=headers, method="POST")
-
-        try:
-            with urllib.request.urlopen(req, timeout=45) as response:
+        # Helper to invoke a Cloudflare AI model
+        def call_cf_model(target_model: str):
+            url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/{target_model}"
+            headers = {
+                "Authorization": f"Bearer {api_token}",
+                "Content-Type": "application/json",
+                "User-Agent": "OMNIRA-AI-Chat/1.0"
+            }
+            body_data = json.dumps({"prompt": model_prompt}).encode("utf-8")
+            req = urllib.request.Request(url, data=body_data, headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=50) as response:
                 content_type = response.headers.get("Content-Type", "")
                 raw_bytes = response.read()
 
-                # Check if Cloudflare returned JSON or direct binary image bytes
                 if "application/json" in content_type:
                     res_json = json.loads(raw_bytes.decode("utf-8", errors="ignore"))
                     if res_json.get("success") is False:
                         errors = res_json.get("errors", [])
                         err_msg = errors[0].get("message") if errors else "Cloudflare Workers AI error"
-                        conn.rollback()
-                        return False, {"error": f"Image generation temporarily unavailable: {err_msg}"}, 500, check_quota(user_id)
+                        raise RuntimeError(err_msg)
                     
-                    # Extract base64 image from result JSON
                     result = res_json.get("result", {})
                     base64_str = result.get("image") or result.get("data")
                     if base64_str:
-                        data_url = f"data:image/png;base64,{base64_str}"
-                    else:
-                        conn.rollback()
-                        return False, {"error": "Invalid response format from Cloudflare AI."}, 500, check_quota(user_id)
+                        return f"data:image/png;base64,{base64_str}"
+                    raise RuntimeError("Invalid JSON response structure from Cloudflare AI.")
                 else:
-                    # Direct binary image data (e.g. image/png or image/jpeg)
                     b64_encoded = base64.b64encode(raw_bytes).decode("utf-8")
                     mime = "image/png"
                     if "jpeg" in content_type or "jpg" in content_type:
                         mime = "image/jpeg"
-                    data_url = f"data:{mime};base64,{b64_encoded}"
+                    return f"data:{mime};base64,{b64_encoded}"
 
-        except urllib.error.HTTPError as http_err:
+        # 3. Call Primary Model with Fallback Protection
+        active_model = primary_model
+        data_url = None
+        last_error = None
+
+        try:
+            data_url = call_cf_model(primary_model)
+        except Exception as e_prim:
+            last_error = str(e_prim)
+            print(f"[OMNIRA] Primary model {primary_model} failed: {e_prim}. Trying fallback...", flush=True)
+            if primary_model != fallback_model:
+                try:
+                    data_url = call_cf_model(fallback_model)
+                    active_model = fallback_model
+                    print(f"[OMNIRA] Fallback model {fallback_model} succeeded!", flush=True)
+                except Exception as e_fb:
+                    last_error = str(e_fb)
+                    print(f"[OMNIRA] Fallback model failed as well: {e_fb}", flush=True)
+
+        if not data_url:
             conn.rollback()
-            try:
-                err_body = json.loads(http_err.read().decode("utf-8", errors="ignore"))
-                err_msg = err_body.get("errors", [{}])[0].get("message", str(http_err))
-            except Exception:
-                err_msg = str(http_err)
-            return False, {"error": f"Image generation is temporarily unavailable. ({err_msg})"}, http_err.code, check_quota(user_id)
-        except Exception as net_err:
-            conn.rollback()
-            return False, {"error": f"Failed to connect to image generation server: {str(net_err)}"}, 500, check_quota(user_id)
+            return False, {"error": f"Image generation is temporarily unavailable. ({last_error})"}, 500, check_quota(user_id)
 
         # 4. SUCCESS — ATOMICALLY INCREMENT QUOTA COUNT
         cursor.execute(
@@ -239,7 +243,7 @@ def generate_image_with_quota(user_id: str, prompt: str) -> tuple:
             "prompt": user_prompt,
             "user_prompt": user_prompt,
             "model_prompt": model_prompt,
-            "model": model,
+            "model": active_model,
             "quota": new_quota
         }, 200, new_quota
 

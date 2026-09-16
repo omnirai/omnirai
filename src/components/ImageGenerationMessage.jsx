@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Download, RefreshCw, Copy, Check, Sparkles, AlertCircle } from 'lucide-react';
 
-export default function ImageGenerationMessage({ message, onRegenerate }) {
+export default function ImageGenerationMessage({ message, onRegenerate, onImageLoaded }) {
   const [isCopied, setIsCopied] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [progressPercent, setProgressPercent] = useState(14);
@@ -141,7 +141,12 @@ export default function ImageGenerationMessage({ message, onRegenerate }) {
                   src={imageUrl}
                   alt={prompt || 'OMNIRA Generated Image'}
                   className="w-full h-auto max-h-[500px] object-contain block transition-transform duration-300 group-hover:scale-[1.01]"
-                  loading="lazy"
+                  loading="eager"
+                  onLoad={() => {
+                    setTimeout(() => {
+                      onImageLoaded?.();
+                    }, 50);
+                  }}
                 />
               </div>
 

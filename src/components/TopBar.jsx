@@ -68,12 +68,12 @@ export const AI_MODELS = [
   },
   {
     id: 'cloudflare-image',
-    name: 'Cloudflare Workers AI (SDXL)',
-    shortName: 'SDXL Image',
+    name: 'Cloudflare Workers AI (FLUX)',
+    shortName: 'FLUX Image',
     badge: 'Cloudflare AI',
     color: '#f38020',
     iconType: 'cloudflare',
-    description: 'Generates photorealistic AI images via Cloudflare Workers AI.'
+    description: 'Generates high-definition AI images and logos via FLUX 1 Schnell.'
   },
   {
     id: 'native',

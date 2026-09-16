@@ -133,7 +133,6 @@ def prepare_model_prompt(raw_prompt: str) -> str:
     ).strip()
 
     # 4. Special handling for LOGO requests:
-    # Handles: "logo of hd electronics", "logo for hd electronics", "brand logo of...", "hd electronics logo"
     logo_match_1 = re.match(
         r'^(?:a\s+)?(?:modern\s+|clean\s+|minimal\s+|company\s+|brand\s+|professional\s+)?logo\s+(?:of|for|about)\s+["\']?([^"\']+)["\']?$',
         cleaned,
@@ -141,7 +140,7 @@ def prepare_model_prompt(raw_prompt: str) -> str:
     )
     if logo_match_1:
         brand = logo_match_1.group(1).strip().strip('"\'')
-        return f'professional modern vector logo design for "{brand}", clean iconic emblem, centered composition, sharp precise typography "{brand}", minimalist corporate graphic identity, crisp geometric contours, 8k resolution'
+        return f'professional modern vector logo design for "{brand}", clean iconic emblem, centered composition, sharp precise typography "{brand}", minimalist corporate graphic identity, crisp geometric contours'
 
     logo_match_2 = re.match(
         r'^["\']?([^"\']+)["\']?\s+logo$',
@@ -150,12 +149,23 @@ def prepare_model_prompt(raw_prompt: str) -> str:
     )
     if logo_match_2:
         brand = logo_match_2.group(1).strip().strip('"\'')
-        return f'professional modern vector logo design for "{brand}", clean iconic emblem, centered composition, sharp precise typography "{brand}", minimalist corporate graphic identity, crisp geometric contours, 8k resolution'
+        return f'professional modern vector logo design for "{brand}", clean iconic emblem, centered composition, sharp precise typography "{brand}", minimalist corporate graphic identity, crisp geometric contours'
 
-    # 5. For general prompts, ensure high definition detail if not already present
+    # 5. Special handling for FLAG requests:
+    flag_match = re.match(r'^(?:the\s+)?(?:official\s+|national\s+)?flag\s+of\s+([a-zA-Z\s]+)$', cleaned, flags=re.IGNORECASE)
+    if not flag_match:
+        flag_match = re.match(r'^([a-zA-Z\s]+)\s+flag$', cleaned, flags=re.IGNORECASE)
+    if flag_match:
+        country = flag_match.group(1).strip().lower()
+        if 'nepal' in country:
+            return 'official Flag of Nepal, double-pennant red and blue flag of Nepal with white moon and sun emblems, clean geometric shape, isolated on white background'
+        return f'official national flag of {country.title()}, authentic colors and accurate national emblem, centered composition, flat vector graphic design, clean crisp edges, isolated on white background'
+
+    # 6. For general prompts, ensure high definition detail if not already present
+    is_graphic_art = any(term in cleaned.lower() for term in ['logo', 'flag', 'icon', 'vector', 'emblem', 'badge', 'sticker', 'symbol'])
     detail_keywords = ['detail', '8k', '4k', 'sharp', 'resolution', 'photorealistic', 'hyperrealistic']
-    if not any(kw in cleaned.lower() for kw in detail_keywords) and len(cleaned) > 3:
-        return f"{cleaned}, high resolution, intricate details, sharp focus, 8k render"
+    if not is_graphic_art and not any(kw in cleaned.lower() for kw in detail_keywords) and len(cleaned) > 3:
+        return f"{cleaned}, high resolution, intricate details, sharp focus"
 
     return cleaned if cleaned else raw_prompt.strip()
 

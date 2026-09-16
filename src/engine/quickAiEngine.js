@@ -20,7 +20,7 @@ let currentPipelineModel = null;
  * Natural language intent detector for image generation queries.
  */
 export function isImagePrompt(prompt, mode = 'chat', selectedModel = 'gpt-4o') {
-  if (selectedModel === 'flux-image' || mode === 'image') return true;
+  if (selectedModel === 'flux-image' || selectedModel === 'cloudflare-image' || mode === 'image') return true;
 
   const text = (prompt || '').toLowerCase().trim();
   if (!text) return false;
@@ -329,8 +329,8 @@ function getModelDisplayName(modelId) {
     'deepseek-reasoner': 'DeepSeek R1',
     'grok-2': 'Grok 2 (xAI)',
     'perplexity': 'Perplexity Sonar',
-    'cloudflare-image': 'Cloudflare Workers AI (SDXL)',
-    'flux-image': 'Cloudflare Workers AI (SDXL)',
+    'cloudflare-image': 'Cloudflare Workers AI (FLUX)',
+    'flux-image': 'Cloudflare Workers AI (FLUX)',
     'native': 'OMNIRA Native Neural'
   };
   return names[modelId] || 'OMNIRA (GPT-4o)';

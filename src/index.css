@@ -70,7 +70,7 @@
 
 /* Header Safe Area Top Inset: Hard locked below iPhone Dynamic Island / Status Bar */
 header {
-  padding-top: max(48px, calc(env(safe-area-inset-top, 0px) + 12px)) !important;
+  padding-top: max(66px, calc(env(safe-area-inset-top, 0px) + 18px)) !important;
   background-color: var(--bg-primary) !important;
   flex-shrink: 0 !important;
 }

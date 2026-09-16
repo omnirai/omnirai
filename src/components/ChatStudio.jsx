@@ -149,7 +149,7 @@ export default function ChatStudio({
   const isCurrentGeneratingImage = isGenerating && isImagePrompt(lastUserPrompt || input || '');
 
   return (
-    <div className="flex flex-col h-full w-full max-w-3xl mx-auto px-4 relative select-none">
+    <div className="flex flex-col h-full w-full max-w-3xl mx-auto px-4 relative">
       
       {/* Thread Messages Stream */}
       <div className="flex-1 overflow-y-auto pt-4 pb-44 space-y-6">
@@ -422,7 +422,7 @@ export default function ChatStudio({
 
       {/* Floating Bottom Composer Bar */}
       {messages.length > 0 && (
-        <div className="absolute bottom-4 left-4 right-4 max-w-3xl mx-auto z-20 select-none">
+        <div className="absolute bottom-4 left-4 right-4 max-w-3xl mx-auto z-20">
           
           {attachedFile && (
             <div className="mb-2 p-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl text-xs flex items-center justify-between shadow-2xs">

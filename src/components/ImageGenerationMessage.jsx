@@ -48,7 +48,7 @@ export default function ImageGenerationMessage({ message, onRegenerate }) {
   };
 
   return (
-    <div className="w-full max-w-xl my-2 select-none">
+    <div className="w-full max-w-xl my-2">
       <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] overflow-hidden shadow-sm transition-all hover:shadow-md">
         
         {/* Header Badge */}

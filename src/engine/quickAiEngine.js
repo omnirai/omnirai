@@ -182,12 +182,6 @@ export async function queryQuickAi({
   }
 }
 
-// Fallback Pollinations URL generator if credentials missing
-function generateRealAiImage(prompt) {
-  const cleanPrompt = prompt.replace(/(create an image of|draw a|generate image of|picture of|create a sticker of)/gi, '').trim() || prompt;
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanPrompt)}?width=1024&height=1024&nologo=true&nofeed=true&nologo=1&seed=${Math.floor(Math.random() * 1000000)}`;
-}
-
 // Real LLM API Query (Calls OMNIRA Groq Engine)
 async function queryRealLlmApi(prompt, selectedModel, history, fileData, settings) {
   const apiKey = settings.apiKey || DEFAULT_GROQ_KEY;

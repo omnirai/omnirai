@@ -1,11 +1,27 @@
-import React, { useState } from 'react';
-import { Download, RefreshCw, Copy, Check, Sparkles, AlertCircle, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Download, RefreshCw, Copy, Check, Sparkles, AlertCircle } from 'lucide-react';
 
 export default function ImageGenerationMessage({ message, onRegenerate }) {
   const [isCopied, setIsCopied] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [progressPercent, setProgressPercent] = useState(14);
 
   const { prompt = '', imageUrl = '', error = null, isLoading = false, timestamp } = message;
+
+  // Live Percentage Progress Counter during Image Creation
+  useEffect(() => {
+    if (isLoading) {
+      setProgressPercent(14);
+      const interval = setInterval(() => {
+        setProgressPercent((prev) => {
+          if (prev >= 96) return 96;
+          const inc = Math.floor(Math.random() * 9) + 4;
+          return Math.min(96, prev + inc);
+        });
+      }, 350);
+      return () => clearInterval(interval);
+    }
+  }, [isLoading]);
 
   const handleCopyPrompt = () => {
     if (!prompt) return;
@@ -20,7 +36,6 @@ export default function ImageGenerationMessage({ message, onRegenerate }) {
       setIsDownloading(true);
       const filename = `omnira-image-${Date.now()}.png`;
 
-      // Handle Data URI or Remote HTTP URL download
       if (imageUrl.startsWith('data:')) {
         const link = document.createElement('a');
         link.href = imageUrl;
@@ -64,24 +79,42 @@ export default function ImageGenerationMessage({ message, onRegenerate }) {
         <div className="p-4 space-y-3">
           
           {isLoading ? (
-            /* Live ChatGPT / Gemini In-Thread Image Preview Loading Skeleton */
+            /* Live Gemini / ChatGPT Dotted Matrix Wave Loading Container */
             <div className="space-y-3">
-              <div className="relative w-full aspect-square max-h-[400px] rounded-xl overflow-hidden border border-[var(--border-color)]/60 bg-gradient-to-br from-emerald-500/10 via-sky-500/15 to-emerald-500/10 animate-pulse flex flex-col items-center justify-center p-6 text-center shadow-inner">
+              <div className="relative w-full aspect-square max-h-[420px] rounded-2xl bg-[#090b10] p-6 flex flex-col justify-between overflow-hidden border border-neutral-800 shadow-xl">
                 
-                {/* Center Loading Spinner & Icon */}
-                <div className="relative mb-3 flex items-center justify-center">
-                  <div className="w-14 h-14 rounded-full bg-emerald-500/20 animate-ping absolute inset-0"></div>
-                  <div className="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center relative shadow-md">
-                    <Loader2 className="w-6 h-6 animate-spin" />
+                {/* Header Text */}
+                <div className="flex items-center gap-2 text-white font-medium text-base tracking-tight">
+                  <span>Creating image</span>
+                </div>
+
+                {/* Dotted Wave Matrix Grid */}
+                <div className="my-auto grid grid-cols-[repeat(16,minmax(0,1fr))] gap-2 sm:gap-2.5 justify-center items-center opacity-85 px-2">
+                  {Array.from({ length: 256 }).map((_, i) => {
+                    const row = Math.floor(i / 16);
+                    const col = i % 16;
+                    const delay = ((row + col) % 8) * 120;
+                    return (
+                      <span
+                        key={i}
+                        className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse transition-opacity"
+                        style={{
+                          animationDelay: `${delay}ms`,
+                          animationDuration: '1.4s',
+                          opacity: (i * 7) % 100 > 30 ? 0.85 : 0.35
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* Progress Percentage Badge Pill */}
+                <div className="flex justify-end">
+                  <div className="px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white font-medium text-xs tracking-wide shadow-sm">
+                    {progressPercent}%
                   </div>
                 </div>
 
-                <p className="text-sm font-medium text-[var(--text-primary)] mb-1">
-                  Creating your image...
-                </p>
-                <p className="text-xs text-[var(--text-muted)] max-w-xs">
-                  Rendering high-resolution artwork via Cloudflare Workers AI
-                </p>
               </div>
 
               {prompt && (

@@ -194,32 +194,7 @@ async function queryRealLlmApi(prompt, selectedModel, history, fileData, setting
   const apiKey = settings.apiKey || DEFAULT_GROQ_KEY;
   const modelDisplayName = getModelDisplayName(selectedModel);
 
-  // Check installed plugins & configuration
-  const installedPlugins = JSON.parse(localStorage.getItem('omnira_installed_plugins') || '[]');
-  const pluginConfigs = JSON.parse(localStorage.getItem('omnira_plugin_configs') || '{}');
-
-  let pluginContext = '';
-  if (installedPlugins.length > 0) {
-    pluginContext = `\nActive Enabled Plugins: [${installedPlugins.join(', ')}].`;
-  }
-
-  // Live Real GitHub API Execution if GitHub plugin is installed and user asks about GitHub
-  if (installedPlugins.includes('github') && (prompt.toLowerCase().includes('github') || prompt.toLowerCase().includes('repo') || prompt.toLowerCase().includes('pr') || prompt.toLowerCase().includes('commit'))) {
-    try {
-      const ghUser = pluginConfigs.github?.username || 'quick-ai-bishal';
-      const ghRes = await fetch(`https://api.github.com/users/${ghUser}/repos?sort=updated&per_page=5`);
-      if (ghRes.ok) {
-        const repos = await ghRes.json();
-        const repoSummary = repos.map(r => `- ${r.name} (${r.stargazers_count} ★, ${r.language || 'Code'}): ${r.description || 'No description'}`).join('\n');
-        pluginContext += `\n\n[Live GitHub API Data for @${ghUser}]:\n${repoSummary}`;
-      }
-    } catch (e) {
-      console.warn("GitHub live plugin fetch error:", e);
-    }
-  }
-
   const systemInstruction = `You are OMNIRA (${modelDisplayName}), a helpful, friendly, and intelligent AI assistant.
-${pluginContext}
 Follow these formatting rules strictly:
 1. Provide concise, clear, natural, and conversational responses like OMNIRA.
 2. For simple questions, give direct, well-written paragraphs or bullet points.

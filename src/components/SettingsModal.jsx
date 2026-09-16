@@ -233,7 +233,6 @@ export default function SettingsModal({
     { id: 'general', label: 'General', icon: Settings },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'personalization', label: 'Personalization', icon: User },
-    { id: 'plugins', label: 'Plugins', icon: Puzzle },
     { id: 'voice', label: 'Voice', icon: Mic },
     { id: 'billing', label: 'Billing', icon: CreditCard },
     { id: 'usage', label: 'Usage', icon: BarChart3 },

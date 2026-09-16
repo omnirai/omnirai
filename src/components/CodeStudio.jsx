@@ -1,328 +1,549 @@
-import React, { useState } from 'react';
-import { Code, Play, Copy, Check, Download, RefreshCw, Eye, EyeOff, Terminal, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { 
+  Code, 
+  Play, 
+  Copy, 
+  Check, 
+  Download, 
+  RefreshCw, 
+  Trash2, 
+  Plus, 
+  Terminal, 
+  FileCode, 
+  Sparkles,
+  Clock,
+  Save,
+  Search
+} from 'lucide-react';
 import { queryQuickAi } from '../engine/quickAiEngine';
 
-export default function CodeStudio({ settings }) {
-  const [selectedLang, setSelectedLang] = useState('python'); // 'python' | 'php' | 'cpp' | 'html'
-  const [prompt, setPrompt] = useState('Build a data processing algorithm');
+const SUPPORTED_LANGUAGES = [
+  { id: 'python', label: 'Python', ext: 'py' },
+  { id: 'javascript', label: 'JavaScript', ext: 'js' },
+  { id: 'typescript', label: 'TypeScript', ext: 'ts' },
+  { id: 'html', label: 'HTML / Web', ext: 'html' },
+  { id: 'css', label: 'CSS', ext: 'css' },
+  { id: 'cpp', label: 'C++', ext: 'cpp' },
+  { id: 'php', label: 'PHP', ext: 'php' },
+  { id: 'sql', label: 'SQL', ext: 'sql' },
+  { id: 'bash', label: 'Bash / Shell', ext: 'sh' }
+];
 
-  const defaultTemplates = {
-    python: `# Quick AI Python 3 Sandbox — Created by bishalcodes.com
-import json
-import time
+export default function CodeStudio({ settings, chatSessions = [] }) {
+  const [selectedLang, setSelectedLang] = useState('python');
+  const [code, setCode] = useState('');
+  const [snippetTitle, setSnippetTitle] = useState('Untitled Snippet');
+  const [activeSnippetId, setActiveSnippetId] = useState(null);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [consoleOutput, setConsoleOutput] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [historySearch, setHistorySearch] = useState('');
 
-def process_data(items):
-    print(f"[Python 3] Processing {len(items)} items...")
-    results = []
-    for idx, item in enumerate(items):
-        results.append({
-            "id": idx + 1,
-            "raw": item,
-            "uppercase": str(item).upper()
-        })
-    return results
+  // Persistent user coding history stored in localStorage
+  const [codeHistory, setCodeHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem('omnira_code_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
 
-if __name__ == "__main__":
-    data = ["python", "php", "c++", "quick_ai"]
-    output = process_data(data)
-    print(json.dumps(output, indent=2))`,
-
-    php: `<?php
-/**
- * Quick AI PHP 8 Sandbox — Created by bishalcodes.com
- */
-
-namespace QuickAI;
-
-class DataHandler {
-    private string $author = "bishalcodes.com";
-
-    public function process(array $items): array {
-        $out = [];
-        foreach ($items as $k => $v) {
-            $out[] = [
-                'index' => $k + 1,
-                'value' => strtoupper((string)$v),
-                'creator' => $this->author
-            ];
+  // Automatically extract code blocks from chat sessions and merge into codeHistory
+  useEffect(() => {
+    const extractedSnippets = [];
+    if (Array.isArray(chatSessions)) {
+      chatSessions.forEach((session) => {
+        if (Array.isArray(session.messages)) {
+          session.messages.forEach((msg) => {
+            if (msg && msg.content && typeof msg.content === 'string') {
+              // Match code blocks ```lang ... ```
+              const codeBlockRegex = /```([a-zA-Z0-9_\-+]*)\n([\s\S]*?)```/g;
+              let match;
+              while ((match = codeBlockRegex.exec(msg.content)) !== null) {
+                const langRaw = (match[1] || 'python').toLowerCase();
+                const matchedCode = match[2].trim();
+                if (matchedCode.length > 10) {
+                  const lang = SUPPORTED_LANGUAGES.find(l => l.id === langRaw || l.ext === langRaw)?.id || 'python';
+                  extractedSnippets.push({
+                    id: `chat-code-${msg.id || Date.now()}-${Math.random()}`,
+                    title: session.title ? `${session.title} snippet` : 'Chat code snippet',
+                    language: lang,
+                    code: matchedCode,
+                    timestamp: msg.timestamp || new Date().toLocaleDateString(),
+                    createdAt: Date.now()
+                  });
+                }
+              }
+            }
+          });
         }
-        return $out;
-    }
-}
-
-$handler = new DataHandler();
-$result = $handler->process(['php', 'python', 'c++', 'quick_ai']);
-header('Content-Type: application/json');
-echo json_encode($result, JSON_PRETTY_PRINT);`,
-
-    cpp: `/**
- * Quick AI C++17 Sandbox — Created by bishalcodes.com
- */
-
-#include <iostream>
-#include <vector>
-#include <string>
-#include <algorithm>
-
-int main() {
-    std::cout << "=== Quick AI C++ Execution Engine ===\\n";
-    std::cout << "Created by bishalcodes.com\\n\\n";
-
-    std::vector<std::string> languages = { "C++", "Python", "PHP", "Quick AI" };
-
-    for (size_t i = 0; i < languages.size(); ++i) {
-        std::string upper = languages[i];
-        std::transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
-        std::cout << "[" << (i + 1) << "] " << languages[i] << " -> " << upper << "\\n";
+      });
     }
 
-    std::cout << "\\n[C++] Execution completed successfully.\\n";
-    return 0;
-}`,
+    if (extractedSnippets.length > 0) {
+      setCodeHistory((prev) => {
+        const existingCodes = new Set(prev.map(item => item.code.trim()));
+        const newSnippets = extractedSnippets.filter(s => !existingCodes.has(s.code.trim()));
+        if (newSnippets.length > 0) {
+          const merged = [...newSnippets, ...prev];
+          localStorage.setItem('omnira_code_history', JSON.stringify(merged));
+          return merged;
+        }
+        return prev;
+      });
+    }
+  }, [chatSessions]);
 
-    html: `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <style>
-    body { font-family: system-ui, sans-serif; background: #09090b; color: #ffffff; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-    .card { background: #18181b; border: 1px solid #27272a; padding: 24px; border-radius: 8px; text-align: center; }
-    button { background: #ffffff; color: #000000; border: none; padding: 8px 16px; border-radius: 4px; font-weight: 600; cursor: pointer; margin-top: 12px; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h2>Quick AI Live Web Sandbox</h2>
-    <p>Created by bishalcodes.com (Python • PHP • C++ Ready)</p>
-    <button onclick="alert('Quick AI Sandbox Active!')">Run Test</button>
-  </div>
-</body>
-</html>`
+  // Save history to localStorage
+  const updateHistory = (newList) => {
+    setCodeHistory(newList);
+    try {
+      localStorage.setItem('omnira_code_history', JSON.stringify(newList));
+    } catch (e) {
+      console.warn('LocalStorage save warning:', e);
+    }
   };
 
-  const [code, setCode] = useState(defaultTemplates.python);
-  const [consoleOutput, setConsoleOutput] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isRunningCode, setIsRunningCode] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  const handleLanguageChange = (lang) => {
-    setSelectedLang(lang);
-    setCode(defaultTemplates[lang] || '');
+  // Load snippet from history
+  const handleSelectSnippet = (item) => {
+    setActiveSnippetId(item.id);
+    setCode(item.code);
+    setSelectedLang(item.language || 'python');
+    setSnippetTitle(item.title || 'Untitled Snippet');
     setConsoleOutput('');
   };
 
-  const handleAction = async (actionType) => {
-    setIsGenerating(true);
-    let langPrefix = `Write ${selectedLang.toUpperCase()} code for: `;
-    let finalPrompt = `${langPrefix}${prompt}`;
+  // Start a fresh, clean snippet
+  const handleNewSnippet = () => {
+    setActiveSnippetId(null);
+    setCode('');
+    setSnippetTitle('New Snippet');
+    setConsoleOutput('');
+  };
 
-    if (actionType === 'refactor') {
-      finalPrompt = `Refactor and optimize the following ${selectedLang.toUpperCase()} code:\n\`\`\`\n${code}\n\`\`\``;
+  // Save current code to history
+  const handleSaveToHistory = () => {
+    if (!code.trim()) return;
+    const title = snippetTitle.trim() || 'Untitled Snippet';
+
+    if (activeSnippetId) {
+      // Update existing
+      const updated = codeHistory.map((item) => 
+        item.id === activeSnippetId 
+          ? { ...item, title, code, language: selectedLang, timestamp: new Date().toLocaleTimeString() }
+          : item
+      );
+      updateHistory(updated);
+    } else {
+      // Create new history entry
+      const newItem = {
+        id: `code-${Date.now()}`,
+        title,
+        language: selectedLang,
+        code,
+        timestamp: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString(),
+        createdAt: Date.now()
+      };
+      setActiveSnippetId(newItem.id);
+      updateHistory([newItem, ...codeHistory]);
+    }
+  };
+
+  // Delete from history
+  const handleDeleteSnippet = (id, e) => {
+    if (e) e.stopPropagation();
+    if (confirm('Delete this snippet from your coding history?')) {
+      const updated = codeHistory.filter((item) => item.id !== id);
+      updateHistory(updated);
+      if (activeSnippetId === id) {
+        handleNewSnippet();
+      }
+    }
+  };
+
+  // AI Code Operations (Generate, Refactor, Fix, Explain)
+  const handleAiAction = async (actionType) => {
+    setIsAiLoading(true);
+    let promptToSend = '';
+
+    if (actionType === 'generate') {
+      if (!aiPrompt.trim()) {
+        setIsAiLoading(false);
+        return;
+      }
+      promptToSend = `Write clean, efficient ${selectedLang.toUpperCase()} code for:\n${aiPrompt}`;
+    } else if (actionType === 'refactor') {
+      if (!code.trim()) {
+        setIsAiLoading(false);
+        return;
+      }
+      promptToSend = `Refactor and optimize this ${selectedLang.toUpperCase()} code for clarity, performance, and best practices:\n\`\`\`${selectedLang}\n${code}\n\`\`\``;
     } else if (actionType === 'fix') {
-      finalPrompt = `Find and fix potential bugs in this ${selectedLang.toUpperCase()} code:\n\`\`\`\n${code}\n\`\`\``;
+      if (!code.trim()) {
+        setIsAiLoading(false);
+        return;
+      }
+      promptToSend = `Debug and fix any errors, bugs, or edge cases in this ${selectedLang.toUpperCase()} code:\n\`\`\`${selectedLang}\n${code}\n\`\`\``;
     } else if (actionType === 'explain') {
-      finalPrompt = `Explain how this ${selectedLang.toUpperCase()} code works:\n\`\`\`\n${code}\n\`\`\``;
+      if (!code.trim()) {
+        setIsAiLoading(false);
+        return;
+      }
+      promptToSend = `Explain in plain English how this ${selectedLang.toUpperCase()} code works, outlining its key logic and functions:\n\`\`\`${selectedLang}\n${code}\n\`\`\``;
     }
 
     try {
       const response = await queryQuickAi({
-        prompt: finalPrompt,
+        prompt: promptToSend,
         mode: 'code',
         settings
       });
 
-      const codeMatch = response.match(/```(?:python|php|cpp|c\+\+|html|css|js)?\n([\s\S]*?)```/i);
-      if (codeMatch && codeMatch[1]) {
-        setCode(codeMatch[1].trim());
-      } else if (actionType === 'generate') {
-        setCode(response);
+      // Extract code block if AI response includes code
+      const codeMatch = response.match(/```(?:[a-zA-Z0-9_\-+]*)\n([\s\S]*?)```/);
+      if (codeMatch && codeMatch[1] && actionType !== 'explain') {
+        const extracted = codeMatch[1].trim();
+        setCode(extracted);
+        setConsoleOutput(`[AI Response]:\n${response}`);
+      } else {
+        setConsoleOutput(response);
       }
-      setConsoleOutput(response);
     } catch (err) {
-      console.error(err);
+      setConsoleOutput(`⚠️ Error: ${err.message}`);
     } finally {
-      setIsGenerating(false);
+      setIsAiLoading(false);
     }
   };
 
-  // Run Code Execution Simulator (Console Output for Python/PHP/C++ or iframe for HTML)
+  // Run or Evaluate Code
   const handleRunCode = () => {
-    setIsRunningCode(true);
-    setConsoleOutput(`[Executing ${selectedLang.toUpperCase()}...]\n\n`);
+    if (!code.trim()) return;
 
-    setTimeout(() => {
-      if (selectedLang === 'python') {
-        setConsoleOutput(`[Python 3.12 Engine Output]:\n[Quick AI] Processing 4 items...\n{\n  "engine": "Quick AI",\n  "creator": "bishalcodes.com",\n  "status": "SUCCESS",\n  "execution_time": "0.14ms"\n}\n\nProcess finished with exit code 0.`);
-      } else if (selectedLang === 'php') {
-        setConsoleOutput(`[PHP 8.3 CLI Output]:\nContent-Type: application/json\n\n{\n  "status": "success",\n  "author": "bishalcodes.com",\n  "data": [\n    { "index": 1, "value": "PHP" },\n    { "index": 2, "value": "PYTHON" },\n    { "index": 3, "value": "C++" }\n  ]\n}`);
-      } else if (selectedLang === 'cpp') {
-        setConsoleOutput(`[g++ -std=c++17 -O3 Output]:\n=== Quick AI C++ Execution Engine ===\nCreated by bishalcodes.com\n\n[1] C++ -> C++\n[2] Python -> PYTHON\n[3] PHP -> PHP\n[4] Quick AI -> QUICK AI\n\nExecution completed in: 0.042 ms\nProcess finished with exit code 0.`);
-      } else {
-        setConsoleOutput(`[Web Frame Loaded HTML/CSS/JS Sandbox]`);
+    if (selectedLang === 'javascript') {
+      try {
+        let logs = [];
+        const originalLog = console.log;
+        console.log = (...args) => {
+          logs.push(args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' '));
+        };
+        // Run safely in client JS sandbox
+        const evalResult = new Function(code)();
+        console.log = originalLog;
+        if (logs.length > 0) {
+          setConsoleOutput(logs.join('\n'));
+        } else if (evalResult !== undefined) {
+          setConsoleOutput(typeof evalResult === 'object' ? JSON.stringify(evalResult, null, 2) : String(evalResult));
+        } else {
+          setConsoleOutput('Execution finished with no output.');
+        }
+      } catch (err) {
+        setConsoleOutput(`Runtime Error: ${err.message}`);
       }
-      setIsRunningCode(false);
-    }, 400);
+    } else if (selectedLang === 'html') {
+      setConsoleOutput('[HTML Web Preview rendered in preview panel]');
+    } else {
+      // For backend languages (Python, C++, PHP, etc.), ask AI to analyze/evaluate code output
+      handleAiAction('explain');
+    }
   };
 
   const handleCopy = () => {
+    if (!code) return;
     navigator.clipboard.writeText(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDownload = () => {
-    const extMap = { python: 'py', php: 'php', cpp: 'cpp', html: 'html' };
+    if (!code) return;
+    const currentExt = SUPPORTED_LANGUAGES.find(l => l.id === selectedLang)?.ext || 'txt';
     const blob = new Blob([code], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `quick-ai-code.${extMap[selectedLang] || 'txt'}`;
+    a.download = `${(snippetTitle || 'script').replace(/[^a-z0-9]/gi, '_')}.${currentExt}`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
+  // Filter history
+  const filteredHistory = codeHistory.filter((item) => {
+    if (!historySearch.trim()) return true;
+    const q = historySearch.toLowerCase();
+    return item.title?.toLowerCase().includes(q) || 
+      item.language?.toLowerCase().includes(q) || 
+      item.code?.toLowerCase().includes(q);
+  });
+
   return (
-    <div className="flex flex-col h-[calc(100vh-4.5rem)] max-w-7xl mx-auto w-full px-2 sm:px-4 py-2">
+    <div className="flex h-full w-full max-w-7xl mx-auto p-2 sm:p-4 overflow-hidden select-none">
       
-      {/* Language Selector Header */}
-      <div className="flex flex-wrap items-center justify-between py-2 border-b border-[var(--border-color)] text-xs mb-3 gap-2">
-        <div className="flex items-center gap-1.5 overflow-x-auto">
-          <span className="font-semibold text-[var(--text-primary)] mr-2">Language:</span>
-          
-          <button
-            onClick={() => handleLanguageChange('python')}
-            className={`px-3 py-1.5 rounded-lg border font-mono transition-all ${
-              selectedLang === 'python'
-                ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] border-[var(--text-primary)] font-bold'
-                : 'border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            🐍 Python 3
-          </button>
-
-          <button
-            onClick={() => handleLanguageChange('php')}
-            className={`px-3 py-1.5 rounded-lg border font-mono transition-all ${
-              selectedLang === 'php'
-                ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] border-[var(--text-primary)] font-bold'
-                : 'border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            🐘 PHP 8
-          </button>
-
-          <button
-            onClick={() => handleLanguageChange('cpp')}
-            className={`px-3 py-1.5 rounded-lg border font-mono transition-all ${
-              selectedLang === 'cpp'
-                ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] border-[var(--text-primary)] font-bold'
-                : 'border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            ⚙️ C++ (C++17)
-          </button>
-
-          <button
-            onClick={() => handleLanguageChange('html')}
-            className={`px-3 py-1.5 rounded-lg border font-mono transition-all ${
-              selectedLang === 'html'
-                ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] border-[var(--text-primary)] font-bold'
-                : 'border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            🌐 HTML / CSS / JS
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button onClick={handleRunCode} disabled={isRunningCode} className="btn btn-sm text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-none">
-            {isRunningCode ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
-            <span>Run {selectedLang.toUpperCase()}</span>
-          </button>
-          <button onClick={handleCopy} className="btn btn-sm text-xs">
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-            <span>{copied ? 'Copied' : 'Copy'}</span>
-          </button>
-          <button onClick={handleDownload} className="btn btn-sm text-xs">
-            <Download className="w-3.5 h-3.5" /> Download
-          </button>
-        </div>
-      </div>
-
-      {/* Input Prompt Box */}
-      <div className="mb-3 border border-[var(--border-color)] rounded-xl bg-[var(--bg-card)] p-3 shadow-sm">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAction('generate')}
-            placeholder={`Describe ${selectedLang.toUpperCase()} script or algorithm to generate...`}
-            className="input text-sm flex-1 bg-[var(--bg-hover)] border-none"
-          />
-          <button
-            onClick={() => handleAction('generate')}
-            disabled={isGenerating || !prompt.trim()}
-            className="btn btn-primary btn-sm whitespace-nowrap"
-          >
-            {isGenerating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Code className="w-3.5 h-3.5" />}
-            <span>Generate {selectedLang.toUpperCase()}</span>
-          </button>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-[var(--border-color)] text-xs">
-          <span className="text-[var(--text-muted)]">Actions:</span>
-          <button onClick={() => handleAction('refactor')} disabled={isGenerating} className="btn btn-sm text-xs">
-            ⚡ Refactor Code
-          </button>
-          <button onClick={() => handleAction('fix')} disabled={isGenerating} className="btn btn-sm text-xs">
-            🐞 Fix Bugs
-          </button>
-          <button onClick={() => handleAction('explain')} disabled={isGenerating} className="btn btn-sm text-xs">
-            📖 Explain Code
-          </button>
-        </div>
-      </div>
-
-      {/* Split View: Editor Left | Terminal Output Right */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-0 overflow-hidden">
+      {/* Main Grid: Left Sidebar Coding History | Right Code Workspace */}
+      <div className="flex-1 flex flex-col md:flex-row gap-3 h-full overflow-hidden">
         
-        {/* Left: Code Editor */}
-        <div className="flex flex-col border border-[var(--border-color)] rounded-xl bg-[var(--bg-card)] overflow-hidden">
-          <div className="bg-[var(--bg-hover)] px-3 py-2 border-b border-[var(--border-color)] text-xs font-mono font-semibold flex items-center justify-between">
-            <span>{selectedLang.toUpperCase()} EDITOR</span>
-            <span className="text-[var(--text-muted)]">bishalcodes.com</span>
+        {/* Left Column: User's Coding History */}
+        <div className="w-full md:w-72 lg:w-80 flex flex-col border border-[var(--border-color)] bg-[var(--bg-card)] rounded-2xl overflow-hidden shrink-0 shadow-sm">
+          
+          {/* History Header */}
+          <div className="p-3 border-b border-[var(--border-color)] bg-[var(--bg-hover)]/30 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-emerald-500" />
+              <span className="font-semibold text-xs text-[var(--text-primary)]">
+                Coding History ({codeHistory.length})
+              </span>
+            </div>
+            <button
+              onClick={handleNewSnippet}
+              className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] text-xs flex items-center gap-1 font-medium transition-colors"
+              title="New Clean Snippet"
+            >
+              <Plus className="w-3.5 h-3.5 text-emerald-500" />
+              <span>New</span>
+            </button>
           </div>
-          <textarea
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            spellCheck={false}
-            className="flex-1 p-3 font-mono text-xs bg-[var(--bg-card)] text-[var(--text-primary)] border-none outline-none resize-none leading-relaxed"
-          />
+
+          {/* History Search */}
+          <div className="p-2 border-b border-[var(--border-color)] shrink-0">
+            <div className="relative">
+              <Search className="w-3 h-3 text-[var(--text-muted)] absolute left-2.5 top-2.5" />
+              <input
+                type="text"
+                value={historySearch}
+                onChange={(e) => setHistorySearch(e.target.value)}
+                placeholder="Search history..."
+                className="w-full pl-7 pr-2 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-hover)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-emerald-500"
+              />
+            </div>
+          </div>
+
+          {/* History Snippets List */}
+          <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+            {filteredHistory.length === 0 ? (
+              <div className="p-6 text-center text-xs text-[var(--text-muted)] space-y-1">
+                <FileCode className="w-6 h-6 mx-auto opacity-40 text-neutral-500" />
+                <p className="font-medium text-[var(--text-primary)]">No coding history yet</p>
+                <p className="text-[11px] leading-relaxed">
+                  Write code in the editor and click "Save", or ask OMNIRA in Chat. Your code will stay saved here.
+                </p>
+              </div>
+            ) : (
+              filteredHistory.map((item) => {
+                const isSelected = activeSnippetId === item.id;
+                const lineCount = (item.code || '').split('\n').length;
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => handleSelectSnippet(item)}
+                    className={`p-2.5 rounded-xl border transition-all cursor-pointer group flex flex-col justify-between ${
+                      isSelected
+                        ? 'border-emerald-500/50 bg-emerald-500/10 text-[var(--text-primary)]'
+                        : 'border-[var(--border-color)]/60 bg-[var(--bg-hover)]/20 hover:bg-[var(--bg-hover)] text-[var(--text-primary)]'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-1 mb-1">
+                      <span className="font-semibold text-xs truncate flex-1">
+                        {item.title || 'Untitled Snippet'}
+                      </span>
+                      <button
+                        onClick={(e) => handleDeleteSnippet(item.id, e)}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-neutral-400 hover:text-red-500 transition-opacity"
+                        title="Delete snippet"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)]">
+                      <span className="px-1.5 py-0.5 rounded bg-[var(--bg-card)] uppercase font-mono font-bold border border-[var(--border-color)]">
+                        {item.language || 'code'}
+                      </span>
+                      <span>{lineCount} lines • {item.timestamp || 'Saved'}</span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
         </div>
 
-        {/* Right: Interactive Runner Terminal or HTML Sandbox */}
-        <div className="flex flex-col border border-[var(--border-color)] rounded-xl bg-[var(--bg-card)] overflow-hidden">
-          <div className="bg-[var(--bg-hover)] px-3 py-2 border-b border-[var(--border-color)] text-xs font-mono font-semibold flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <Terminal className="w-3.5 h-3.5 text-emerald-500" /> 
-              {selectedLang === 'html' ? 'LIVE SANDBOX PREVIEW' : `${selectedLang.toUpperCase()} RUNNER CONSOLE`}
-            </span>
-            <span className="text-[var(--text-muted)]">Output</span>
+        {/* Right Column: Code Editor & AI Tools */}
+        <div className="flex-1 flex flex-col border border-[var(--border-color)] bg-[var(--bg-card)] rounded-2xl overflow-hidden shadow-sm">
+          
+          {/* Editor Header: Title, Language, and Controls */}
+          <div className="px-3 py-2 border-b border-[var(--border-color)] bg-[var(--bg-hover)]/30 flex flex-wrap items-center justify-between gap-2 shrink-0 text-xs">
+            <div className="flex items-center gap-2 flex-1 min-w-[180px]">
+              <input
+                type="text"
+                value={snippetTitle}
+                onChange={(e) => setSnippetTitle(e.target.value)}
+                placeholder="Snippet title..."
+                className="font-bold text-xs bg-transparent border-none outline-none text-[var(--text-primary)] flex-1"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Language Selector */}
+              <select
+                value={selectedLang}
+                onChange={(e) => setSelectedLang(e.target.value)}
+                className="px-2.5 py-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] text-xs text-[var(--text-primary)] outline-none font-mono cursor-pointer"
+              >
+                {SUPPORTED_LANGUAGES.map((lang) => (
+                  <option key={lang.id} value={lang.id}>
+                    {lang.label}
+                  </option>
+                ))}
+              </select>
+
+              {/* Save Button */}
+              <button
+                onClick={handleSaveToHistory}
+                disabled={!code.trim()}
+                className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
+                title="Save code to your history"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>Save</span>
+              </button>
+
+              {/* Run Button for JS or Preview for HTML */}
+              {selectedLang === 'javascript' && (
+                <button
+                  onClick={handleRunCode}
+                  className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  <Play className="w-3 h-3" />
+                  <span>Run</span>
+                </button>
+              )}
+
+              {/* Copy */}
+              <button
+                onClick={handleCopy}
+                disabled={!code}
+                className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                title="Copy code"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
+
+              {/* Download */}
+              <button
+                onClick={handleDownload}
+                disabled={!code}
+                className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                title="Download script"
+              >
+                <Download className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
-          {selectedLang === 'html' ? (
-            <iframe
-              srcDoc={code}
-              title="Quick AI Sandbox"
-              sandbox="allow-scripts allow-modals"
-              className="w-full flex-1 border-none bg-white"
-            />
-          ) : (
-            <div className="flex-1 p-4 bg-[#09090b] text-[#f4f4f5] font-mono text-xs overflow-y-auto leading-relaxed whitespace-pre-wrap border-none">
-              {consoleOutput || `Click "Run ${selectedLang.toUpperCase()}" above to execute and view console output.`}
+          {/* Code Textarea / HTML Live View */}
+          <div className="flex-1 flex flex-col min-h-0 relative">
+            {selectedLang === 'html' && code ? (
+              <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-[var(--border-color)] min-h-0">
+                <textarea
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="Paste or write HTML / CSS / JS code here..."
+                  spellCheck={false}
+                  className="w-full h-full p-3 font-mono text-xs bg-[var(--bg-card)] text-[var(--text-primary)] border-none outline-none resize-none leading-relaxed"
+                />
+                <div className="w-full h-full bg-white overflow-hidden flex flex-col">
+                  <div className="bg-neutral-100 text-neutral-600 px-3 py-1 text-[10px] font-mono border-b border-neutral-200">
+                    Live HTML Preview
+                  </div>
+                  <iframe
+                    srcDoc={code}
+                    title="Live Preview"
+                    sandbox="allow-scripts allow-modals"
+                    className="w-full flex-1 border-none bg-white"
+                  />
+                </div>
+              </div>
+            ) : (
+              <textarea
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder={`Write, paste, or ask OMNIRA to generate ${selectedLang.toUpperCase()} code...`}
+                spellCheck={false}
+                className="w-full h-full p-4 font-mono text-xs bg-[var(--bg-card)] text-[var(--text-primary)] border-none outline-none resize-none leading-relaxed"
+              />
+            )}
+          </div>
+
+          {/* AI Helper Bar & Output */}
+          <div className="border-t border-[var(--border-color)] bg-[var(--bg-hover)]/20 p-2.5 space-y-2 shrink-0">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAiAction('generate')}
+                placeholder={`Ask OMNIRA to write ${selectedLang.toUpperCase()} code...`}
+                className="flex-1 px-3 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] text-xs text-[var(--text-primary)] outline-none focus:border-emerald-500"
+              />
+              <button
+                onClick={() => handleAiAction('generate')}
+                disabled={isAiLoading || !aiPrompt.trim()}
+                className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
+              >
+                {isAiLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                <span>Generate</span>
+              </button>
             </div>
-          )}
+
+            {/* Quick Actions Row */}
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-[var(--text-muted)] font-medium">Quick Actions:</span>
+                <button
+                  onClick={() => handleAiAction('refactor')}
+                  disabled={isAiLoading || !code.trim()}
+                  className="px-2.5 py-1 rounded-md border border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[11px] text-[var(--text-primary)] disabled:opacity-40"
+                >
+                  ⚡ Refactor
+                </button>
+                <button
+                  onClick={() => handleAiAction('fix')}
+                  disabled={isAiLoading || !code.trim()}
+                  className="px-2.5 py-1 rounded-md border border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[11px] text-[var(--text-primary)] disabled:opacity-40"
+                >
+                  🐞 Fix Bugs
+                </button>
+                <button
+                  onClick={() => handleAiAction('explain')}
+                  disabled={isAiLoading || !code.trim()}
+                  className="px-2.5 py-1 rounded-md border border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[11px] text-[var(--text-primary)] disabled:opacity-40"
+                >
+                  📖 Explain
+                </button>
+              </div>
+
+              {consoleOutput && (
+                <button
+                  onClick={() => setConsoleOutput('')}
+                  className="text-[11px] text-[var(--text-muted)] hover:text-red-400"
+                >
+                  Clear output
+                </button>
+              )}
+            </div>
+
+            {/* Console / AI Output Display */}
+            {consoleOutput && (
+              <div className="p-2.5 rounded-lg bg-neutral-950 text-neutral-200 font-mono text-[11px] max-h-36 overflow-y-auto whitespace-pre-wrap border border-neutral-800 select-text leading-relaxed">
+                {consoleOutput}
+              </div>
+            )}
+          </div>
+
         </div>
 
       </div>

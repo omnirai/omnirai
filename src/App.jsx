@@ -6,7 +6,7 @@ import CodeStudio from './components/CodeStudio';
 import DocStudio from './components/DocStudio';
 import MathStudio from './components/MathStudio';
 import SvgStudio from './components/SvgStudio';
-import PluginsStudio from './components/PluginsStudio';
+import ImagesStudio from './components/ImagesStudio';
 import SettingsModal from './components/SettingsModal';
 import AuthScreen from './components/AuthScreen';
 import { queryQuickAi, getBackendImageQuota, isImagePrompt } from './engine/quickAiEngine';
@@ -264,6 +264,23 @@ export default function App() {
         if (response.quota) {
           setUserQuota(response.quota);
         }
+        if (response.image) {
+          try {
+            const currentSaved = JSON.parse(localStorage.getItem('omnira_saved_images') || '[]');
+            const newImg = {
+              id: `img-${Date.now()}`,
+              imageUrl: response.image,
+              prompt: response.userPrompt || response.prompt || userText,
+              timestamp: new Date().toLocaleTimeString(),
+              createdAt: Date.now(),
+              model: response.model || 'FLUX 1 Schnell'
+            };
+            const existingUrls = new Set(currentSaved.map(i => i.imageUrl));
+            if (!existingUrls.has(response.image)) {
+              localStorage.setItem('omnira_saved_images', JSON.stringify([newImg, ...currentSaved]));
+            }
+          } catch (e) {}
+        }
         finalAssistantMsg = {
           role: 'assistant',
           type: 'image_generation',
@@ -429,7 +446,17 @@ export default function App() {
 
           {activeMode === 'code' && (
             <div className="h-full overflow-hidden">
-              <CodeStudio settings={settings} />
+              <CodeStudio settings={settings} chatSessions={chatSessions} />
+            </div>
+          )}
+
+          {activeMode === 'images' && (
+            <div className="h-full overflow-hidden">
+              <ImagesStudio 
+                chatSessions={chatSessions} 
+                userQuota={userQuota} 
+                onUpdateQuota={(q) => setUserQuota(q)} 
+              />
             </div>
           )}
 
@@ -448,12 +475,6 @@ export default function App() {
           {activeMode === 'svg' && (
             <div className="h-full overflow-hidden">
               <SvgStudio settings={settings} />
-            </div>
-          )}
-
-          {activeMode === 'plugins' && (
-            <div className="h-full overflow-hidden">
-              <PluginsStudio onSelectChat={(id) => setCurrentChatId(id)} />
             </div>
           )}
         </div>

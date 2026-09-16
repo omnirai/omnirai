@@ -110,10 +110,9 @@ export default function Sidebar({
 
   const mainNavItems = [
     { id: 'chat', label: 'Chat', icon: MessageSquare, modeTarget: 'chat' },
-    { id: 'images', label: 'Images', icon: ImageIcon, badge: 'UPDATED', modeTarget: 'svg' },
+    { id: 'images', label: 'Images', icon: ImageIcon, badge: 'GALLERY', modeTarget: 'images' },
     { id: 'library', label: 'Library', icon: BookOpen, modeTarget: 'doc' },
     { id: 'scheduled', label: 'Scheduled', icon: Clock, modeTarget: 'math' },
-    { id: 'plugins', label: 'Plugins', icon: Plug, modeTarget: 'plugins' },
     { id: 'projects', label: 'Projects', icon: Folder, action: 'settings' },
     { id: 'codex', label: 'Codex', icon: Terminal, modeTarget: 'code' },
     { id: 'more', label: 'More', icon: MoreHorizontal, action: 'settings' }

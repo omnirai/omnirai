@@ -903,184 +903,90 @@ export default function SettingsModal({
             {/* Usage Tab */}
             {activeTab === 'usage' && (
               <div className="space-y-6 text-xs sm:text-sm">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between pb-2 border-b border-[var(--border-color)]">
                   <div>
-                    <h3 className="text-base font-bold text-[var(--text-primary)]">
-                      Real-Time Usage & Limits
+                    <h3 className="text-base font-bold text-[var(--text-primary)] tracking-tight">
+                      Account Usage & Daily Quota
                     </h3>
-                    <p className="text-xs text-[var(--text-muted)] mt-1">
-                      Monitor your daily AI quota, active usage limits, and real-time system performance.
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                      Real-time account limits and usage statistics for <strong>{currentUser?.name || 'Guest User'}</strong>.
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={fetchQuota}
                     disabled={quotaLoading}
-                    className="px-3 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-xs font-medium text-[var(--text-primary)] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                    className="px-3 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-xs font-semibold text-[var(--text-primary)] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 text-emerald-500 ${quotaLoading ? 'animate-spin' : ''}`} />
-                    <span>Refresh</span>
+                    <RefreshCw className={`w-3.5 h-3.5 text-[var(--text-primary)] ${quotaLoading ? 'animate-spin' : ''}`} />
+                    <span>Refresh Quota</span>
                   </button>
                 </div>
 
-                {/* Main Quota Visual Progress Box */}
-                <div className="p-5 rounded-2xl bg-gradient-to-br from-[var(--bg-sidebar)] to-[var(--bg-card)] border border-[var(--border-color)] shadow-sm space-y-4">
+                {/* Real Quota Card - 100% Authentic Data Only */}
+                <div className="p-5 rounded-2xl bg-[var(--bg-sidebar)] border border-[var(--border-color)] space-y-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                        <BarChart3 className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="font-bold text-sm text-[var(--text-primary)]">FLUX AI Image Generation Quota</div>
-                        <div className="text-[11px] text-[var(--text-muted)]">Daily rolling allocation (Resets 00:00 UTC)</div>
-                      </div>
+                    <div>
+                      <div className="font-bold text-sm text-[var(--text-primary)]">FLUX AI Image Generation</div>
+                      <div className="text-[11px] text-[var(--text-muted)] mt-0.5">Daily allocation reset at 00:00 UTC ({quotaData.date || 'Today'})</div>
                     </div>
                     <div className="text-right">
-                      <span className="text-xl font-extrabold text-[var(--text-primary)]">{quotaData.used}</span>
-                      <span className="text-xs text-[var(--text-muted)]"> / {quotaData.limit || 25} used</span>
+                      <span className="text-2xl font-extrabold text-[var(--text-primary)]">{quotaData.used}</span>
+                      <span className="text-xs text-[var(--text-muted)] font-medium"> / {quotaData.limit || 25} used</span>
                     </div>
                   </div>
 
-                  {/* Animated Visual Progress Bar */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs font-semibold">
-                      <span className="text-emerald-500">
+                  {/* High-Contrast Progress Bar */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs font-medium">
+                      <span className="text-[var(--text-primary)] font-bold">
                         {((quotaData.used / (quotaData.limit || 25)) * 100).toFixed(1)}% Used
                       </span>
-                      <span className="text-[var(--text-muted)]">
+                      <span className="text-[var(--text-muted)] font-medium">
                         {quotaData.remaining ?? (25 - quotaData.used)} Remaining Today
                       </span>
                     </div>
-                    <div className="w-full h-3.5 bg-[var(--bg-hover)] border border-[var(--border-color)] rounded-full overflow-hidden p-0.5 relative">
+                    <div className="w-full h-3 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-full overflow-hidden p-0.5">
                       <div 
-                        className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-400 rounded-full transition-all duration-500 ease-out shadow-xs"
-                        style={{ width: `${Math.min(100, Math.max(4, (quotaData.used / (quotaData.limit || 25)) * 100))}%` }}
+                        className="h-full bg-[var(--text-primary)] rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(100, Math.max(3, (quotaData.used / (quotaData.limit || 25)) * 100))}%` }}
                       />
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between text-[11px] text-[var(--text-muted)] pt-2 border-t border-[var(--border-color)]/60 gap-2">
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      Real-time backend synchronization active
-                    </span>
-                    <span>Account Tier: <strong className="text-emerald-400">{currentUser?.plan || 'Pro Tier'}</strong></span>
+                  <div className="flex flex-wrap items-center justify-between text-[11px] text-[var(--text-muted)] pt-3 border-t border-[var(--border-color)] font-medium gap-2">
+                    <span>Account Plan: <strong className="text-[var(--text-primary)] font-bold">{currentUser?.plan || 'Free Tier'}</strong></span>
+                    <span>User ID: <code className="text-[var(--text-primary)] font-mono">{currentUser?.uid || currentUser?.email || 'guest_user'}</code></span>
                   </div>
                 </div>
 
-                {/* Models Breakdown Grid */}
+                {/* Authentic Usage Detail List */}
                 <div className="space-y-3">
-                  <div className="font-semibold text-xs text-[var(--text-primary)] uppercase tracking-wider">
-                    Model Limits & Availability Breakdown
+                  <div className="font-bold text-xs text-[var(--text-primary)] uppercase tracking-wider">
+                    Active Feature Limits
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* FLUX Model Card */}
-                    <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-sidebar)] space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-xs text-[var(--text-primary)] flex items-center gap-1.5">
-                          <span>🎨</span> FLUX AI Image Generator
-                        </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">
-                          {quotaData.remaining} left
-                        </span>
+                  <div className="border border-[var(--border-color)] rounded-xl overflow-hidden bg-[var(--bg-card)] divide-y divide-[var(--border-color)]">
+                    <div className="flex items-center justify-between p-3.5">
+                      <div>
+                        <div className="font-semibold text-xs text-[var(--text-primary)]">FLUX Image Generation</div>
+                        <div className="text-[11px] text-[var(--text-muted)]">Cloudflare Workers AI</div>
                       </div>
-                      <div className="w-full h-2 bg-[var(--bg-hover)] rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-emerald-500 rounded-full transition-all duration-300" 
-                          style={{ width: `${(quotaData.used / (quotaData.limit || 25)) * 100}%` }}
-                        />
-                      </div>
-                      <div className="flex justify-between text-[10px] text-[var(--text-muted)] font-medium">
-                        <span>{quotaData.used} / {quotaData.limit || 25} requests used</span>
-                        <span>{((quotaData.used / (quotaData.limit || 25)) * 100).toFixed(0)}%</span>
+                      <div className="text-right">
+                        <div className="font-bold text-xs text-[var(--text-primary)]">{quotaData.used} / {quotaData.limit || 25}</div>
+                        <div className="text-[10px] text-[var(--text-muted)]">{quotaData.remaining} remaining</div>
                       </div>
                     </div>
 
-                    {/* ChatGPT GPT-4o Card */}
-                    <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-sidebar)] space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-xs text-[var(--text-primary)] flex items-center gap-1.5">
-                          <span>⚡</span> ChatGPT (GPT-4o)
-                        </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400">
-                          Unlimited
-                        </span>
+                    <div className="flex items-center justify-between p-3.5">
+                      <div>
+                        <div className="font-semibold text-xs text-[var(--text-primary)]">AI Chat & Neural Reasoning</div>
+                        <div className="text-[11px] text-[var(--text-muted)]">Groq Ultra-Fast LPU Engine</div>
                       </div>
-                      <div className="w-full h-2 bg-[var(--bg-hover)] rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-500 rounded-full w-[12%]" />
+                      <div className="text-right">
+                        <div className="font-bold text-xs text-[var(--text-primary)]">Active</div>
+                        <div className="text-[10px] text-[var(--text-muted)]">No Daily Cap</div>
                       </div>
-                      <div className="flex justify-between text-[10px] text-[var(--text-muted)] font-medium">
-                        <span>Real-Time Groq LPU Engine</span>
-                        <span>100% Free</span>
-                      </div>
-                    </div>
-
-                    {/* Gemini 1.5 Card */}
-                    <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-sidebar)] space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-xs text-[var(--text-primary)] flex items-center gap-1.5">
-                          <span>✨</span> Gemini 1.5 Pro
-                        </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-400">
-                          Unlimited
-                        </span>
-                      </div>
-                      <div className="w-full h-2 bg-[var(--bg-hover)] rounded-full overflow-hidden">
-                        <div className="h-full bg-purple-500 rounded-full w-[8%]" />
-                      </div>
-                      <div className="flex justify-between text-[10px] text-[var(--text-muted)] font-medium">
-                        <span>Google Neural Network</span>
-                        <span>Active</span>
-                      </div>
-                    </div>
-
-                    {/* DeepSeek R1 Card */}
-                    <div className="p-3.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-sidebar)] space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-xs text-[var(--text-primary)] flex items-center gap-1.5">
-                          <span>🧠</span> DeepSeek R1 Reasoner
-                        </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">
-                          Unlimited
-                        </span>
-                      </div>
-                      <div className="w-full h-2 bg-[var(--bg-hover)] rounded-full overflow-hidden">
-                        <div className="h-full bg-amber-500 rounded-full w-[18%]" />
-                      </div>
-                      <div className="flex justify-between text-[10px] text-[var(--text-muted)] font-medium">
-                        <span>Deep Thought Step-by-Step</span>
-                        <span>Active</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Real-Time Platform Daily Active Users & Traffic */}
-                <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--bg-sidebar)] space-y-3">
-                  <div className="font-semibold text-xs text-[var(--text-primary)] flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <Users className="w-4 h-4 text-emerald-500" />
-                      <span>Real-Time Daily Active Users & Traffic</span>
-                    </span>
-                    <span className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-500 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                      Live Network
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 text-center pt-1">
-                    <div className="p-3 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] shadow-2xs">
-                      <div className="text-lg font-extrabold text-[var(--text-primary)]">1,842</div>
-                      <div className="text-[10px] text-[var(--text-muted)] font-medium mt-0.5">Active Users Today</div>
-                    </div>
-                    <div className="p-3 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] shadow-2xs">
-                      <div className="text-lg font-extrabold text-emerald-500">24,910</div>
-                      <div className="text-[10px] text-[var(--text-muted)] font-medium mt-0.5">Generations 24h</div>
-                    </div>
-                    <div className="p-3 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] shadow-2xs">
-                      <div className="text-lg font-extrabold text-blue-400">18ms</div>
-                      <div className="text-[10px] text-[var(--text-muted)] font-medium mt-0.5">Server Latency</div>
                     </div>
                   </div>
                 </div>

@@ -160,8 +160,6 @@ export default function SettingsModal({
     localStorage.setItem('omnira_selected_domain', selectedDomain);
   }, [selectedDomain]);
 
-  if (!isOpen) return null;
-
   const handleSaveProfileField = (field) => {
     const updated = {
       ...currentUser,
@@ -340,6 +338,8 @@ export default function SettingsModal({
   const filteredMenuItems = menuItems.filter(item => 
     item.label.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (!isOpen) return null;
 
   return (
     <>

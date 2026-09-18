@@ -84,8 +84,18 @@ class handler(BaseHTTPRequestHandler):
             prompt = data.get('prompt', '') if isinstance(data, dict) else str(body_raw)
             mode = data.get('mode', 'chat') if isinstance(data, dict) else 'chat'
             model = data.get('model', 'gpt-4o') if isinstance(data, dict) else 'gpt-4o'
+            language = data.get('language') if isinstance(data, dict) else None
+            instructions = data.get('instructions') if isinstance(data, dict) else None
+            project_context = data.get('project_context') if isinstance(data, dict) else None
 
-            response_text = engine.process_query(prompt, mode=mode, model=model)
+            response_text = engine.process_query(
+                prompt, 
+                mode=mode, 
+                model=model, 
+                language=language, 
+                instructions=instructions, 
+                project_context=project_context
+            )
             self.send_json_res(200, {'response': response_text})
 
         except Exception as e:

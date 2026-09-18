@@ -227,6 +227,11 @@ Follow these formatting rules strictly:
     }
   }
 
+  const preferredLang = settings?.language || localStorage.getItem('omnira_language');
+  if (preferredLang && preferredLang !== 'Auto-detect' && preferredLang !== 'English (US)') {
+    systemInstruction += `\n\n[USER LANGUAGE PREFERENCE]: Please generate all responses, explanations, and answers in ${preferredLang}.`;
+  }
+
   const messages = [
     { role: 'system', content: systemInstruction }
   ];

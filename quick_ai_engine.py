@@ -38,8 +38,18 @@ class QuickAiEngine:
         self.ollama_model = "llama3"
 
 
-    def process_query(self, prompt: str, mode: str = "chat", model: str = "gpt-4o", file_data: Optional[Dict[str, Any]] = None) -> str:
+    def process_query(self, prompt: str, mode: str = "chat", model: str = "gpt-4o", file_data: Optional[Dict[str, Any]] = None, language: Optional[str] = None, instructions: Optional[str] = None, project_context: Optional[str] = None) -> str:
         clean_prompt = prompt.strip()
+        
+        # Build custom system prompt with language and instructions
+        custom_system = "You are Quick AI (OMNIRA), an advanced AI assistant created by bishalcodes.com. Provide accurate, clean, well-formatted Markdown responses."
+        if project_context:
+            custom_system += f"\n\n[Active Project Context]: {project_context}"
+        if instructions:
+            custom_system += f"\n\n[Custom Instructions]:\n{instructions}"
+        if language and language not in ["Auto-detect", "English (US)"]:
+            custom_system += f"\n\n[Language]: Please respond in {language}."
+        
         lower = clean_prompt.lower()
         words = set(re.findall(r'\w+', lower))
 

@@ -149,6 +149,7 @@ export async function queryQuickAi({
   history = [],
   fileData = null,
   currentUser = null,
+  projectContext = null,
   settings = {
     engineMode: 'quick-local-neural',
     modelName: 'Xenova/Qwen1.5-0.5B-Chat',
@@ -195,7 +196,7 @@ export async function queryQuickAi({
 
   // 5. REAL LLM Generation via OMNIRA Groq Engine
   try {
-    return await queryRealLlmApi(prompt, selectedModel, history, fileData, settings);
+    return await queryRealLlmApi(prompt, selectedModel, history, fileData, settings, projectContext);
   } catch (err) {
     console.error("OMNIRA LLM error:", err);
     return `⚠️ **OMNIRA Generation Error:** ${err.message || 'Unable to connect to real AI server.'}`;
@@ -203,16 +204,28 @@ export async function queryQuickAi({
 }
 
 // Real LLM API Query (Calls OMNIRA Groq Engine)
-async function queryRealLlmApi(prompt, selectedModel, history, fileData, settings) {
+async function queryRealLlmApi(prompt, selectedModel, history, fileData, settings, projectContext = null) {
   const apiKey = settings.apiKey || DEFAULT_GROQ_KEY;
   const modelDisplayName = getModelDisplayName(selectedModel);
 
-  const systemInstruction = `You are OMNIRA (${modelDisplayName}), a helpful, friendly, and intelligent AI assistant.
+  let systemInstruction = `You are OMNIRA (${modelDisplayName}), a helpful, friendly, and intelligent AI assistant.
 Follow these formatting rules strictly:
 1. Provide concise, clear, natural, and conversational responses like OMNIRA.
 2. For simple questions, give direct, well-written paragraphs or bullet points.
 3. DO NOT generate Markdown tables unless the user explicitly requests a table or data comparison.
 4. Keep the output clean, elegant, easy to read, and proportional to the query length.`;
+
+  if (projectContext) {
+    if (projectContext.name) {
+      systemInstruction += `\n\n[ACTIVE PROJECT: "${projectContext.name}"]`;
+    }
+    if (projectContext.instructions && projectContext.instructions.trim()) {
+      systemInstruction += `\n[PROJECT CUSTOM INSTRUCTIONS]:\n${projectContext.instructions.trim()}\n(Strictly adhere to these project instructions and context for this session).`;
+    }
+    if (projectContext.memory === 'project-only') {
+      systemInstruction += `\n[MEMORY MODE]: Project-only memory is enabled. Treat this project as an isolated workspace.`;
+    }
+  }
 
   const messages = [
     { role: 'system', content: systemInstruction }

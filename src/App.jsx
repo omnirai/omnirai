@@ -7,6 +7,7 @@ import DocStudio from './components/DocStudio';
 import MathStudio from './components/MathStudio';
 import SvgStudio from './components/SvgStudio';
 import ImagesStudio from './components/ImagesStudio';
+import ProjectsStudio from './components/ProjectsStudio';
 import SettingsModal from './components/SettingsModal';
 import AuthScreen from './components/AuthScreen';
 import { queryQuickAi, getBackendImageQuota, isImagePrompt } from './engine/quickAiEngine';
@@ -93,6 +94,40 @@ export default function App() {
     const saved = localStorage.getItem('chatgpt_current_id');
     return saved || 'default-session-1';
   });
+
+  // Projects State with LocalStorage Persistence
+  const [projects, setProjects] = useState(() => {
+    const saved = localStorage.getItem('omnira_projects');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    return [
+      {
+        id: 'proj-bishal-codes',
+        name: 'bishal codes',
+        icon: '📁',
+        instructions: 'Focus on production-ready modern JavaScript, React, and Python. Keep explanations clear, clean, and concise.',
+        memory: 'default',
+        libraryAccess: 'enabled',
+        isPinned: false,
+        createdBy: 'you',
+        createdAt: Date.now() - 86400000 * 2,
+        modifiedAt: Date.now() - 86400000 * 2,
+        modifiedDisplay: 'Wednesday',
+        files: []
+      }
+    ];
+  });
+
+  const [activeProjectId, setActiveProjectId] = useState(null);
+  const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('omnira_projects', JSON.stringify(projects));
+  }, [projects]);
 
   // Persist Auth State & Current User
   useEffect(() => {
@@ -238,7 +273,10 @@ export default function App() {
     setIsGenerating(true);
 
     try {
-      const genStartTime = Date.now();
+      const activeProject = currentSession?.projectId 
+        ? projects.find(p => p.id === currentSession.projectId) 
+        : null;
+
       const response = await queryQuickAi({
         prompt: userText,
         selectedModel,
@@ -246,8 +284,19 @@ export default function App() {
         history: messages,
         fileData: attachedFile,
         currentUser,
+        projectContext: activeProject,
         settings
       });
+
+      if (activeProject) {
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.id === activeProject.id
+              ? { ...p, modifiedAt: Date.now(), modifiedDisplay: 'Just now' }
+              : p
+          )
+        );
+      }
 
       let finalAssistantMsg;
       if (typeof response === 'object' && response !== null && (response.image || response.error || response.success !== undefined)) {
@@ -336,6 +385,28 @@ export default function App() {
     setActiveMode('chat');
   };
 
+  // Create New Chat inside a Specific Project
+  const handleNewChatInProject = (projId) => {
+    const proj = projects.find(p => p.id === projId);
+    const newId = `session-${Date.now()}`;
+    const newSession = { 
+      id: newId, 
+      title: proj ? `${proj.name} chat` : 'New chat', 
+      messages: [],
+      projectId: projId 
+    };
+    setChatSessions((prev) => [newSession, ...prev]);
+    setCurrentChatId(newId);
+    setActiveMode('chat');
+  };
+
+  // Assign / Move a Chat to a Project
+  const handleAssignChatToProject = (chatId, projId) => {
+    setChatSessions((prev) =>
+      prev.map((s) => (s.id === chatId ? { ...s, projectId: projId } : s))
+    );
+  };
+
   // Pin / Unpin Chat
   const handlePinChat = (idToPin) => {
     setChatSessions((prev) =>
@@ -394,6 +465,12 @@ export default function App() {
         setActiveMode={setActiveMode}
         currentUser={currentUser}
         onLogout={handleLogout}
+        projects={projects}
+        onAssignChatToProject={handleAssignChatToProject}
+        onCreateProject={() => {
+          setActiveMode('projects');
+          setIsCreateProjectModalOpen(true);
+        }}
       />
 
       {/* Main Area */}
@@ -414,6 +491,7 @@ export default function App() {
           currentUser={currentUser}
           onNewChat={handleNewChat}
           hasMessages={messages.length > 0}
+          activeProject={currentSession?.projectId ? projects.find(p => p.id === currentSession.projectId) : null}
         />
 
         {/* View Switcher: Main ChatGPT View or Studio Views */}
@@ -446,6 +524,25 @@ export default function App() {
                 chatSessions={chatSessions} 
                 userQuota={userQuota} 
                 onUpdateQuota={(q) => setUserQuota(q)} 
+              />
+            </div>
+          )}
+
+          {activeMode === 'projects' && (
+            <div className="h-full overflow-hidden">
+              <ProjectsStudio
+                projects={projects}
+                setProjects={setProjects}
+                chatSessions={chatSessions}
+                onSelectChat={(id) => {
+                  setCurrentChatId(id);
+                  setActiveMode('chat');
+                }}
+                onNewChatInProject={handleNewChatInProject}
+                activeProjectId={activeProjectId}
+                setActiveProjectId={setActiveProjectId}
+                isCreateModalOpen={isCreateProjectModalOpen}
+                setIsCreateModalOpen={setIsCreateProjectModalOpen}
               />
             </div>
           )}

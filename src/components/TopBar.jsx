@@ -7,7 +7,8 @@ import {
   Plus,
   ChevronDown,
   Check,
-  ArrowLeft
+  ArrowLeft,
+  Folder
 } from 'lucide-react';
 import { GoogleLogo } from './AuthScreen';
 import { OmniraIcon } from './OmniraLogo';
@@ -168,7 +169,8 @@ export default function TopBar({
   userName = "Guest User",
   currentUser,
   onNewChat,
-  hasMessages = false
+  hasMessages = false,
+  activeProject = null
 }) {
   const displayUserName = currentUser?.name || userName;
   const isGuest = !currentUser || currentUser.provider === 'guest' || displayUserName === "Guest User";
@@ -267,6 +269,13 @@ export default function TopBar({
             </div>
           )}
         </div>
+
+        {activeProject && (
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-violet-500/10 border border-violet-500/25 text-violet-600 dark:text-violet-400 text-xs font-semibold shrink-0" title={`Active Project: ${activeProject.name}`}>
+            <span>{activeProject.icon || '📁'}</span>
+            <span className="truncate max-w-[120px]">{activeProject.name}</span>
+          </div>
+        )}
       </div>
 
       {/* Center: Chat / Work Pill Switcher */}

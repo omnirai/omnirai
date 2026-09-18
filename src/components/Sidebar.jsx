@@ -39,7 +39,10 @@ export default function Sidebar({
   activeMode,
   setActiveMode,
   currentUser,
-  onLogout
+  onLogout,
+  projects = [],
+  onAssignChatToProject,
+  onCreateProject
 }) {
   const userName = currentUser?.name || "Guest User";
   const isGuest = !currentUser || currentUser.provider === 'guest' || userName === "Guest User";
@@ -114,7 +117,7 @@ export default function Sidebar({
     { id: 'images', label: 'Images', icon: ImageIcon, badge: 'GALLERY', modeTarget: 'images' },
     { id: 'library', label: 'Library', icon: BookOpen, modeTarget: 'doc' },
     { id: 'scheduled', label: 'Scheduled', icon: Clock, modeTarget: 'math' },
-    { id: 'projects', label: 'Projects', icon: Folder, action: 'settings' },
+    { id: 'projects', label: 'Projects', icon: Folder, modeTarget: 'projects', canCreate: true },
     { id: 'codex', label: 'Codex', icon: Terminal, modeTarget: 'code' },
     { id: 'more', label: 'More', icon: MoreHorizontal, action: 'settings' }
   ];
@@ -139,6 +142,8 @@ export default function Sidebar({
   // Render individual chat item
   const renderChatItem = (chat) => {
     const isSelected = currentChatId === chat.id && activeMode === 'chat';
+    const chatProject = chat.projectId ? projects.find(p => p.id === chat.projectId) : null;
+
     return (
       <div
         key={chat.id}
@@ -163,6 +168,11 @@ export default function Sidebar({
           <span className="truncate">
             {chat.title || 'New Chat'}
           </span>
+          {chatProject && (
+            <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-normal shrink-0 truncate max-w-[85px] group-hover:text-neutral-500">
+              {chatProject.name}
+            </span>
+          )}
         </div>
 
         {/* Action Button: triggers context popup */}
@@ -245,7 +255,7 @@ export default function Sidebar({
             const Icon = item.icon;
             const isActive = activeMode === (item.modeTarget || item.id);
             return (
-              <button
+              <div
                 key={item.id}
                 onClick={() => {
                   if (item.action === 'settings') {
@@ -254,22 +264,38 @@ export default function Sidebar({
                     setActiveMode(item.modeTarget);
                   }
                 }}
-                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer group ${
                   isActive 
                     ? 'bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold' 
                     : 'text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
                 }`}
               >
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <Icon className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
                   <span className="truncate">{item.label}</span>
                 </div>
-                {item.badge && (
-                  <span className="text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
-                    {item.badge}
-                  </span>
-                )}
-              </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  {item.canCreate && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMode('projects');
+                        onCreateProject?.();
+                      }}
+                      className="p-1 rounded hover:bg-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors opacity-70 hover:opacity-100 cursor-pointer"
+                      title="Create project"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  {item.badge && (
+                    <span className="text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
+                      {item.badge}
+                    </span>
+                  )}
+                </div>
+              </div>
             );
           })}
         </div>
@@ -428,6 +454,42 @@ export default function Sidebar({
             <Archive className="w-4 h-4 shrink-0 text-[var(--text-primary)]" />
             <span>{contextMenu.chat.archived ? 'Unarchive' : 'Archive'}</span>
           </button>
+
+          {/* Project Assignment Dropdown */}
+          {projects.length > 0 && (
+            <div className="border-t border-[var(--border-color)]/60 my-1 pt-1 px-1">
+              <div className="px-3 py-1 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                Project
+              </div>
+              {contextMenu.chat.projectId && (
+                <button
+                  onClick={() => {
+                    onAssignChatToProject?.(contextMenu.chat.id, null);
+                    setContextMenu(null);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] text-xs rounded-lg transition-colors text-left cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5 text-neutral-400" />
+                  <span>Remove from project</span>
+                </button>
+              )}
+              {projects.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    onAssignChatToProject?.(contextMenu.chat.id, p.id);
+                    setContextMenu(null);
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-1.5 hover:bg-[var(--bg-hover)] text-xs rounded-lg transition-colors text-left cursor-pointer ${
+                    contextMenu.chat.projectId === p.id ? 'font-semibold text-violet-600 dark:text-violet-400' : 'text-[var(--text-primary)]'
+                  }`}
+                >
+                  <span className="truncate">{p.icon || '📁'} {p.name}</span>
+                  {contextMenu.chat.projectId === p.id && <Check className="w-3.5 h-3.5 shrink-0" />}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* 4. Delete */}
           <button

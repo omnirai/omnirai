@@ -18,7 +18,10 @@ import {
   Pencil,
   Archive,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Plus,
+  Check,
+  X
 } from 'lucide-react';
 import { GoogleLogo } from './AuthScreen';
 import { OmniraLogo } from './OmniraLogo';

@@ -15,7 +15,10 @@ import {
   MessageSquare, 
   ArrowLeft,
   Sparkles,
-  Copy
+  Copy,
+  Zap,
+  Brain,
+  Info
 } from 'lucide-react';
 
 export default function ProjectsStudio({ 
@@ -41,10 +44,16 @@ export default function ProjectsStudio({
   // Dropdown context menu state: projectId
   const [activeMenuProjectId, setActiveMenuProjectId] = useState(null);
   
-  // Modals state
-  const [settingsModalProject, setSettingsModalProject] = useState(null);
-  const [shareModalProject, setShareModalProject] = useState(null);
-  const [copiedLink, setCopiedLink] = useState(false);
+  // Benefits banner state
+  const [showBenefitsBanner, setShowBenefitsBanner] = useState(() => {
+    return localStorage.getItem('omnira_show_projects_banner') !== 'false';
+  });
+
+  const toggleBenefitsBanner = () => {
+    const nextState = !showBenefitsBanner;
+    setShowBenefitsBanner(nextState);
+    localStorage.setItem('omnira_show_projects_banner', String(nextState));
+  };
 
   // Create Project Form State
   const [createForm, setCreateForm] = useState({
@@ -227,7 +236,17 @@ export default function ProjectsStudio({
               Projects
             </h1>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Why Projects Guide Toggle */}
+              <button
+                onClick={toggleBenefitsBanner}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-xs font-medium text-violet-600 dark:text-violet-400 transition-colors cursor-pointer shadow-2xs shrink-0"
+                title="View benefits & guide"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Why Projects?</span>
+              </button>
+
               {/* Search Bar */}
               <div className="relative flex-1 sm:w-64">
                 <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -257,6 +276,65 @@ export default function ProjectsStudio({
               </button>
             </div>
           </div>
+
+          {/* Benefits of Projects Showcase Banner */}
+          {showBenefitsBanner && (
+            <div className="mb-6 p-4 sm:p-5 rounded-2xl border border-violet-500/20 bg-gradient-to-r from-violet-500/5 via-blue-500/5 to-purple-500/5 backdrop-blur-xs relative transition-all animate-fadeIn">
+              <div className="flex items-center justify-between gap-4 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 rounded-lg bg-violet-600/10 text-violet-600 dark:text-violet-400 items-center justify-center font-bold text-xs">
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </span>
+                  <h2 className="text-sm font-bold text-[var(--text-primary)]">
+                    Why use Projects in OMNIRA AI?
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
+                    Pro Workspace
+                  </span>
+                </div>
+                <button 
+                  onClick={toggleBenefitsBanner}
+                  className="text-neutral-400 hover:text-[var(--text-primary)] p-1 rounded-lg hover:bg-[var(--bg-hover)] transition-colors cursor-pointer text-xs flex items-center gap-1"
+                  title="Dismiss guide"
+                >
+                  <span className="text-[11px] hidden sm:inline">Hide</span>
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                <div className="p-3.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)]/60 shadow-2xs hover:border-violet-500/40 transition-colors">
+                  <div className="flex items-center gap-2 text-xs font-bold text-violet-600 dark:text-violet-400 mb-1">
+                    <Zap className="w-4 h-4" />
+                    <span>Never Repeat Prompts</span>
+                  </div>
+                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                    Set custom instructions once. Every new conversation inside this folder automatically inherits your rules and tone.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)]/60 shadow-2xs hover:border-blue-500/40 transition-colors">
+                  <div className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 mb-1">
+                    <Brain className="w-4 h-4" />
+                    <span>Dedicated Context & Memory</span>
+                  </div>
+                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                    Project-only memory mode isolates conversations so AI answers stay laser-focused on this specific task without confusion.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)]/60 shadow-2xs hover:border-emerald-500/40 transition-colors">
+                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1">
+                    <Folder className="w-4 h-4" />
+                    <span>Zero Clutter Organization</span>
+                  </div>
+                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                    Keep your coding, business, and study chats neatly grouped into distinct folders instead of 100+ random sidebar chats.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Filter Tabs: All | Created by you | Shared with you */}
           <div className="flex items-center gap-1 mb-6 border-b border-[var(--border-color)] pb-3">

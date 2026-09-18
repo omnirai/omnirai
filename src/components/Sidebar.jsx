@@ -134,15 +134,19 @@ export default function Sidebar({
     }
   };
 
-  // Separate pinned, active recents, and archived chats
-  const pinnedChats = chatHistory.filter((c) => c.pinned && !c.archived);
-  const recentChats = chatHistory.filter((c) => !c.pinned && !c.archived);
-  const archivedChats = chatHistory.filter((c) => c.archived);
+  // Separate pinned, active recents, and archived chats (with complete null safety)
+  const chatList = Array.isArray(chatHistory) ? chatHistory : [];
+  const pinnedChats = chatList.filter((c) => c && c.pinned && !c.archived);
+  const recentChats = chatList.filter((c) => c && !c.pinned && !c.archived);
+  const archivedChats = chatList.filter((c) => c && c.archived);
 
   // Render individual chat item
   const renderChatItem = (chat) => {
+    if (!chat || !chat.id) return null;
     const isSelected = currentChatId === chat.id && activeMode === 'chat';
-    const chatProject = chat.projectId ? projects.find(p => p.id === chat.projectId) : null;
+    const chatProject = (chat.projectId && Array.isArray(projects)) 
+      ? projects.find(p => p && p.id === chat.projectId) 
+      : null;
 
     return (
       <div
@@ -409,7 +413,7 @@ export default function Sidebar({
       </aside>
 
       {/* Context Menu Popup (Matches User Screenshot: Pin, Rename, Archive, Delete) */}
-      {contextMenu && (
+      {contextMenu && contextMenu.chat && (
         <div 
           className="fixed z-50 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl shadow-2xl py-2 w-48 backdrop-blur-md animate-fade-in text-sm font-medium"
           style={{
@@ -456,7 +460,7 @@ export default function Sidebar({
           </button>
 
           {/* Project Assignment Dropdown */}
-          {projects.length > 0 && (
+          {Array.isArray(projects) && projects.length > 0 && contextMenu?.chat && (
             <div className="border-t border-[var(--border-color)]/60 my-1 pt-1 px-1">
               <div className="px-3 py-1 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
                 Project
@@ -473,21 +477,24 @@ export default function Sidebar({
                   <span>Remove from project</span>
                 </button>
               )}
-              {projects.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => {
-                    onAssignChatToProject?.(contextMenu.chat.id, p.id);
-                    setContextMenu(null);
-                  }}
-                  className={`w-full flex items-center justify-between px-3 py-1.5 hover:bg-[var(--bg-hover)] text-xs rounded-lg transition-colors text-left cursor-pointer ${
-                    contextMenu.chat.projectId === p.id ? 'font-semibold text-violet-600 dark:text-violet-400' : 'text-[var(--text-primary)]'
-                  }`}
-                >
-                  <span className="truncate">{p.icon || '📁'} {p.name}</span>
-                  {contextMenu.chat.projectId === p.id && <Check className="w-3.5 h-3.5 shrink-0" />}
-                </button>
-              ))}
+              {projects.map(p => {
+                if (!p || !p.id) return null;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      onAssignChatToProject?.(contextMenu.chat.id, p.id);
+                      setContextMenu(null);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-1.5 hover:bg-[var(--bg-hover)] text-xs rounded-lg transition-colors text-left cursor-pointer ${
+                      contextMenu.chat.projectId === p.id ? 'font-semibold text-violet-600 dark:text-violet-400' : 'text-[var(--text-primary)]'
+                    }`}
+                  >
+                    <span className="truncate">{p.icon || '📁'} {p.name}</span>
+                    {contextMenu.chat.projectId === p.id && <Check className="w-3.5 h-3.5 shrink-0" />}
+                  </button>
+                );
+              })}
             </div>
           )}
 

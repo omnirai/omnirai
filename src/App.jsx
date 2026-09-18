@@ -224,9 +224,10 @@ export default function App() {
     setCurrentUser(updatedUser);
   };
 
-  // Get Active Chat Messages
-  const currentSession = chatSessions.find(s => s.id === currentChatId) || chatSessions[0];
-  const messages = currentSession ? currentSession.messages : [];
+  // Get Active Chat Messages (with complete null safety)
+  const sessionList = Array.isArray(chatSessions) && chatSessions.length > 0 ? chatSessions : [{ id: 'default-session-1', title: 'New chat', messages: [] }];
+  const currentSession = sessionList.find(s => s && s.id === currentChatId) || sessionList[0];
+  const messages = (currentSession && Array.isArray(currentSession.messages)) ? currentSession.messages : [];
 
   // Send Message Handler
   const handleSendMessage = async (userText, attachedFile = null, options = {}) => {
@@ -491,7 +492,7 @@ export default function App() {
           currentUser={currentUser}
           onNewChat={handleNewChat}
           hasMessages={messages.length > 0}
-          activeProject={currentSession?.projectId ? projects.find(p => p.id === currentSession.projectId) : null}
+          activeProject={(currentSession?.projectId && Array.isArray(projects)) ? projects.find(p => p && p.id === currentSession.projectId) : null}
         />
 
         {/* View Switcher: Main ChatGPT View or Studio Views */}

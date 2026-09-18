@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Folder, 
   Plus, 
@@ -13,30 +13,10 @@ import {
   Check, 
   ChevronDown, 
   MessageSquare, 
-  FileText, 
   ArrowLeft,
   Sparkles,
-  ExternalLink,
-  Copy,
-  Upload
+  Copy
 } from 'lucide-react';
-
-const DEFAULT_PROJECTS = [
-  {
-    id: 'proj-bishal-codes',
-    name: 'bishal codes',
-    icon: '📁',
-    instructions: 'Focus on production-ready modern JavaScript, React, and Python. Keep explanations clear, clean, and concise.',
-    memory: 'default',
-    libraryAccess: 'enabled',
-    isPinned: false,
-    createdBy: 'you',
-    createdAt: Date.now() - 86400000 * 2,
-    modifiedAt: Date.now() - 86400000 * 2,
-    modifiedDisplay: 'Wednesday',
-    files: []
-  }
-];
 
 export default function ProjectsStudio({ 
   projects = [], 
@@ -52,10 +32,13 @@ export default function ProjectsStudio({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'you' | 'shared'
   
-  // Selected project for viewing inside (drill down view)
-  const [viewingProject, setViewingProject] = useState(null);
+  // Selected project ID for viewing inside (derived cleanly without cascading effects)
+  const [viewingProjectId, setViewingProjectId] = useState(activeProjectId || null);
+  const viewingProject = (Array.isArray(projects) && viewingProjectId)
+    ? projects.find(p => p && p.id === viewingProjectId) || null
+    : null;
 
-  // Dropdown context menu state: { projectId, x, y }
+  // Dropdown context menu state: projectId
   const [activeMenuProjectId, setActiveMenuProjectId] = useState(null);
   
   // Modals state
@@ -94,26 +77,6 @@ export default function ProjectsStudio({
     return () => window.removeEventListener('click', handleGlobalClick);
   }, []);
 
-  // Update viewingProject if project list changes
-  useEffect(() => {
-    if (viewingProject) {
-      const updated = projects.find(p => p.id === viewingProject.id);
-      if (updated) {
-        setViewingProject(updated);
-      } else {
-        setViewingProject(null);
-      }
-    }
-  }, [projects]);
-
-  // If activeProjectId is passed externally (e.g. from sidebar), open that project
-  useEffect(() => {
-    if (activeProjectId) {
-      const p = projects.find(item => item.id === activeProjectId);
-      if (p) setViewingProject(p);
-    }
-  }, [activeProjectId, projects]);
-
   const handleOpenCreateModal = () => {
     setCreateForm({
       name: '',
@@ -128,8 +91,9 @@ export default function ProjectsStudio({
     e?.preventDefault();
     if (!createForm.name.trim()) return;
 
+    const newId = `proj-${Date.now()}`;
     const newProject = {
-      id: `proj-${Date.now()}`,
+      id: newId,
       name: createForm.name.trim(),
       icon: createForm.icon || '📁',
       instructions: '',
@@ -143,9 +107,10 @@ export default function ProjectsStudio({
       files: []
     };
 
-    setProjects([newProject, ...projects]);
+    setProjects([newProject, ...(Array.isArray(projects) ? projects : [])]);
     setIsCreateModalOpen(false);
-    setViewingProject(newProject);
+    setViewingProjectId(newId);
+    if (setActiveProjectId) setActiveProjectId(newId);
   };
 
   const handleOpenSettingsModal = (proj, e) => {
@@ -165,7 +130,7 @@ export default function ProjectsStudio({
   const handleSaveSettings = () => {
     if (!settingsModalProject || !editForm.name.trim()) return;
 
-    setProjects(projects.map(p => {
+    setProjects((Array.isArray(projects) ? projects : []).map(p => {
       if (p.id === settingsModalProject.id) {
         return {
           ...p,
@@ -188,9 +153,10 @@ export default function ProjectsStudio({
     e?.stopPropagation();
     setActiveMenuProjectId(null);
     if (window.confirm('Are you sure you want to delete this project? Its chats will remain in your chat history.')) {
-      setProjects(projects.filter(p => p.id !== projId));
-      if (viewingProject?.id === projId) {
-        setViewingProject(null);
+      setProjects((Array.isArray(projects) ? projects : []).filter(p => p.id !== projId));
+      if (viewingProjectId === projId) {
+        setViewingProjectId(null);
+        if (setActiveProjectId) setActiveProjectId(null);
       }
       setSettingsModalProject(null);
     }
@@ -199,7 +165,7 @@ export default function ProjectsStudio({
   const handleTogglePin = (projId, e) => {
     e?.stopPropagation();
     setActiveMenuProjectId(null);
-    setProjects(projects.map(p => {
+    setProjects((Array.isArray(projects) ? projects : []).map(p => {
       if (p.id === projId) {
         return { ...p, isPinned: !p.isPinned };
       }
@@ -224,8 +190,10 @@ export default function ProjectsStudio({
   };
 
   // Filter projects by search query and tabs
-  const filteredProjects = projects.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const projectList = Array.isArray(projects) ? projects : [];
+  const filteredProjects = projectList.filter(p => {
+    if (!p) return false;
+    const matchesSearch = (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (p.instructions && p.instructions.toLowerCase().includes(searchQuery.toLowerCase()));
     if (!matchesSearch) return false;
 
@@ -242,8 +210,8 @@ export default function ProjectsStudio({
   });
 
   // Chats belonging to the viewing project
-  const projectChats = viewingProject 
-    ? chatSessions.filter(c => c.projectId === viewingProject.id)
+  const projectChats = (viewingProject && Array.isArray(chatSessions)) 
+    ? chatSessions.filter(c => c && c.projectId === viewingProject.id)
     : [];
 
   return (
@@ -273,7 +241,7 @@ export default function ProjectsStudio({
                 {searchQuery && (
                   <button 
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -341,7 +309,10 @@ export default function ProjectsStudio({
               sortedProjects.map(proj => (
                 <div
                   key={proj.id}
-                  onClick={() => setViewingProject(proj)}
+                  onClick={() => {
+                    setViewingProjectId(proj.id);
+                    if (setActiveProjectId) setActiveProjectId(proj.id);
+                  }}
                   className="grid grid-cols-12 items-center px-3 py-3 rounded-xl hover:bg-neutral-100/70 dark:hover:bg-neutral-800/50 transition-colors cursor-pointer group relative"
                 >
                   {/* Name Column with Folder Icon */}
@@ -371,7 +342,7 @@ export default function ProjectsStudio({
                           e.stopPropagation();
                           setActiveMenuProjectId(activeMenuProjectId === proj.id ? null : proj.id);
                         }}
-                        className="p-1 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-400 hover:text-[var(--text-primary)] transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        className="p-1 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-400 hover:text-[var(--text-primary)] transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer"
                       >
                         <MoreHorizontal className="w-4 h-4" />
                       </button>
@@ -431,7 +402,10 @@ export default function ProjectsStudio({
           
           {/* Back Button */}
           <button
-            onClick={() => setViewingProject(null)}
+            onClick={() => {
+              setViewingProjectId(null);
+              if (setActiveProjectId) setActiveProjectId(null);
+            }}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-400 hover:text-[var(--text-primary)] mb-6 transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" />

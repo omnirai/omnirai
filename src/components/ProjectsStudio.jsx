@@ -55,6 +55,11 @@ export default function ProjectsStudio({
     localStorage.setItem('omnira_show_projects_banner', String(nextState));
   };
 
+  // Modals state
+  const [settingsModalProject, setSettingsModalProject] = useState(null);
+  const [shareModalProject, setShareModalProject] = useState(null);
+  const [copiedLink, setCopiedLink] = useState(false);
+
   // Create Project Form State
   const [createForm, setCreateForm] = useState({
     name: '',

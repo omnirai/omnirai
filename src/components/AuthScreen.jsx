@@ -8,6 +8,7 @@ import {
   createUserWithEmailAndPassword 
 } from '../firebase';
 import { triggerAutoEmail } from '../engine/quickAiEngine';
+import { OmniraLogo, OmniraIcon } from './OmniraLogo';
 
 export function GoogleLogo({ className = "w-4 h-4" }) {
   return (
@@ -157,8 +158,9 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
       )}
 
       {/* Brand Header */}
-      <div className="text-center space-y-2 mb-6">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+      <div className="text-center space-y-2 mb-6 flex flex-col items-center">
+        <OmniraIcon className="w-14 h-14 mb-1 drop-shadow-lg" />
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs font-semibold">
           <span>OMNIRA AI Platform</span>
         </div>
 

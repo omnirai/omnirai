@@ -1,4 +1,5 @@
 import React from 'react';
+import { OmniraLogo } from './OmniraLogo';
 import { 
   MessageSquare, 
   Code, 
@@ -42,25 +43,10 @@ export default function Header({
         {/* Brand & Logo */}
         <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded bg-primary text-secondary border border-strong flex items-center justify-center font-bold text-xs">
-              Q
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-base tracking-tight">Quick AI</span>
-                <span className="text-xs px-2 py-0.5 rounded border border-color font-medium text-muted flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3" /> {getEngineBadgeLabel()}
-                </span>
-              </div>
-              <a 
-                href="https://bishalcodes.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-xs text-muted hover:text-primary transition-colors flex items-center gap-1"
-              >
-                created by bishalcodes.com <ExternalLink className="w-2.5 h-2.5" />
-              </a>
-            </div>
+            <OmniraLogo iconSize="w-7 h-7" textClassName="text-lg font-extrabold tracking-tight" />
+            <span className="text-xs px-2 py-0.5 rounded border border-color font-medium text-muted flex items-center gap-1">
+              <ShieldCheck className="w-3 h-3" /> {getEngineBadgeLabel()}
+            </span>
           </div>
 
           {/* Mobile Right Controls */}

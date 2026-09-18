@@ -21,6 +21,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { GoogleLogo } from './AuthScreen';
+import { OmniraLogo } from './OmniraLogo';
 
 export default function Sidebar({ 
   isOpen, 
@@ -202,12 +203,7 @@ export default function Sidebar({
       >
         {/* Top Sidebar Header */}
         <div className="flex items-center justify-between p-3.5 border-b border-transparent">
-          <div className="flex items-center gap-2">
-            <img src="/logo.svg" alt="OMNIRA Logo" className="w-5 h-5 shrink-0" />
-            <span className="font-bold text-base tracking-tight text-[var(--text-primary)]">
-              OMNIRA
-            </span>
-          </div>
+          <OmniraLogo iconSize="w-6 h-6" textClassName="text-base font-bold tracking-tight" />
 
           <div className="flex items-center gap-1">
             <button 

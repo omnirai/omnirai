@@ -25,6 +25,7 @@ import {
 import { marked } from 'marked';
 import ImageGenerationMessage from './ImageGenerationMessage';
 import { isImagePrompt } from '../engine/quickAiEngine';
+import { OmniraIcon } from './OmniraLogo';
 
 export default function ChatStudio({ 
   messages, 
@@ -195,6 +196,7 @@ export default function ChatStudio({
         {messages.length === 0 ? (
           /* Empty Chat View */
           <div className="h-full flex flex-col items-center justify-center text-center px-4 max-w-xl mx-auto">
+            <OmniraIcon className="w-14 h-14 mb-3 drop-shadow-md" filterId="chat-welcome" />
             
             {/* Title */}
             <h1 className="text-2xl sm:text-3xl font-medium tracking-tight mb-2 text-[var(--text-primary)]">

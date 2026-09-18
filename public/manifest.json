@@ -16,6 +16,12 @@
       "purpose": "any maskable"
     },
     {
+      "src": "/omnira_ai.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    },
+    {
       "src": "/favicon.svg",
       "type": "image/svg+xml",
       "sizes": "any",

@@ -149,9 +149,7 @@ export function ModelIcon({ type, className = "w-4 h-4" }) {
     return <span className="text-sm">🎨</span>;
   }
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none">
-      <path d="M12 2L2 7V17L12 22L22 17V7L12 2ZM12 4.15L19.5 7.9V10.5L12 6.75L4.5 10.5V7.9L12 4.15ZM4.5 12.5L12 8.75L19.5 12.5V16.1L12 19.85L4.5 16.1V12.5Z" fill="#10b981" />
-    </svg>
+    <OmniraIcon className={className} />
   );
 }
 

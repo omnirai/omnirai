@@ -379,10 +379,8 @@ export default function ChatStudio({
                   className={`flex gap-3 sm:gap-4 w-full min-w-0 ${isUser ? 'justify-end' : 'justify-start'}`}
                 >
                   {!isUser && (
-                    <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-1 shadow-2xs">
-                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                        <path d="M12 2L2 7V17L12 22L22 17V7L12 2ZM12 4.15L19.5 7.9V10.5L12 6.75L4.5 10.5V7.9L12 4.15ZM4.5 12.5L12 8.75L19.5 12.5V16.1L12 19.85L4.5 16.1V12.5Z"/>
-                      </svg>
+                    <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center shrink-0 mt-1 shadow-2xs border border-[var(--border-color)] bg-[var(--bg-card)]">
+                      <OmniraIcon className="w-5 h-5 object-contain" />
                     </div>
                   )}
 
@@ -461,17 +459,14 @@ export default function ChatStudio({
 
             {/* Loading Generation State */}
             {isGenerating && (
-              <div className="flex items-center gap-3 p-3 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] max-w-sm shadow-2xs animate-pulse">
+              <div className="flex items-center gap-3 p-3 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] max-w-sm shadow-2xs">
+                <div className="w-6 h-6 rounded-full overflow-hidden flex items-center justify-center shrink-0 border border-[var(--border-color)] bg-[var(--bg-sidebar)]">
+                  <OmniraIcon className="w-4 h-4 animate-spin animate-pulse object-contain" />
+                </div>
                 {isCurrentGeneratingImage ? (
-                  <>
-                    <Sparkles className="w-4 h-4 animate-spin text-emerald-500" />
-                    <span className="text-xs text-[var(--text-primary)] font-medium">OMNIRA is creating your image...</span>
-                  </>
+                  <span className="text-xs text-[var(--text-primary)] font-medium">OMNIRA is creating your image...</span>
                 ) : (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin text-emerald-500" />
-                    <span className="text-xs text-[var(--text-muted)] font-medium">OMNIRA is thinking...</span>
-                  </>
+                  <span className="text-xs text-[var(--text-muted)] font-medium">OMNIRA is thinking...</span>
                 )}
               </div>
             )}

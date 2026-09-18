@@ -219,7 +219,7 @@ export default function ProjectsStudio({
       
       {/* -------------------- VIEW 1: PROJECTS LISTING -------------------- */}
       {!viewingProject ? (
-        <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8">
+        <div className="w-full px-6 sm:px-10 lg:px-14 py-8">
           
           {/* Main Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -398,7 +398,7 @@ export default function ProjectsStudio({
         </div>
       ) : (
         /* -------------------- VIEW 2: PROJECT DETAIL VIEW -------------------- */
-        <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8">
+        <div className="w-full px-6 sm:px-10 lg:px-14 py-8">
           
           {/* Back Button */}
           <button

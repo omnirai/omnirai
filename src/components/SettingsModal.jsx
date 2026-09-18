@@ -31,7 +31,8 @@ import {
   ExternalLink,
   Edit2,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  Sparkles
 } from 'lucide-react';
 import GithubConnectModal from './GithubConnectModal';
 import DomainVerifyModal from './DomainVerifyModal';
@@ -256,10 +257,72 @@ export default function SettingsModal({
     }
   };
 
+  // General Settings State (matching ChatGPT screenshot)
+  const ACCENT_COLORS = [
+    { id: 'yellow', label: 'Yellow', hex: '#eab308' },
+    { id: 'emerald', label: 'Default', hex: '#10a37f' },
+    { id: 'blue', label: 'Blue', hex: '#3b82f6' },
+    { id: 'purple', label: 'Purple', hex: '#8b5cf6' },
+    { id: 'orange', label: 'Orange', hex: '#f97316' },
+    { id: 'pink', label: 'Pink', hex: '#ec4899' },
+    { id: 'red', label: 'Red', hex: '#ef4444' },
+    { id: 'teal', label: 'Teal', hex: '#14b8a6' }
+  ];
+
+  const [appearanceMode, setAppearanceMode] = useState(() => {
+    return localStorage.getItem('omnira_appearance') || (darkMode ? 'dark' : 'light');
+  });
+
+  const [contrastLevel, setContrastLevel] = useState(() => {
+    return localStorage.getItem('omnira_contrast') || 'medium';
+  });
+
+  const [accentColor, setAccentColor] = useState(() => {
+    return localStorage.getItem('omnira_accent_color') || 'yellow';
+  });
+
+  const [language, setLanguage] = useState(() => {
+    return localStorage.getItem('omnira_language') || 'English (US)';
+  });
+
+  const handleAppearanceChange = (mode) => {
+    setAppearanceMode(mode);
+    localStorage.setItem('omnira_appearance', mode);
+    if (mode === 'dark') {
+      setDarkMode(true);
+    } else if (mode === 'light') {
+      setDarkMode(false);
+    } else if (mode === 'system') {
+      const isSystemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setDarkMode(isSystemDark);
+    }
+  };
+
+  const handleContrastChange = (contrast) => {
+    setContrastLevel(contrast);
+    localStorage.setItem('omnira_contrast', contrast);
+    document.documentElement.setAttribute('data-contrast', contrast);
+  };
+
+  const handleAccentColorChange = (colorId) => {
+    setAccentColor(colorId);
+    localStorage.setItem('omnira_accent_color', colorId);
+    const found = ACCENT_COLORS.find(c => c.id === colorId);
+    if (found) {
+      document.documentElement.style.setProperty('--accent-color', found.hex);
+    }
+  };
+
+  const handleLanguageChange = (lang) => {
+    setLanguage(lang);
+    localStorage.setItem('omnira_language', lang);
+  };
+
   const menuItems = [
     { id: 'general', label: 'General', icon: Settings },
     { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'personalization', label: 'Personalization', icon: User },
+    { id: 'personalization', label: 'Personalization', icon: Sparkles },
+    { id: 'plugins', label: 'Plugins', icon: Puzzle },
     { id: 'voice', label: 'Voice', icon: Mic },
     { id: 'billing', label: 'Billing', icon: CreditCard },
     { id: 'usage', label: 'Usage', icon: BarChart3 },
@@ -746,63 +809,136 @@ export default function SettingsModal({
             {/* General Tab */}
             {activeTab === 'general' && (
               <div className="space-y-6 text-xs sm:text-sm">
-                {showMfaCard && (
-                  <div className="p-4 rounded-2xl bg-[var(--bg-sidebar)] border border-[var(--border-color)] relative space-y-2">
-                    <button 
-                      onClick={() => setShowMfaCard(false)}
-                      className="absolute right-3 top-3 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-
-                    <div className="flex items-center gap-2 font-semibold text-sm text-[var(--text-primary)]">
-                      <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                      <span>Secure your account</span>
+                {/* Upgrade Promo Card matching screenshot */}
+                <div className="p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-sidebar)] flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-9 h-9 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                      <Sparkles className="w-5 h-5 fill-blue-500/20 text-blue-500" />
                     </div>
-
-                    <p className="text-xs text-[var(--text-muted)] leading-relaxed max-w-md">
-                      Add multi-factor authentication (MFA), like a text message or authenticator app, to help protect your account when logging in.
-                    </p>
-
-                    <div className="pt-1">
-                      <button 
-                        onClick={() => alert('Multi-factor authentication (MFA) is active.')}
-                        className="px-3.5 py-1.5 rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] font-semibold text-xs hover:bg-[var(--bg-hover)] transition-colors shadow-2xs"
-                      >
-                        Set up MFA
-                      </button>
+                    <div>
+                      <div className="font-bold text-sm text-[var(--text-primary)]">
+                        Do more with OMNIRA AI
+                      </div>
+                      <div className="text-xs text-[var(--text-muted)] mt-0.5">
+                        Get higher limits and advanced features.
+                      </div>
                     </div>
                   </div>
-                )}
 
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('billing')}
+                    className="px-4 py-2 rounded-full bg-black text-white dark:bg-white dark:text-black font-semibold text-xs hover:opacity-90 transition-opacity cursor-pointer shrink-0 shadow-sm"
+                  >
+                    Upgrade
+                  </button>
+                </div>
+
+                {/* Settings Table List matching screenshot */}
                 <div className="space-y-4 divide-y divide-[var(--border-color)]">
+                  
+                  {/* Appearance */}
                   <div className="flex items-center justify-between pt-3">
                     <span className="font-medium text-[var(--text-primary)]">Appearance</span>
-                    <select
-                      value={darkMode ? 'dark' : 'light'}
-                      onChange={(e) => setDarkMode(e.target.value === 'dark')}
-                      className="px-3 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-xs text-[var(--text-primary)] outline-none cursor-pointer hover:bg-[var(--bg-hover)]"
-                    >
-                      <option value="light">Light</option>
-                      <option value="dark">Dark</option>
-                    </select>
+                    <div className="relative">
+                      <select
+                        value={appearanceMode}
+                        onChange={(e) => handleAppearanceChange(e.target.value)}
+                        className="appearance-none pr-8 pl-3 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-xs font-medium text-[var(--text-primary)] outline-none cursor-pointer hover:bg-[var(--bg-hover)] transition-colors min-w-[110px]"
+                      >
+                        <option value="system">System</option>
+                        <option value="dark">Dark</option>
+                        <option value="light">Light</option>
+                      </select>
+                      <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
                   </div>
 
+                  {/* Contrast */}
+                  <div className="flex items-center justify-between pt-3">
+                    <span className="font-medium text-[var(--text-primary)]">Contrast</span>
+                    <div className="relative">
+                      <select
+                        value={contrastLevel}
+                        onChange={(e) => handleContrastChange(e.target.value)}
+                        className="appearance-none pr-8 pl-3 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-xs font-medium text-[var(--text-primary)] outline-none cursor-pointer hover:bg-[var(--bg-hover)] transition-colors min-w-[110px]"
+                      >
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="default">Default</option>
+                      </select>
+                      <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* Accent color */}
+                  <div className="flex items-center justify-between pt-3">
+                    <span className="font-medium text-[var(--text-primary)]">Accent color</span>
+                    <div className="relative">
+                      <select
+                        value={accentColor}
+                        onChange={(e) => handleAccentColorChange(e.target.value)}
+                        className="appearance-none pr-8 pl-7 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-xs font-medium text-[var(--text-primary)] outline-none cursor-pointer hover:bg-[var(--bg-hover)] transition-colors min-w-[110px]"
+                      >
+                        {ACCENT_COLORS.map(c => (
+                          <option key={c.id} value={c.id}>
+                            {c.label}
+                          </option>
+                        ))}
+                      </select>
+                      <span 
+                        className="w-2.5 h-2.5 rounded-full absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                        style={{ backgroundColor: ACCENT_COLORS.find(c => c.id === accentColor)?.hex || '#eab308' }}
+                      />
+                      <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* Language */}
+                  <div className="flex items-center justify-between pt-3">
+                    <span className="font-medium text-[var(--text-primary)]">Language</span>
+                    <div className="relative">
+                      <select
+                        value={language}
+                        onChange={(e) => handleLanguageChange(e.target.value)}
+                        className="appearance-none pr-8 pl-3 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-xs font-medium text-[var(--text-primary)] outline-none cursor-pointer hover:bg-[var(--bg-hover)] transition-colors min-w-[130px]"
+                      >
+                        <option value="English (US)">English (US)</option>
+                        <option value="Auto-detect">Auto-detect</option>
+                        <option value="English (UK)">English (UK)</option>
+                        <option value="Español">Español (Spanish)</option>
+                        <option value="Français">Français (French)</option>
+                        <option value="Deutsch">Deutsch (German)</option>
+                        <option value="日本語">日本語 (Japanese)</option>
+                        <option value="中文">中文 (Chinese)</option>
+                        <option value="हिन्दी">हिन्दी (Hindi)</option>
+                        <option value="नेपाली">नेपाली (Nepali)</option>
+                      </select>
+                      <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* Enable Dictation */}
                   <div className="flex items-center justify-between pt-3">
                     <div>
                       <div className="font-medium text-[var(--text-primary)]">Enable Dictation</div>
-                      <div className="text-xs text-[var(--text-muted)]">Use dictation in the chat composer.</div>
+                      <div className="text-xs text-[var(--text-muted)] mt-0.5">Use dictation in the chat composer.</div>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input 
                         type="checkbox" 
-                        checked={settings.enableDictation !== false} 
-                        onChange={(e) => setSettings({ ...settings, enableDictation: e.target.checked })}
+                        checked={settings?.enableDictation !== false} 
+                        onChange={(e) => {
+                          if (setSettings) {
+                            setSettings({ ...settings, enableDictation: e.target.checked });
+                          }
+                        }}
                         className="sr-only peer"
                       />
-                      <div className="w-11 h-6 bg-neutral-300 peer-focus:outline-none rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                      <div className="w-10 h-5.5 bg-neutral-300 peer-focus:outline-none rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-blue-600"></div>
                     </label>
                   </div>
+
                 </div>
               </div>
             )}

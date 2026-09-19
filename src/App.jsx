@@ -11,6 +11,7 @@ import ProjectsStudio from './components/ProjectsStudio';
 import SettingsModal from './components/SettingsModal';
 import AuthScreen from './components/AuthScreen';
 import NotFoundPage from './components/NotFoundPage';
+import LegalAndHelpModal from './components/LegalAndHelpModal';
 import { 
   queryQuickAi, 
   getBackendImageQuota, 
@@ -19,7 +20,24 @@ import {
   incrementDailyChatUsage 
 } from './engine/quickAiEngine';
 
-const VALID_MODES = ['chat', 'code', 'images', 'projects', 'doc', 'math', 'svg'];
+const VALID_MODES = [
+  'chat', 
+  'code', 
+  'images', 
+  'projects', 
+  'doc', 
+  'math', 
+  'svg',
+  'terms',
+  'privacy',
+  'help',
+  'legal',
+  'docs',
+  'releasenotes',
+  'downloadapps',
+  'reportbug',
+  'keyboard'
+];
 
 const getModeFromPath = (pathname) => {
   if (!pathname) return 'chat';
@@ -716,6 +734,18 @@ export default function App() {
           {activeMode === 'svg' && (
             <div className="h-full overflow-hidden">
               <SvgStudio settings={settings} />
+            </div>
+          )}
+
+          {['terms', 'privacy', 'help', 'legal', 'docs', 'releasenotes', 'downloadapps', 'reportbug', 'keyboard'].includes(activeMode) && (
+            <div className="h-full overflow-hidden">
+              <LegalAndHelpModal
+                isOpen={true}
+                initialTab={activeMode === 'privacy' ? 'privacy' : activeMode === 'help' ? 'help' : activeMode === 'releasenotes' ? 'releasenotes' : activeMode === 'downloadapps' ? 'downloadapps' : activeMode === 'reportbug' ? 'reportbug' : activeMode === 'keyboard' ? 'keyboard' : 'terms'}
+                currentUser={currentUser}
+                onClose={() => handleSwitchMode('chat')}
+                onOpenSettings={handleOpenSettings}
+              />
             </div>
           )}
 

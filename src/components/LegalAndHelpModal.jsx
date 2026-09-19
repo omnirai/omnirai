@@ -226,10 +226,76 @@ export default function LegalAndHelpModal({
       className="fixed inset-0 z-[100] bg-[var(--bg-card)] flex flex-col md:flex-row overflow-hidden text-[var(--text-primary)] animate-fade-in"
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Left Sidebar Navigation */}
-      <aside className="w-full md:w-72 lg:w-80 border-b md:border-b-0 md:border-r border-[var(--border-color)] bg-[var(--bg-sidebar)] flex flex-col shrink-0">
+      {/* ========================================== */}
+      {/* MOBILE TOP BAR & HORIZONTAL TAB PILLS      */}
+      {/* ========================================== */}
+      <div className="md:hidden flex flex-col shrink-0 border-b border-[var(--border-color)] bg-[var(--bg-sidebar)]">
+        {/* Mobile Header */}
+        <div className="h-14 px-4 flex items-center justify-between border-b border-[var(--border-color)]/60">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white shadow-md">
+              <OmniraIcon className="w-3.5 h-3.5" />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-bold text-xs tracking-tight">OMNIRA Legal & Support</span>
+              <span className="text-[10px] text-[var(--text-muted)]">Terms, Privacy & Guides</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleCopyLink}
+              className="p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] text-xs cursor-pointer"
+              title="Copy URL"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] text-xs cursor-pointer"
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Horizontal Scrollable Tabs Pill Bar for Mobile */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar px-3 py-2">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  setActiveTab(tab.id);
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveTab(tab.id);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+                  isActive 
+                    ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-2xs' 
+                    : 'bg-[var(--bg-card)] text-[var(--text-secondary)] border border-[var(--border-color)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white dark:text-neutral-900' : 'text-[var(--text-muted)]'}`} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ========================================== */}
+      {/* DESKTOP SIDEBAR NAVIGATION                 */}
+      {/* ========================================== */}
+      <aside className="hidden md:flex md:w-72 lg:w-80 border-r border-[var(--border-color)] bg-[var(--bg-sidebar)] flex-col shrink-0">
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-[var(--border-color)] flex items-center justify-between">
+        <div className="p-5 border-b border-[var(--border-color)] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white shadow-md">
               <OmniraIcon className="w-4 h-4" />
@@ -239,14 +305,6 @@ export default function LegalAndHelpModal({
               <span className="text-[11px] text-[var(--text-muted)]">Terms, Privacy & Guides</span>
             </div>
           </div>
-          
-          <button
-            onClick={onClose}
-            className="md:hidden p-2 rounded-xl border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] cursor-pointer"
-            title="Close"
-          >
-            <X className="w-4 h-4" />
-          </button>
         </div>
 
         {/* Navigation Items List */}
@@ -296,11 +354,13 @@ export default function LegalAndHelpModal({
         </div>
       </aside>
 
-      {/* Right Main Content Area */}
+      {/* ========================================== */}
+      {/* MAIN DOCUMENT CONTENT AREA                 */}
+      {/* ========================================== */}
       <main className="flex-1 flex flex-col h-full overflow-hidden min-w-0 bg-[var(--bg-primary)]">
         
-        {/* Top Title Bar */}
-        <div className="px-6 sm:px-10 py-4 border-b border-[var(--border-color)] flex items-center justify-between shrink-0 bg-[var(--bg-card)]/60 backdrop-blur-md">
+        {/* Desktop Top Title Bar (Hidden on Mobile since mobile has its unified top bar) */}
+        <div className="hidden md:flex px-8 lg:px-10 py-4 border-b border-[var(--border-color)] items-center justify-between shrink-0 bg-[var(--bg-card)]/60 backdrop-blur-md">
           <div>
             <h2 className="font-bold text-lg text-[var(--text-primary)] capitalize">
               {tabs.find(t => t.id === activeTab)?.label || 'Information'}
@@ -330,13 +390,13 @@ export default function LegalAndHelpModal({
               title="Close (Esc)"
             >
               <X className="w-4 h-4" />
-              <span className="hidden sm:inline">Close</span>
+              <span>Close</span>
             </button>
           </div>
         </div>
 
         {/* Scrollable Document Container */}
-        <div className="flex-1 overflow-y-auto p-6 sm:p-10 space-y-6 text-sm leading-relaxed text-[var(--text-primary)]">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-10 space-y-6 text-sm leading-relaxed text-[var(--text-primary)]">
           
           {/* 1. TERMS OF SERVICE */}
           {activeTab === 'terms' && (

@@ -223,125 +223,124 @@ export default function LegalAndHelpModal({
 
   return (
     <div 
-      className="fixed inset-0 z-[100] bg-black/65 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 md:p-6 animate-fade-in"
-      onClick={onClose}
+      className="fixed inset-0 z-[100] bg-[var(--bg-card)] flex flex-col md:flex-row overflow-hidden text-[var(--text-primary)] animate-fade-in"
+      onClick={(e) => e.stopPropagation()}
     >
-      <div 
-        className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl w-full max-w-4xl h-[92vh] sm:h-[85vh] max-h-[720px] shadow-2xl flex flex-col md:flex-row overflow-hidden text-[var(--text-primary)] relative"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Left Sidebar Navigation */}
-        <aside className="w-full md:w-64 border-b md:border-b-0 md:border-r border-[var(--border-color)] bg-[var(--bg-sidebar)] flex flex-col shrink-0">
-          {/* Header */}
-          <div className="p-4 border-b border-[var(--border-color)] flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white shadow-xs">
-                <OmniraIcon className="w-3.5 h-3.5" />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-bold text-xs tracking-tight">OMNIRA Legal & Support</span>
-                <span className="text-[10px] text-[var(--text-muted)]">Terms, Privacy & Guides</span>
-              </div>
+      {/* Left Sidebar Navigation */}
+      <aside className="w-full md:w-72 lg:w-80 border-b md:border-b-0 md:border-r border-[var(--border-color)] bg-[var(--bg-sidebar)] flex flex-col shrink-0">
+        {/* Header */}
+        <div className="p-4 sm:p-5 border-b border-[var(--border-color)] flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white shadow-md">
+              <OmniraIcon className="w-4 h-4" />
             </div>
-            
+            <div className="flex flex-col">
+              <span className="font-bold text-sm tracking-tight">OMNIRA Legal & Support</span>
+              <span className="text-[11px] text-[var(--text-muted)]">Terms, Privacy & Guides</span>
+            </div>
+          </div>
+          
+          <button
+            onClick={onClose}
+            className="md:hidden p-2 rounded-xl border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] cursor-pointer"
+            title="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Navigation Items List */}
+        <nav className="flex-1 overflow-y-auto p-3 space-y-1.5">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  setActiveTab(tab.id);
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveTab(tab.id);
+                }}
+                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer ${
+                  isActive 
+                    ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-semibold shadow-xs' 
+                    : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                <div className="flex items-center gap-3 truncate">
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white dark:text-neutral-900' : 'text-[var(--text-muted)]'}`} />
+                  <span className="truncate">{tab.label}</span>
+                </div>
+                {tab.badge && (
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                    isActive 
+                      ? 'bg-white/20 dark:bg-black/20 text-white dark:text-neutral-900' 
+                      : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400'
+                  }`}>
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Footer inside Left Sidebar */}
+        <div className="p-4 border-t border-[var(--border-color)] text-xs text-[var(--text-muted)] flex items-center justify-between">
+          <span>OMNIRA v3.4.2</span>
+          <span className="text-emerald-500 font-medium">● Systems Active</span>
+        </div>
+      </aside>
+
+      {/* Right Main Content Area */}
+      <main className="flex-1 flex flex-col h-full overflow-hidden min-w-0 bg-[var(--bg-primary)]">
+        
+        {/* Top Title Bar */}
+        <div className="px-6 sm:px-10 py-4 border-b border-[var(--border-color)] flex items-center justify-between shrink-0 bg-[var(--bg-card)]/60 backdrop-blur-md">
+          <div>
+            <h2 className="font-bold text-lg text-[var(--text-primary)] capitalize">
+              {tabs.find(t => t.id === activeTab)?.label || 'Information'}
+            </h2>
+            <p className="text-xs text-[var(--text-muted)]">
+              {activeTab === 'terms' && 'Official Terms & Conditions governing use of OMNIRA AI.'}
+              {activeTab === 'privacy' && 'How we protect, encrypt, and handle your data and conversations.'}
+              {activeTab === 'help' && 'Frequently asked questions, tutorials, and support assistance.'}
+              {activeTab === 'releasenotes' && 'What is new in the latest versions and model updates.'}
+              {activeTab === 'downloadapps' && 'Install OMNIRA on Windows, Mac, Linux, and Mobile.'}
+              {activeTab === 'keyboard' && 'Master productivity with global keyboard shortcuts.'}
+              {activeTab === 'reportbug' && 'Submit issue reports and feature requests directly to our team.'}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCopyLink}
+              className="p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+              title="Copy current URL"
+            >
+              {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+            </button>
             <button
               onClick={onClose}
-              className="md:hidden p-1.5 rounded-lg border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] text-xs font-semibold cursor-pointer transition-colors shadow-2xs"
+              title="Close (Esc)"
             >
               <X className="w-4 h-4" />
+              <span className="hidden sm:inline">Close</span>
             </button>
           </div>
+        </div>
 
-          {/* Navigation Items List */}
-          <nav className="flex-1 overflow-y-auto p-2.5 space-y-1">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    setActiveTab(tab.id);
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveTab(tab.id);
-                  }}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
-                    isActive 
-                      ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-semibold shadow-xs' 
-                      : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 truncate">
-                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white dark:text-neutral-900' : 'text-[var(--text-muted)]'}`} />
-                    <span className="truncate">{tab.label}</span>
-                  </div>
-                  {tab.badge && (
-                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
-                      isActive 
-                        ? 'bg-white/20 dark:bg-black/20 text-white dark:text-neutral-900' 
-                        : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400'
-                    }`}>
-                      {tab.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* Footer inside Left Sidebar */}
-          <div className="p-3 border-t border-[var(--border-color)] text-[11px] text-[var(--text-muted)] flex items-center justify-between">
-            <span>OMNIRA v3.4.2</span>
-            <span className="text-emerald-500 font-medium">● Systems Active</span>
-          </div>
-        </aside>
-
-        {/* Right Main Content Area */}
-        <main className="flex-1 flex flex-col h-full overflow-hidden min-w-0 bg-[var(--bg-primary)]">
+        {/* Scrollable Document Container */}
+        <div className="flex-1 overflow-y-auto p-6 sm:p-10 space-y-6 text-sm leading-relaxed text-[var(--text-primary)]">
           
-          {/* Top Title Bar */}
-          <div className="px-6 py-4 border-b border-[var(--border-color)] flex items-center justify-between shrink-0 bg-[var(--bg-card)]/50 backdrop-blur-xs">
-            <div>
-              <h2 className="font-bold text-base text-[var(--text-primary)] capitalize">
-                {tabs.find(t => t.id === activeTab)?.label || 'Information'}
-              </h2>
-              <p className="text-xs text-[var(--text-muted)]">
-                {activeTab === 'terms' && 'Official Terms & Conditions governing use of OMNIRA AI.'}
-                {activeTab === 'privacy' && 'How we protect, encrypt, and handle your data and conversations.'}
-                {activeTab === 'help' && 'Frequently asked questions, tutorials, and support assistance.'}
-                {activeTab === 'releasenotes' && 'What is new in the latest versions and model updates.'}
-                {activeTab === 'downloadapps' && 'Install OMNIRA on Windows, Mac, Linux, and Mobile.'}
-                {activeTab === 'reportbug' && 'Submit issue reports and feature requests directly to our team.'}
-              </p>
-            </div>
-
-            <div className="hidden md:flex items-center gap-2">
-              <button
-                onClick={handleCopyLink}
-                className="p-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] text-xs flex items-center gap-1 cursor-pointer transition-colors"
-                title="Copy current URL"
-              >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-              </button>
-              <button
-                onClick={onClose}
-                className="p-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] text-xs cursor-pointer transition-colors"
-                title="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Scrollable Document Container */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 text-sm leading-relaxed text-[var(--text-primary)]">
-            
-            {/* 1. TERMS OF SERVICE */}
-            {activeTab === 'terms' && (
-              <div className="space-y-6 max-w-2xl mx-auto text-justify [text-align-last:left] [text-justify:inter-word]">
+          {/* 1. TERMS OF SERVICE */}
+          {activeTab === 'terms' && (
+            <div className="space-y-6 max-w-4xl mx-auto text-justify [text-align-last:left] [text-justify:inter-word]">
                 <div className="p-4 rounded-2xl bg-violet-500/10 border border-violet-500/20 text-xs flex items-center justify-between gap-3">
                   <div className="flex items-start gap-3">
                     <Info className="w-4 h-4 text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
@@ -412,7 +411,7 @@ export default function LegalAndHelpModal({
 
             {/* 2. PRIVACY POLICY */}
             {activeTab === 'privacy' && (
-              <div className="space-y-6 max-w-2xl mx-auto text-justify [text-align-last:left] [text-justify:inter-word]">
+              <div className="space-y-6 max-w-4xl mx-auto text-justify [text-align-last:left] [text-justify:inter-word]">
                 <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs flex items-center justify-between gap-3">
                   <div className="flex items-start gap-3">
                     <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
@@ -489,7 +488,7 @@ export default function LegalAndHelpModal({
 
             {/* 3. HELP CENTER & FAQS */}
             {activeTab === 'help' && (
-              <div className="space-y-6 max-w-2xl mx-auto">
+              <div className="space-y-6 max-w-4xl mx-auto">
                 {/* Search / Filter FAQ */}
                 <div className="relative">
                   <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-3.5 top-3" />
@@ -552,7 +551,7 @@ export default function LegalAndHelpModal({
 
             {/* 4. RELEASE NOTES */}
             {activeTab === 'releasenotes' && (
-              <div className="space-y-6 max-w-2xl mx-auto">
+              <div className="space-y-6 max-w-4xl mx-auto">
                 <div className="space-y-4">
                   
                   {/* v3.4.2 */}
@@ -615,7 +614,7 @@ export default function LegalAndHelpModal({
 
             {/* 5. DOWNLOAD APPS */}
             {activeTab === 'downloadapps' && (
-              <div className="space-y-6 max-w-2xl mx-auto">
+              <div className="space-y-6 max-w-4xl mx-auto">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   
                   {/* PWA Direct Launcher */}
@@ -692,7 +691,7 @@ export default function LegalAndHelpModal({
 
             {/* 6. KEYBOARD SHORTCUTS */}
             {activeTab === 'keyboard' && (
-              <div className="space-y-6 max-w-2xl mx-auto">
+              <div className="space-y-6 max-w-4xl mx-auto">
                 <div className="p-4 rounded-2xl bg-neutral-100 dark:bg-neutral-800/60 border border-[var(--border-color)] text-xs flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <Keyboard className="w-4 h-4 text-violet-600 dark:text-violet-400" />
@@ -719,7 +718,7 @@ export default function LegalAndHelpModal({
 
             {/* 7. REPORT A BUG */}
             {activeTab === 'reportbug' && (
-              <div className="space-y-5 max-w-2xl mx-auto">
+              <div className="space-y-5 max-w-4xl mx-auto">
                 {bugSubmitted ? (
                   <div className="p-8 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center space-y-3 animate-fade-in">
                     <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center mx-auto shadow-md">
@@ -831,6 +830,5 @@ export default function LegalAndHelpModal({
 
         </main>
       </div>
-    </div>
   );
 }

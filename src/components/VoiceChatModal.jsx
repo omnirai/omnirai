@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Mic, MicOff, Plus, AlertCircle } from 'lucide-react';
 import { queryQuickAi } from '../engine/quickAiEngine';
 
@@ -27,12 +27,18 @@ export default function VoiceChatModal({
   const silenceTimerRef = useRef(null);
   const isSpeakingUtteranceRef = useRef(false);
   const voicesListRef = useRef([]);
+  const callHistoryRef = useRef([]);
+  const isProcessingRef = useRef(false);
+  const pendingSpeechRef = useRef('');
 
-  // Load available speech synthesis voices
+  // Load available speech synthesis voices with maximum clarity
   useEffect(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       const loadVoices = () => {
-        voicesListRef.current = window.speechSynthesis.getVoices();
+        const available = window.speechSynthesis.getVoices();
+        if (available && available.length > 0) {
+          voicesListRef.current = available;
+        }
       };
       loadVoices();
       window.speechSynthesis.onvoiceschanged = loadVoices;
@@ -44,6 +50,7 @@ export default function VoiceChatModal({
       try {
         recognitionRef.current.onend = null;
         recognitionRef.current.onerror = null;
+        recognitionRef.current.onresult = null;
         recognitionRef.current.stop();
       } catch (e) {}
       recognitionRef.current = null;
@@ -71,7 +78,9 @@ export default function VoiceChatModal({
     }
 
     if (micStreamRef.current) {
-      micStreamRef.current.getTracks().forEach(t => t.stop());
+      try {
+        micStreamRef.current.getTracks().forEach(t => t.stop());
+      } catch (e) {}
       micStreamRef.current = null;
     }
 
@@ -83,9 +92,20 @@ export default function VoiceChatModal({
     }
 
     isSpeakingUtteranceRef.current = false;
+    isProcessingRef.current = false;
   }, []);
 
-  // Text-to-Speech Speak function (speaks out loud with realistic tone)
+  // Safe restart of speech recognition
+  const restartRecognitionSafe = useCallback(() => {
+    if (!isOpen || isMuted || !recognitionRef.current) return;
+    try {
+      recognitionRef.current.start();
+    } catch (e) {
+      // Already running or starting
+    }
+  }, [isOpen, isMuted]);
+
+  // High-Volume Text-to-Speech Speak function (speaks loudly and clearly)
   const speakText = useCallback((textToSpeak, onComplete) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       setVoiceState('listening');
@@ -100,6 +120,7 @@ export default function VoiceChatModal({
       const cleanText = textToSpeak
         .replace(/[*#_`~[\]()]/g, ' ')
         .replace(/https?:\/\/\S+/g, '')
+        .replace(/<think>[\s\S]*?<\/think>/gi, '')
         .replace(/\s+/g, ' ')
         .trim();
 
@@ -111,28 +132,33 @@ export default function VoiceChatModal({
 
       const utterance = new SpeechSynthesisUtterance(cleanText);
 
-      // Select natural English voice
+      // Maximize volume and clarity
+      utterance.volume = 1.0; // 100% Maximum Audio Volume
+      utterance.rate = 1.0;   // Natural conversational cadence
+      utterance.pitch = 1.0;
+
+      // Select loud, natural, high-quality voice
       const voices = voicesListRef.current.length > 0 ? voicesListRef.current : window.speechSynthesis.getVoices();
       const preferredVoice = voices.find(v => 
-        (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha') || v.name.includes('Daniel') || v.name.includes('Karen') || v.lang.startsWith('en')) &&
-        !v.name.includes('whisper')
-      ) || voices[0];
+        (v.name.includes('Google US English') ||
+         v.name.includes('Microsoft Jenny Online') ||
+         v.name.includes('Microsoft Guy Online') ||
+         v.name.includes('Natural') ||
+         v.name.includes('Samantha') ||
+         v.name.includes('Karen') ||
+         v.name.includes('Daniel') ||
+         (v.lang.startsWith('en') && !v.name.includes('whisper')))
+      ) || voices.find(v => v.lang.startsWith('en')) || voices[0];
       
-      if (preferredVoice) utterance.voice = preferredVoice;
-
-      utterance.rate = 1.05;
-      utterance.pitch = 1.02;
-
-      // Stop recognition while AI is speaking
-      if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch (e) {}
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
       }
 
       // Animate orb pulsation during speech
       if (speakingIntervalRef.current) clearInterval(speakingIntervalRef.current);
       speakingIntervalRef.current = setInterval(() => {
-        setAudioVolume(0.35 + Math.random() * 0.45);
-      }, 120);
+        setAudioVolume(0.45 + Math.random() * 0.45);
+      }, 100);
 
       utterance.onstart = () => {
         isSpeakingUtteranceRef.current = true;
@@ -148,13 +174,11 @@ export default function VoiceChatModal({
         setAudioVolume(0);
         setVoiceState('listening');
 
-        // Restart recognition for user reply
+        // Restart recognition for immediate user response
         if (isOpen && !isMuted) {
           setTimeout(() => {
-            if (recognitionRef.current) {
-              try { recognitionRef.current.start(); } catch (e) {}
-            }
-          }, 300);
+            restartRecognitionSafe();
+          }, 200);
         }
 
         if (onComplete) onComplete();
@@ -172,47 +196,70 @@ export default function VoiceChatModal({
       setVoiceState('listening');
       if (onComplete) onComplete();
     }
-  }, [isMuted, isOpen]);
+  }, [isMuted, isOpen, restartRecognitionSafe]);
 
-  // Process user speech via AI
+  // Process user speech via live AI call engine
   const processUserSpeech = useCallback(async (spokenText) => {
-    if (!spokenText.trim()) {
-      setVoiceState('listening');
-      return;
-    }
+    const query = spokenText.trim();
+    if (!query || isProcessingRef.current) return;
 
+    isProcessingRef.current = true;
     setVoiceState('thinking');
-    setUserTranscript(spokenText);
+    setUserTranscript(query);
     setInterimTranscript('');
+
+    // Stop any existing speech synthesis
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
 
     let reply = "";
 
     try {
+      // Build real phone-call prompt with conversational history
+      const prompt = `You are in a live phone call voice conversation with the user.
+User just said: "${query}".
+Respond directly, warmly, intelligently, and conversationally in 1 to 2 spoken sentences, exactly like a human talking on a phone call.
+Rules:
+- Give a direct, helpful, and natural spoken answer.
+- Never use markdown formatting, bullets, asterisks, or code blocks.
+- Answer whatever the user asks immediately and accurately.`;
+
       const response = await queryQuickAi(
-        `User is in real-time voice mode. User said: "${spokenText}".
-Respond warmly, conversationally, and concisely in 1 to 3 natural sentences. Do NOT use markdown, code blocks, or bullet points.`,
-        [],
-        selectedModel,
+        prompt,
+        callHistoryRef.current,
+        selectedModel || 'gpt-4o',
         {
-          engineMode: 'quick-local-neural',
-          modelName: 'Xenova/Qwen1.5-0.5B-Chat',
-          temperature: 0.7
+          temperature: 0.75,
+          max_tokens: 200
         },
         null,
         'chat'
       );
-      reply = response?.content || response?.text || "";
+
+      reply = response?.content || response?.text || (typeof response === 'string' ? response : "");
+      // Strip any reasoning tags if present
+      reply = reply.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
     } catch (err) {
-      console.warn("Voice AI query error, using fallback voice:", err);
+      console.warn("Voice AI query error:", err);
     }
 
     if (!reply) {
-      reply = `I heard you say "${spokenText}". How can I help you with that?`;
+      reply = `I understand. Let me help you with ${query}. What would you like to do next?`;
+    }
+
+    // Save into conversational history for continuous memory
+    callHistoryRef.current.push({ role: 'user', content: query });
+    callHistoryRef.current.push({ role: 'assistant', content: reply });
+    if (callHistoryRef.current.length > 12) {
+      callHistoryRef.current = callHistoryRef.current.slice(-12);
     }
 
     setBotResponseText(reply);
+    isProcessingRef.current = false;
+
     if (onVoiceMessageComplete) {
-      onVoiceMessageComplete(spokenText, reply);
+      onVoiceMessageComplete(query, reply);
     }
 
     speakText(reply);
@@ -227,7 +274,7 @@ Respond warmly, conversationally, and concisely in 1 to 3 natural sentences. Do 
 
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 64;
-      analyser.smoothingTimeConstant = 0.8;
+      analyser.smoothingTimeConstant = 0.75;
       analyserRef.current = analyser;
 
       const source = ctx.createMediaStreamSource(stream);
@@ -237,16 +284,16 @@ Respond warmly, conversationally, and concisely in 1 to 3 natural sentences. Do 
 
       const updateVolume = () => {
         if (!analyserRef.current) return;
-        if (isSpeakingUtteranceRef.current) return; // Speech synthesis takes over visual volume
-
-        analyserRef.current.getByteFrequencyData(dataArray);
-        let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) {
-          sum += dataArray[i];
+        if (!isSpeakingUtteranceRef.current) {
+          analyserRef.current.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i];
+          }
+          const avg = sum / dataArray.length;
+          const normalized = Math.min(1, avg / 45);
+          setAudioVolume(normalized);
         }
-        const avg = sum / dataArray.length;
-        const normalized = Math.min(1, avg / 70);
-        setAudioVolume(normalized);
 
         animFrameRef.current = requestAnimationFrame(updateVolume);
       };
@@ -283,8 +330,6 @@ Respond warmly, conversationally, and concisely in 1 to 3 natural sentences. Do 
     recognition.lang = 'en-US';
 
     recognition.onresult = (event) => {
-      if (isSpeakingUtteranceRef.current) return;
-
       let finalStr = '';
       let interimStr = '';
 
@@ -296,20 +341,43 @@ Respond warmly, conversationally, and concisely in 1 to 3 natural sentences. Do 
         }
       }
 
+      const activeSpeech = (finalStr || interimStr).trim();
+
+      // Barge-in: If user starts speaking while AI is speaking, interrupt AI immediately
+      if (activeSpeech.length > 2 && isSpeakingUtteranceRef.current) {
+        window.speechSynthesis.cancel();
+        isSpeakingUtteranceRef.current = false;
+        if (speakingIntervalRef.current) {
+          clearInterval(speakingIntervalRef.current);
+          speakingIntervalRef.current = null;
+        }
+        setVoiceState('listening');
+      }
+
       if (interimStr) {
         setInterimTranscript(interimStr);
+        pendingSpeechRef.current = interimStr;
         setVoiceState('listening');
+
+        // Trigger after a brief pause even if final event hasn't fired yet
+        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = setTimeout(() => {
+          if (pendingSpeechRef.current.trim().length > 1 && !isProcessingRef.current) {
+            const speechToProcess = pendingSpeechRef.current.trim();
+            pendingSpeechRef.current = '';
+            processUserSpeech(speechToProcess);
+          }
+        }, 850);
       }
 
       if (finalStr.trim()) {
         const currentSentence = finalStr.trim();
         setUserTranscript(currentSentence);
         setInterimTranscript('');
+        pendingSpeechRef.current = '';
 
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-        silenceTimerRef.current = setTimeout(() => {
-          processUserSpeech(currentSentence);
-        }, 700);
+        processUserSpeech(currentSentence);
       }
     };
 
@@ -341,7 +409,10 @@ Respond warmly, conversationally, and concisely in 1 to 3 natural sentences. Do 
       setErrorMessage(null);
       setUserTranscript('');
       setInterimTranscript('');
-      setBotResponseText('Hi! How can I help you today?');
+      setBotResponseText("I'm listening, go ahead...");
+      callHistoryRef.current = [];
+      pendingSpeechRef.current = '';
+      isProcessingRef.current = false;
 
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         window.speechSynthesis.resume();
@@ -350,8 +421,8 @@ Respond warmly, conversationally, and concisely in 1 to 3 natural sentences. Do 
       startListening();
 
       const greetTimer = setTimeout(() => {
-        speakText("Hi! What would you like to explore today?");
-      }, 400);
+        speakText("I'm listening. Ask me anything, and let's talk!");
+      }, 300);
 
       return () => {
         clearTimeout(greetTimer);

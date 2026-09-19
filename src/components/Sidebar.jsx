@@ -249,7 +249,7 @@ export default function Sidebar({
 
       {/* Sidebar Root Panel */}
       <aside 
-        className={`fixed inset-y-0 left-0 z-[60] w-64 max-w-[85vw] bg-[var(--bg-sidebar)] border-r border-[var(--border-color)] flex flex-col shadow-2xl transition-all duration-200 ease-in-out lg:static lg:inset-auto lg:h-full lg:shrink-0 lg:z-auto lg:shadow-none ${
+        className={`fixed inset-y-0 left-0 z-[60] w-64 max-w-[85vw] bg-[var(--bg-sidebar)] border-r border-[var(--border-color)] flex flex-col shadow-2xl transition-all duration-200 ease-in-out lg:relative lg:inset-auto lg:h-full lg:shrink-0 lg:z-50 lg:shadow-none ${
           isOpen ? 'translate-x-0 block' : '-translate-x-full hidden lg:hidden'
         }`}
       >
@@ -490,8 +490,11 @@ export default function Sidebar({
               {/* Upgrade plan */}
               <button
                 onMouseEnter={() => setIsHelpFlyoutOpen(false)}
-                onClick={() => {
+                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
                   setIsUserMenuOpen(false);
+                  setIsHelpFlyoutOpen(false);
                   openSettings && openSettings('billing');
                 }}
                 className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left text-xs cursor-pointer"
@@ -503,8 +506,11 @@ export default function Sidebar({
               {/* Personalization */}
               <button
                 onMouseEnter={() => setIsHelpFlyoutOpen(false)}
-                onClick={() => {
+                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
                   setIsUserMenuOpen(false);
+                  setIsHelpFlyoutOpen(false);
                   openSettings && openSettings('personalization');
                 }}
                 className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left text-xs cursor-pointer"
@@ -516,8 +522,11 @@ export default function Sidebar({
               {/* Profile */}
               <button
                 onMouseEnter={() => setIsHelpFlyoutOpen(false)}
-                onClick={() => {
+                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
                   setIsUserMenuOpen(false);
+                  setIsHelpFlyoutOpen(false);
                   openSettings && openSettings('account');
                 }}
                 className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left text-xs cursor-pointer"
@@ -529,8 +538,11 @@ export default function Sidebar({
               {/* Settings */}
               <button
                 onMouseEnter={() => setIsHelpFlyoutOpen(false)}
-                onClick={() => {
+                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
                   setIsUserMenuOpen(false);
+                  setIsHelpFlyoutOpen(false);
                   openSettings && openSettings('general');
                 }}
                 className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left text-xs cursor-pointer"
@@ -547,9 +559,12 @@ export default function Sidebar({
                 onMouseEnter={() => setIsHelpFlyoutOpen(true)}
               >
                 <button
+                  onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    setIsHelpFlyoutOpen(prev => !prev);
+                    setLegalModalTab('help');
+                    setIsUserMenuOpen(false);
+                    setIsHelpFlyoutOpen(false);
                   }}
                   onMouseEnter={() => setIsHelpFlyoutOpen(true)}
                   className={`w-full flex items-center justify-between px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left text-xs cursor-pointer ${
@@ -563,18 +578,20 @@ export default function Sidebar({
                   <ChevronRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
                 </button>
 
-                {/* Connected Help Flyout Submenu (Seamlessly Attached) */}
+                {/* Connected Help Flyout Submenu (Seamlessly Attached with invisible hover bridge) */}
                 {isHelpFlyoutOpen && (
                   <div 
                     onMouseEnter={() => setIsHelpFlyoutOpen(true)}
-                    className="absolute left-[calc(100%-2px)] bottom-0 w-60 z-[99] bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl shadow-2xl py-2 backdrop-blur-md animate-fade-in text-xs font-medium"
+                    className="absolute left-[calc(100%-2px)] bottom-0 w-60 z-[100] bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl shadow-2xl py-2 backdrop-blur-md animate-fade-in text-xs font-medium before:content-[''] before:absolute before:-left-4 before:top-0 before:bottom-0 before:w-6"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <button
-                      onClick={() => {
+                      onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLegalModalTab('help');
                         setIsUserMenuOpen(false);
                         setIsHelpFlyoutOpen(false);
-                        setLegalModalTab('help');
                       }}
                       className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
                     >
@@ -583,10 +600,12 @@ export default function Sidebar({
                     </button>
 
                     <button
-                      onClick={() => {
+                      onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLegalModalTab('releasenotes');
                         setIsUserMenuOpen(false);
                         setIsHelpFlyoutOpen(false);
-                        setLegalModalTab('releasenotes');
                       }}
                       className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
                     >
@@ -595,10 +614,12 @@ export default function Sidebar({
                     </button>
 
                     <button
-                      onClick={() => {
+                      onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLegalModalTab('downloadapps');
                         setIsUserMenuOpen(false);
                         setIsHelpFlyoutOpen(false);
-                        setLegalModalTab('downloadapps');
                       }}
                       className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
                     >
@@ -607,10 +628,12 @@ export default function Sidebar({
                     </button>
 
                     <button
-                      onClick={() => {
+                      onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openSettings && openSettings('keyboard');
                         setIsUserMenuOpen(false);
                         setIsHelpFlyoutOpen(false);
-                        openSettings && openSettings('keyboard');
                       }}
                       className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
                     >
@@ -621,10 +644,12 @@ export default function Sidebar({
                     <div className="h-px bg-[var(--border-color)]/70 my-1" />
 
                     <button
-                      onClick={() => {
+                      onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLegalModalTab('terms');
                         setIsUserMenuOpen(false);
                         setIsHelpFlyoutOpen(false);
-                        setLegalModalTab('terms');
                       }}
                       className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
                     >
@@ -633,10 +658,12 @@ export default function Sidebar({
                     </button>
 
                     <button
-                      onClick={() => {
+                      onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLegalModalTab('privacy');
                         setIsUserMenuOpen(false);
                         setIsHelpFlyoutOpen(false);
-                        setLegalModalTab('privacy');
                       }}
                       className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
                     >
@@ -645,10 +672,12 @@ export default function Sidebar({
                     </button>
 
                     <button
-                      onClick={() => {
+                      onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLegalModalTab('reportbug');
                         setIsUserMenuOpen(false);
                         setIsHelpFlyoutOpen(false);
-                        setLegalModalTab('reportbug');
                       }}
                       className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
                     >
@@ -662,8 +691,11 @@ export default function Sidebar({
               {/* Log out / Sign in */}
               <button
                 onMouseEnter={() => setIsHelpFlyoutOpen(false)}
-                onClick={() => {
+                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
                   setIsUserMenuOpen(false);
+                  setIsHelpFlyoutOpen(false);
                   if (isGuest) {
                     openAuth && openAuth();
                   } else {

@@ -223,7 +223,7 @@ export default function LegalAndHelpModal({
 
   return (
     <div 
-      className="fixed inset-0 z-[100] bg-black/65 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 md:p-6 animate-fade-in select-none"
+      className="fixed inset-0 z-[100] bg-black/65 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 md:p-6 animate-fade-in"
       onClick={onClose}
     >
       <div 
@@ -260,7 +260,14 @@ export default function LegalAndHelpModal({
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    setActiveTab(tab.id);
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveTab(tab.id);
+                  }}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
                     isActive 
                       ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-semibold shadow-xs' 

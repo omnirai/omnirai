@@ -301,8 +301,8 @@ export default function VoiceChatModal({
         }
       };
 
-      audio.play().catch(() => {
-        // Autoplay blocked fallback to speechSynthesis
+      audio.play().catch((playErr) => {
+        console.warn("Audio play blocked, using synthesis fallback:", playErr);
         audio.onerror(new Event('error'));
       });
     };

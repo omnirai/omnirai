@@ -1,6 +1,77 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Mic, MicOff, Plus, AlertCircle } from 'lucide-react';
+import { X, Mic, MicOff, Plus, AlertCircle, Globe } from 'lucide-react';
 import { queryQuickAi } from '../engine/quickAiEngine';
+
+// Helper to detect language script
+function detectScriptLanguage(text) {
+  if (!text) return 'en-US';
+  // Devanagari (Nepali / Hindi)
+  if (/[\u0900-\u097F]/.test(text)) {
+    if (/(छ|छन्|भयो|गर्छ|तपाईं|के|हो|छैन|नमस्ते|गर्नुहोस्|हामी|मलाई)/.test(text)) return 'ne-NP';
+    return 'hi-IN';
+  }
+  // Arabic / Persian
+  if (/[\u0600-\u06FF]/.test(text)) return 'ar-SA';
+  // Chinese
+  if (/[\u4E00-\u9FFF]/.test(text)) return 'zh-CN';
+  // Japanese
+  if (/[\u3040-\u30FF]/.test(text)) return 'ja-JP';
+  // Korean
+  if (/[\uAC00-\uD7AF]/.test(text)) return 'ko-KR';
+  // Cyrillic (Russian)
+  if (/[\u0400-\u04FF]/.test(text)) return 'ru-RU';
+  
+  const savedLang = localStorage.getItem('omnira_language');
+  if (savedLang && savedLang !== 'Auto-detect') {
+    const map = {
+      'Spanish (ES)': 'es-ES',
+      'French (FR)': 'fr-FR',
+      'German (DE)': 'de-DE',
+      'Italian (IT)': 'it-IT',
+      'Portuguese (PT)': 'pt-BR',
+      'Chinese (Simplified)': 'zh-CN',
+      'Japanese': 'ja-JP',
+      'Hindi': 'hi-IN',
+      'Nepali': 'ne-NP',
+      'Arabic': 'ar-SA',
+      'Russian': 'ru-RU'
+    };
+    if (map[savedLang]) return map[savedLang];
+  }
+
+  return navigator.language || 'en-US';
+}
+
+function getBestVoiceForLanguage(langCode, voices) {
+  if (!voices || voices.length === 0) return null;
+  const langPrefix = langCode.split('-')[0].toLowerCase();
+  
+  // 1. Exact match (e.g. 'ne-NP', 'hi-IN', 'es-ES')
+  let match = voices.find(v => v.lang.toLowerCase().replace('_', '-') === langCode.toLowerCase());
+  if (match) return match;
+  
+  // 2. Prefix match (e.g. 'ne', 'hi', 'es', 'fr', 'de', 'ja', 'zh')
+  match = voices.find(v => v.lang.toLowerCase().startsWith(langPrefix));
+  if (match) return match;
+  
+  // 3. Natural / high-clarity fallback
+  return voices.find(v => 
+    (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha') || v.name.includes('Jenny') || v.lang.startsWith('en')) &&
+    !v.name.includes('whisper')
+  ) || voices[0];
+}
+
+function splitIntoSpokenSentences(text) {
+  if (!text) return [];
+  // Split on sentence terminators: . ! ? । \n
+  const raw = text.split(/(?<=[.!?।\n])\s+/);
+  const chunks = [];
+  for (const part of raw) {
+    const trimmed = part.trim();
+    if (trimmed) chunks.push(trimmed);
+  }
+  return chunks.length > 0 ? chunks : [text.trim()];
+}
 
 export default function VoiceChatModal({
   isOpen,
@@ -17,6 +88,9 @@ export default function VoiceChatModal({
   const [isMuted, setIsMuted] = useState(false);
   const [audioVolume, setAudioVolume] = useState(0);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [voiceLang, setVoiceLang] = useState(() => {
+    return localStorage.getItem('omnira_voice_lang') || navigator.language || 'en-US';
+  });
 
   const recognitionRef = useRef(null);
   const audioContextRef = useRef(null);
@@ -24,6 +98,7 @@ export default function VoiceChatModal({
   const micStreamRef = useRef(null);
   const animFrameRef = useRef(null);
   const speakingIntervalRef = useRef(null);
+  const keepAliveIntervalRef = useRef(null);
   const silenceTimerRef = useRef(null);
   const isSpeakingUtteranceRef = useRef(false);
   const voicesListRef = useRef([]);
@@ -66,6 +141,11 @@ export default function VoiceChatModal({
       speakingIntervalRef.current = null;
     }
 
+    if (keepAliveIntervalRef.current) {
+      clearInterval(keepAliveIntervalRef.current);
+      keepAliveIntervalRef.current = null;
+    }
+
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = null;
@@ -105,7 +185,7 @@ export default function VoiceChatModal({
     }
   }, [isOpen, isMuted]);
 
-  // High-Volume Text-to-Speech Speak function (speaks loudly and clearly)
+  // Multilingual Full-Speech Function (Speaks entire text cleanly without cutting off)
   const speakText = useCallback((textToSpeak, onComplete) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       setVoiceState('listening');
@@ -130,29 +210,20 @@ export default function VoiceChatModal({
         return;
       }
 
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-
-      // Maximize volume and clarity
-      utterance.volume = 1.0; // 100% Maximum Audio Volume
-      utterance.rate = 1.0;   // Natural conversational cadence
-      utterance.pitch = 1.0;
-
-      // Select loud, natural, high-quality voice
+      // Split into natural sentences so long outputs never get truncated by browser
+      const sentenceChunks = splitIntoSpokenSentences(cleanText);
+      const detectedLang = detectScriptLanguage(cleanText);
       const voices = voicesListRef.current.length > 0 ? voicesListRef.current : window.speechSynthesis.getVoices();
-      const preferredVoice = voices.find(v => 
-        (v.name.includes('Google US English') ||
-         v.name.includes('Microsoft Jenny Online') ||
-         v.name.includes('Microsoft Guy Online') ||
-         v.name.includes('Natural') ||
-         v.name.includes('Samantha') ||
-         v.name.includes('Karen') ||
-         v.name.includes('Daniel') ||
-         (v.lang.startsWith('en') && !v.name.includes('whisper')))
-      ) || voices.find(v => v.lang.startsWith('en')) || voices[0];
-      
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
-      }
+      const matchedVoice = getBestVoiceForLanguage(detectedLang, voices);
+
+      // Start Chrome keep-alive interval to prevent 15-second cutoff bug
+      if (keepAliveIntervalRef.current) clearInterval(keepAliveIntervalRef.current);
+      keepAliveIntervalRef.current = setInterval(() => {
+        if (window.speechSynthesis.speaking) {
+          window.speechSynthesis.pause();
+          window.speechSynthesis.resume();
+        }
+      }, 3500);
 
       // Animate orb pulsation during speech
       if (speakingIntervalRef.current) clearInterval(speakingIntervalRef.current);
@@ -160,37 +231,63 @@ export default function VoiceChatModal({
         setAudioVolume(0.45 + Math.random() * 0.45);
       }, 100);
 
-      utterance.onstart = () => {
-        isSpeakingUtteranceRef.current = true;
-        setVoiceState('speaking');
-      };
+      isSpeakingUtteranceRef.current = true;
+      setVoiceState('speaking');
 
-      const handleSpeechDone = () => {
-        isSpeakingUtteranceRef.current = false;
-        if (speakingIntervalRef.current) {
-          clearInterval(speakingIntervalRef.current);
-          speakingIntervalRef.current = null;
+      let currentChunkIdx = 0;
+
+      const speakNextChunk = () => {
+        if (currentChunkIdx >= sentenceChunks.length || !isSpeakingUtteranceRef.current) {
+          // Finished speaking all sentences completely!
+          isSpeakingUtteranceRef.current = false;
+          if (speakingIntervalRef.current) {
+            clearInterval(speakingIntervalRef.current);
+            speakingIntervalRef.current = null;
+          }
+          if (keepAliveIntervalRef.current) {
+            clearInterval(keepAliveIntervalRef.current);
+            keepAliveIntervalRef.current = null;
+          }
+          setAudioVolume(0);
+          setVoiceState('listening');
+
+          // Resume listening for next query
+          if (isOpen && !isMuted) {
+            setTimeout(() => {
+              restartRecognitionSafe();
+            }, 250);
+          }
+
+          if (onComplete) onComplete();
+          return;
         }
-        setAudioVolume(0);
-        setVoiceState('listening');
 
-        // Restart recognition for immediate user response
-        if (isOpen && !isMuted) {
-          setTimeout(() => {
-            restartRecognitionSafe();
-          }, 200);
+        const currentChunkText = sentenceChunks[currentChunkIdx];
+        currentChunkIdx++;
+
+        const utterance = new SpeechSynthesisUtterance(currentChunkText);
+        utterance.volume = 1.0; // 100% Maximum Audio Volume
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        utterance.lang = detectedLang;
+
+        if (matchedVoice) {
+          utterance.voice = matchedVoice;
         }
 
-        if (onComplete) onComplete();
+        utterance.onend = () => {
+          speakNextChunk();
+        };
+
+        utterance.onerror = (e) => {
+          console.warn("Speech chunk synthesis notice:", e);
+          speakNextChunk();
+        };
+
+        window.speechSynthesis.speak(utterance);
       };
 
-      utterance.onend = handleSpeechDone;
-      utterance.onerror = (e) => {
-        console.warn("Speech synthesis notice:", e);
-        handleSpeechDone();
-      };
-
-      window.speechSynthesis.speak(utterance);
+      speakNextChunk();
     } catch (e) {
       console.warn("Speech synthesis error:", e);
       setVoiceState('listening');
@@ -198,7 +295,7 @@ export default function VoiceChatModal({
     }
   }, [isMuted, isOpen, restartRecognitionSafe]);
 
-  // Process user speech via live AI call engine
+  // Process user speech via live AI call engine in ALL languages
   const processUserSpeech = useCallback(async (spokenText) => {
     const query = spokenText.trim();
     if (!query || isProcessingRef.current) return;
@@ -216,14 +313,15 @@ export default function VoiceChatModal({
     let reply = "";
 
     try {
-      // Build real phone-call prompt with conversational history
+      // Build real phone-call prompt with multilingual instructions
       const prompt = `You are in a live phone call voice conversation with the user.
 User just said: "${query}".
-Respond directly, warmly, intelligently, and conversationally in 1 to 2 spoken sentences, exactly like a human talking on a phone call.
-Rules:
-- Give a direct, helpful, and natural spoken answer.
-- Never use markdown formatting, bullets, asterisks, or code blocks.
-- Answer whatever the user asks immediately and accurately.`;
+
+RULES:
+1. Respond in the EXACT SAME LANGUAGE that the user spoke in (e.g. if Nepali, reply in Nepali; if Hindi, reply in Hindi; if Spanish, reply in Spanish; if English, reply in English, etc.).
+2. Answer directly, warmly, intelligently, and completely in 1 to 3 spoken sentences, like a human talking on a phone call.
+3. Never use markdown formatting, bullets, asterisks, or code blocks.
+4. Always speak fully and answer whatever the user asks.`;
 
       const response = await queryQuickAi(
         prompt,
@@ -231,7 +329,7 @@ Rules:
         selectedModel || 'gpt-4o',
         {
           temperature: 0.75,
-          max_tokens: 200
+          max_tokens: 350
         },
         null,
         'chat'
@@ -245,7 +343,7 @@ Rules:
     }
 
     if (!reply) {
-      reply = `I understand. Let me help you with ${query}. What would you like to do next?`;
+      reply = `I heard you clearly. Let me answer that right away. What else would you like to know?`;
     }
 
     // Save into conversational history for continuous memory
@@ -327,7 +425,7 @@ Rules:
     const recognition = new SpeechRec();
     recognition.continuous = true;
     recognition.interimResults = true;
-    recognition.lang = 'en-US';
+    recognition.lang = voiceLang || 'en-US';
 
     recognition.onresult = (event) => {
       let finalStr = '';
@@ -350,6 +448,10 @@ Rules:
         if (speakingIntervalRef.current) {
           clearInterval(speakingIntervalRef.current);
           speakingIntervalRef.current = null;
+        }
+        if (keepAliveIntervalRef.current) {
+          clearInterval(keepAliveIntervalRef.current);
+          keepAliveIntervalRef.current = null;
         }
         setVoiceState('listening');
       }
@@ -401,7 +503,18 @@ Rules:
       recognitionRef.current = recognition;
       setVoiceState('listening');
     } catch (e) {}
-  }, [isOpen, isMuted, processUserSpeech, startAudioAnalyser]);
+  }, [isOpen, isMuted, processUserSpeech, startAudioAnalyser, voiceLang]);
+
+  // Handle language switch
+  const handleLanguageChange = (newLang) => {
+    setVoiceLang(newLang);
+    localStorage.setItem('omnira_voice_lang', newLang);
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+    }
+  };
 
   // Initial greeting and lifecycle
   useEffect(() => {
@@ -421,7 +534,7 @@ Rules:
       startListening();
 
       const greetTimer = setTimeout(() => {
-        speakText("I'm listening. Ask me anything, and let's talk!");
+        speakText("I'm listening. Ask me anything in any language!");
       }, 300);
 
       return () => {
@@ -495,7 +608,7 @@ Rules:
 
       {/* Top Header Bar */}
       <div className="w-full max-w-5xl flex items-center justify-between z-10 px-2 sm:px-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <span className="font-semibold text-base sm:text-lg tracking-tight text-neutral-800 dark:text-neutral-100">
             ChatGPT Voice
           </span>
@@ -504,13 +617,39 @@ Rules:
           </span>
         </div>
 
-        <button
-          onClick={onClose}
-          className="p-2 rounded-full text-neutral-400 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
-          aria-label="Close voice mode"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Multilingual Speech Selector */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800/90 border border-neutral-200 dark:border-neutral-700/80 text-xs shadow-2xs">
+            <Globe className="w-3.5 h-3.5 text-neutral-500" />
+            <select
+              value={voiceLang}
+              onChange={(e) => handleLanguageChange(e.target.value)}
+              className="bg-transparent text-[11px] font-semibold text-neutral-800 dark:text-neutral-200 outline-none cursor-pointer pr-1"
+              title="Select speech language"
+            >
+              <option value="en-US" className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white">English (US)</option>
+              <option value="ne-NP" className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white">नेपाली (Nepali)</option>
+              <option value="hi-IN" className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white">हिन्दी (Hindi)</option>
+              <option value="es-ES" className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white">Español (Spanish)</option>
+              <option value="fr-FR" className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white">Français (French)</option>
+              <option value="de-DE" className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white">Deutsch (German)</option>
+              <option value="zh-CN" className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white">中文 (Chinese)</option>
+              <option value="ja-JP" className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white">日本語 (Japanese)</option>
+              <option value="ar-SA" className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white">العربية (Arabic)</option>
+              <option value="pt-BR" className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white">Português (Portuguese)</option>
+              <option value="ru-RU" className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white">Русский (Russian)</option>
+              <option value="it-IT" className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white">Italiano (Italian)</option>
+            </select>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full text-neutral-400 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+            aria-label="Close voice mode"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Error Message Toast */}

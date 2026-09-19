@@ -177,25 +177,43 @@ export default function App() {
     localStorage.setItem('omnira_user', JSON.stringify(currentUser));
   }, [currentUser]);
 
+  // Auto-prompt sign-in modal for first-time or non-authenticated visitors
+  useEffect(() => {
+    const isDismissed = sessionStorage.getItem('omnira_auth_prompt_dismissed') === 'true';
+    const hasLoggedIn = localStorage.getItem('omnira_logged_in') === 'true';
+    const isGuest = currentUser?.provider === 'guest' || !currentUser?.email || currentUser.email === 'guest@omnira.ai';
+    
+    if (!hasLoggedIn && !isDismissed && isGuest) {
+      const timer = setTimeout(() => {
+        setIsAuthModalOpen(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   // Handle Google Redirect Result and Firebase Auth state changes
   useEffect(() => {
+    let unsubscribe = () => {};
     import('./firebase').then(({ auth, getRedirectResult, onAuthStateChanged }) => {
       if (getRedirectResult) {
         getRedirectResult(auth).then((result) => {
           if (result && result.user) {
             const u = result.user;
+            const customAvatar = localStorage.getItem('omnira_user_avatar');
             const loggedInUser = {
               name: u.displayName || u.email?.split('@')[0] || 'Google User',
               email: u.email,
               username: `@${(u.email || 'user').split('@')[0]}`,
-              avatar: u.photoURL || (u.displayName || 'G').charAt(0),
-              picture: u.photoURL,
+              avatar: customAvatar || u.photoURL || (u.displayName || 'G').charAt(0),
+              picture: customAvatar || u.photoURL,
+              photoURL: customAvatar || u.photoURL,
               provider: 'google',
               uid: u.uid,
               plan: 'Pro'
             };
             setCurrentUser(loggedInUser);
             setIsAuthenticated(true);
+            localStorage.setItem('omnira_logged_in', 'true');
             setIsAuthModalOpen(false);
           }
         }).catch((err) => {
@@ -203,86 +221,29 @@ export default function App() {
         });
       }
 
-      const unsubscribe = onAuthStateChanged(auth, (user) => {
+      unsubscribe = onAuthStateChanged(auth, (user) => {
         if (user) {
+          const customAvatar = localStorage.getItem('omnira_user_avatar');
+          const isGoogle = user.providerData?.some(p => p.providerId === 'google.com') || user.providerId === 'google.com';
           const loggedInUser = {
             name: user.displayName || user.email?.split('@')[0] || 'User',
             email: user.email,
             username: `@${(user.email || 'user').split('@')[0]}`,
-            avatar: user.photoURL || (user.displayName || 'U').charAt(0),
-            picture: user.photoURL,
-            provider: user.providerData?.[0]?.providerId === 'google.com' ? 'google' : 'email',
+            avatar: customAvatar || user.photoURL || (user.displayName || 'U').charAt(0),
+            picture: customAvatar || user.photoURL,
+            photoURL: customAvatar || user.photoURL,
+            provider: isGoogle ? 'google' : 'email',
             uid: user.uid,
             plan: 'Pro'
           };
           setCurrentUser(loggedInUser);
           setIsAuthenticated(true);
+          localStorage.setItem('omnira_logged_in', 'true');
         }
       });
+    }).catch(err => console.error('Firebase initialization error', err));
 
-      return () => unsubscribe();
-    });
-  }, []);
-
-  // Save Model Selection
-  useEffect(() => {
-    localStorage.setItem('chatgpt_selected_model', selectedModel);
-  }, [selectedModel]);
-
-  // Save Settings & Dark Mode
-  useEffect(() => {
-    localStorage.setItem('chatgpt_settings', JSON.stringify(settings));
-  }, [settings]);
-
-  useEffect(() => {
-    localStorage.setItem('chatgpt_theme', darkMode ? 'dark' : 'light');
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [darkMode]);
-
-  // Save Chat Sessions to localStorage
-  useEffect(() => {
-    localStorage.setItem('chatgpt_sessions', JSON.stringify(chatSessions));
-  }, [chatSessions]);
-
-  useEffect(() => {
-    localStorage.setItem('chatgpt_current_id', currentChatId);
-  }, [currentChatId]);
-
-  // Fetch Backend Image Quota & Chat Quota on user change / mount
-  useEffect(() => {
-    const userId = currentUser?.uid || currentUser?.email || 'guest_user';
-    getBackendImageQuota(userId, currentUser?.plan).then((quota) => {
-      if (quota) setUserQuota(quota);
-    });
-    setChatQuota(getDailyChatUsage(userId, currentUser?.plan));
-  }, [currentUser]);
-
-  // Firebase Auth state change listener
-  useEffect(() => {
-    import('./firebase').then(({ auth, onAuthStateChanged }) => {
-      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-        if (firebaseUser) {
-          const customAvatar = localStorage.getItem('omnira_user_avatar');
-          setCurrentUser({
-            name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-            email: firebaseUser.email,
-            username: `@${(firebaseUser.email || 'user').split('@')[0]}`,
-            avatar: customAvatar || firebaseUser.photoURL || firebaseUser.displayName?.charAt(0) || 'U',
-            picture: customAvatar || firebaseUser.photoURL,
-            photoURL: customAvatar || firebaseUser.photoURL,
-            provider: 'firebase',
-            uid: firebaseUser.uid,
-            plan: 'Pro'
-          });
-          setIsAuthenticated(true);
-        }
-      });
-      return () => unsubscribe();
-    }).catch(err => console.error('Firebase listener error', err));
+    return () => unsubscribe();
   }, []);
 
   // Handlers for Auth

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Lock, Mail, User, ArrowRight, Eye, EyeOff, ShieldCheck, X, AlertCircle } from 'lucide-react';
+import { Sparkles, Lock, Mail, User, ArrowRight, Eye, EyeOff, ShieldCheck, X, AlertCircle, RefreshCw, ExternalLink } from 'lucide-react';
 import { 
   auth, 
   googleProvider, 
@@ -45,27 +45,23 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showRedirectOption, setShowRedirectOption] = useState(false);
 
-  // Real Google Sign-In with Firebase Auth (Supports direct popup + seamless redirect fallback)
-  const handleGoogleLogin = async (preferRedirect = false) => {
+  // Close modal and remember dismissal for this session
+  const handleDismiss = () => {
+    try {
+      sessionStorage.setItem('omnira_auth_prompt_dismissed', 'true');
+    } catch (e) {}
+    if (onClose) onClose();
+  };
+
+  // Real Google Sign-In with Firebase Auth via Popup
+  const handleGoogleLogin = async () => {
     setIsLoading(true);
     setError(null);
+    setShowRedirectOption(false);
     try {
-      if (preferRedirect) {
-        await signInWithRedirect(auth, googleProvider);
-        return;
-      }
-      let result;
-      try {
-        result = await signInWithPopup(auth, googleProvider);
-      } catch (popupErr) {
-        // If popup was blocked or closed, seamlessly proceed via direct redirect
-        if (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/cancelled-popup-request' || popupErr.code === 'auth/popup-closed-by-user' || popupErr.code === 'auth/internal-error') {
-          await signInWithRedirect(auth, googleProvider);
-          return;
-        }
-        throw popupErr;
-      }
+      const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       const loggedInUser = {
         name: user.displayName || user.email?.split('@')[0] || 'Google User',
@@ -73,6 +69,7 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
         username: `@${(user.email || 'user').split('@')[0]}`,
         avatar: user.photoURL || user.displayName?.charAt(0) || 'G',
         picture: user.photoURL,
+        photoURL: user.photoURL,
         provider: 'google',
         uid: user.uid,
         plan: 'Pro'
@@ -89,15 +86,36 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
         });
       }
 
-      if (onClose) onClose();
+      handleDismiss();
     } catch (err) {
       console.error('Firebase Google Auth error:', err);
       setIsLoading(false);
-      if (err.code === 'auth/popup-closed-by-user') {
-        setError('Google sign-in popup was closed.');
+      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+        setError('Sign-in popup was closed before completion.');
+      } else if (err.code === 'auth/popup-blocked') {
+        setShowRedirectOption(true);
+        setError('Popup was blocked by your browser. Use the redirect option below or allow popups.');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setError(`Domain ${window.location.hostname} is not authorized in Firebase Console > Authentication > Settings > Authorized domains.`);
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setError('Google sign-in is not enabled in Firebase Console > Authentication > Sign-in method.');
       } else {
-        setError(`Google Auth: ${err.message || err.code}`);
+        setShowRedirectOption(true);
+        setError(`Google Auth notice: ${err.message || err.code}`);
       }
+    }
+  };
+
+  // Google Sign-In via Full Redirect (Fallback if popups fail or are blocked)
+  const handleGoogleRedirectLogin = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await signInWithRedirect(auth, googleProvider);
+    } catch (err) {
+      console.error('Firebase Google Redirect error:', err);
+      setIsLoading(false);
+      setError(`Redirect Error: ${err.message || err.code}`);
     }
   };
 
@@ -135,11 +153,19 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
         });
       }
 
-      if (onClose) onClose();
+      handleDismiss();
     } catch (err) {
       console.error('Firebase Email Auth error:', err);
       setIsLoading(false);
-      setError(`Auth Error: ${err.message || err.code}`);
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        setError('Invalid email or password. If you are new, click "Sign Up" below.');
+      } else if (err.code === 'auth/email-already-in-use') {
+        setError('This email is already registered. Please sign in instead.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('Password should be at least 6 characters.');
+      } else {
+        setError(`Auth Error: ${err.message || err.code}`);
+      }
     }
   };
 
@@ -155,18 +181,22 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
         plan: 'Free'
       });
       setIsLoading(false);
-      if (onClose) onClose();
-    }, 300);
+      handleDismiss();
+    }, 150);
   };
 
   const containerContent = (
-    <div className="w-full max-w-md bg-[var(--bg-card)] border border-[var(--border-color)] rounded-3xl p-7 shadow-2xl relative z-10 backdrop-blur-xl text-[var(--text-primary)] select-none animate-fade-in">
+    <div 
+      onClick={(e) => e.stopPropagation()}
+      className="w-full max-w-md bg-[var(--bg-card)] border border-[var(--border-color)] rounded-3xl p-7 shadow-2xl relative z-10 backdrop-blur-xl text-[var(--text-primary)] select-none animate-fade-in"
+    >
       
       {/* Modal Close Button if opened as modal */}
-      {isModal && onClose && (
+      {isModal && (
         <button
-          onClick={onClose}
+          onClick={handleDismiss}
           className="absolute right-4 top-4 p-1.5 rounded-full border border-[var(--border-color)] bg-[var(--bg-sidebar)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+          title="Close"
         >
           <X className="w-4 h-4" />
         </button>
@@ -175,8 +205,9 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
       {/* Brand Header */}
       <div className="text-center space-y-2 mb-6 flex flex-col items-center">
         <OmniraIcon className="w-16 h-16 mb-1 drop-shadow-md" filterId="auth-modal-logo" />
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-600 dark:text-violet-400 text-xs font-semibold">
-          <span>OMNIRA AI Platform</span>
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-600 dark:text-violet-400 text-xs font-semibold">
+          <Sparkles className="w-3.5 h-3.5 text-violet-500" />
+          <span>OMNIRA Pro Mode Access</span>
         </div>
 
         <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
@@ -184,15 +215,27 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
         </h1>
         <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto">
           {isSignUp 
-            ? 'Get instant access to advanced AI models, document studio, & code assistant.' 
-            : 'Sign in with Google or Email to access your chat history and models.'}
+            ? 'Sign up to unlock Pro Mode with unlimited AI generation, coding assistant, and documents.' 
+            : 'Sign in with Google or Email to unlock Pro Mode features and save your conversations.'}
         </p>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{error}</span>
+        <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex flex-col gap-1.5">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span className="font-medium">{error}</span>
+          </div>
+          {showRedirectOption && (
+            <button
+              type="button"
+              onClick={handleGoogleRedirectLogin}
+              className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
+            >
+              <ExternalLink className="w-3 h-3" />
+              <span>Try Full-Page Google Sign-In</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -204,7 +247,11 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
           disabled={isLoading}
           className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold text-xs transition-all shadow-xs cursor-pointer disabled:opacity-50"
         >
-          <GoogleLogo className="w-4 h-4 shrink-0" />
+          {isLoading ? (
+            <RefreshCw className="w-4 h-4 animate-spin text-[var(--text-muted)]" />
+          ) : (
+            <GoogleLogo className="w-4 h-4 shrink-0" />
+          )}
           <span>Continue with Google</span>
         </button>
       </div>
@@ -291,7 +338,7 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
             <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
           ) : (
             <>
-              <span>{isSignUp ? 'Create Account' : 'Sign In'}</span>
+              <span>{isSignUp ? 'Create Pro Account' : 'Sign In to Pro Mode'}</span>
               <ArrowRight className="w-4 h-4" />
             </>
           )}
@@ -311,10 +358,13 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
         </button>
 
         <button
-          onClick={() => setIsSignUp(!isSignUp)}
+          onClick={() => {
+            setError(null);
+            setIsSignUp(!isSignUp);
+          }}
           className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] underline font-medium cursor-pointer"
         >
-          {isSignUp ? 'Sign In' : 'Sign Up'}
+          {isSignUp ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
         </button>
       </div>
 
@@ -323,7 +373,10 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
 
   if (isModal) {
     return (
-      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div 
+        onClick={handleDismiss}
+        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 cursor-default"
+      >
         {containerContent}
       </div>
     );

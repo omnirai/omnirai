@@ -219,7 +219,7 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="e.g. Alex Morgan"
-                className="w-full pl-10 pr-4 py-2.5 bg-[#0d0f12] border border-neutral-800 rounded-xl text-xs text-white placeholder-neutral-500 outline-none focus:border-emerald-500 transition-colors"
+                className="w-full pl-10 pr-4 py-2.5 bg-[#0d0f12] border border-neutral-800 rounded-xl text-xs text-white placeholder-neutral-500 outline-none focus:border-black dark:focus:border-white transition-colors"
               />
             </div>
           </div>
@@ -237,7 +237,7 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="name@example.com"
-              className="w-full pl-10 pr-4 py-2.5 bg-[#0d0f12] border border-neutral-800 rounded-xl text-xs text-white placeholder-neutral-500 outline-none focus:border-emerald-500 transition-colors"
+              className="w-full pl-10 pr-4 py-2.5 bg-[#0d0f12] border border-neutral-800 rounded-xl text-xs text-white placeholder-neutral-500 outline-none focus:border-black dark:focus:border-white transition-colors"
             />
           </div>
         </div>
@@ -254,7 +254,7 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               placeholder="Enter password"
-              className="w-full pl-10 pr-10 py-2.5 bg-[#0d0f12] border border-neutral-800 rounded-xl text-xs text-white placeholder-neutral-500 outline-none focus:border-emerald-500 transition-colors"
+              className="w-full pl-10 pr-10 py-2.5 bg-[#0d0f12] border border-neutral-800 rounded-xl text-xs text-white placeholder-neutral-500 outline-none focus:border-black dark:focus:border-white transition-colors"
             />
             <button
               type="button"
@@ -270,7 +270,7 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all shadow-lg shadow-emerald-900/30 disabled:opacity-50 mt-1 cursor-pointer"
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 dark:text-black text-white font-semibold text-xs transition-all shadow-lg shadow-neutral-900/30 disabled:opacity-50 mt-1 cursor-pointer"
         >
           {isLoading ? (
             <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -289,7 +289,7 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
           type="button"
           onClick={handleGuestLogin}
           disabled={isLoading}
-          className="text-xs text-emerald-400 font-semibold hover:underline flex items-center gap-1.5 cursor-pointer"
+          className="text-xs text-black dark:text-white font-semibold hover:underline flex items-center gap-1.5 cursor-pointer"
         >
           <ShieldCheck className="w-4 h-4" />
           <span>Direct Access (Use without login)</span>
@@ -316,7 +316,7 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
 
   return (
     <div className="min-h-screen w-screen bg-[#0d0f12] text-white flex items-center justify-center p-4 relative overflow-hidden font-sans">
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-neutral-100 dark:bg-neutral-800 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-10 right-10 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
       {containerContent}
     </div>

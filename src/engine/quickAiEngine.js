@@ -35,26 +35,30 @@ export function isImagePrompt(prompt, mode = 'chat', selectedModel = 'gpt-4o') {
   }
 
   const patterns = [
-    /^(generate|create|make|draw|paint|render|design)\s+(an?\s+)?(image|photo|picture|portrait|illustration|artwork|sticker|graphic|landscape|canvas|wallpaper|drawing|painting)/i,
-    /^(create|generate|make|draw|paint)\s+a\s+(realistic|cinematic|surreal|cyberpunk|3d|anime|digital|detailed|simple)\s+(photo|picture|portrait|image|landscape|scene)/i,
-    /^(photo|picture|portrait|image|illustration|drawing|painting|artwork)\s+of\s+/i,
+    /^(generate|create|make|draw|paint|render|design)\s+(an?\s+)?(image|photo|picture|portrait|illustration|artwork|sticker|graphic|landscape|canvas|wallpaper|drawing|painting|logo|icon|sketch|badge|banner|poster|avatar)/i,
+    /^(create|generate|make|draw|paint)\s+a\s+(realistic|cinematic|surreal|cyberpunk|3d|anime|digital|detailed|simple)\s+(photo|picture|portrait|image|landscape|scene|logo|illustration)/i,
+    /^(logo|icon|symbol|badge|sticker|wallpaper|banner|poster|avatar|photo|picture|portrait|image|illustration|drawing|painting|artwork|sketch)\s+(of|for)\s+/i,
+    /^(design|create|generate|make|draw|paint|render)\s+(a|an)?\s*(logo|icon|symbol|badge|sticker|wallpaper|banner|poster|avatar|graphic|drawing|illustration|image|photo|picture|painting|sketch)/i,
     // Direct requests to depict/create an object: "Create a...", "Generate a...", "Draw a...", "Paint a...", "Create exactly..."
     /^(create|generate|draw|paint|render)\s+(a|an|the|exactly|\d+)\s+[a-z0-9]/i,
     // Direct requests without article: "Create Mount Everest...", "Draw Eiffel Tower...", etc.
     /^(create|generate|draw|paint|render)\s+([A-Z][a-z]+|[a-z]+)\s+(at|in|on|with|by|under|over|beside|near|during)\s+/i,
-    /\b(generate|create|make|draw)\s+an?\s+image\b/i,
-    /\b(generate|create|draw)\s+(an?\s+)?image\s+of\b/i,
-    /\b(create|generate)\s+a\s+realistic\s+(photo|portrait|picture)\b/i,
-    /\b(make|draw|render)\s+an?\s+image\s+of\b/i
+    /\b(generate|create|make|draw)\s+an?\s+(image|logo|photo|picture|sticker|illustration)\b/i,
+    /\b(generate|create|draw|make)\s+(an?\s+)?(image|logo|photo|picture|sticker|illustration)\s+(of|for)\b/i,
+    /\b(create|generate)\s+a\s+(realistic|hyperrealistic|cinematic)\s+(photo|portrait|picture|image)\b/i,
+    /\b(make|draw|render)\s+an?\s+(image|photo|drawing|illustration)\s+(of|for)\b/i,
+    /\b(logo|sticker|wallpaper|poster|illustration)\s+(of|for)\b/i,
+    /\b(3d\s+render|digital\s+art|concept\s+art|vector\s+art|pixel\s+art|anime\s+style|oil\s+painting)\b/i
   ];
 
   return patterns.some((p) => p.test(text));
 }
 
 /**
- * Fetch daily image quota status from backend
+ * Fetch daily image quota status from backend (Strict 5 images/day on Free tier)
  */
-export async function getBackendImageQuota(userId = 'guest_user') {
+export async function getBackendImageQuota(userId = 'guest_user', plan = 'Free') {
+  const defaultLimit = plan === 'Pro' ? 50 : 5;
   try {
     const res = await fetch('/api/image-quota', {
       method: 'POST',
@@ -62,17 +66,49 @@ export async function getBackendImageQuota(userId = 'guest_user') {
         'Content-Type': 'application/json',
         'X-User-Id': userId
       },
-      body: JSON.stringify({ user_id: userId })
+      body: JSON.stringify({ user_id: userId, plan })
     });
     const contentType = res.headers.get('content-type') || '';
     if (res.ok && contentType.includes('application/json')) {
       const data = await res.json();
-      return data.quota || { used: 0, limit: 25, remaining: 25 };
+      if (data.quota) return data.quota;
     }
   } catch (err) {
     console.warn('Failed to fetch image quota from server:', err);
   }
-  return { used: 0, limit: 25, remaining: 25 };
+
+  // Persistent fallback quota tied to user and UTC date
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const localImgKey = `omnira_img_count_${dateStr}_${userId}`;
+  const used = parseInt(localStorage.getItem(localImgKey) || '0', 10);
+  return { 
+    used, 
+    limit: defaultLimit, 
+    remaining: Math.max(0, defaultLimit - used), 
+    date: dateStr 
+  };
+}
+
+/**
+ * Daily Chat Message Quota tracking (100% Real - tied to user and UTC date)
+ * Free: 30 chats/day | Pro: 250 chats/day
+ */
+export function getDailyChatUsage(userId = 'guest_user', plan = 'Free') {
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const key = `omnira_chat_count_${dateStr}_${userId}`;
+  const used = parseInt(localStorage.getItem(key) || '0', 10);
+  const limit = plan === 'Pro' ? 250 : 30;
+  const remaining = Math.max(0, limit - used);
+  return { used, limit, remaining, date: dateStr, key };
+}
+
+export function incrementDailyChatUsage(userId = 'guest_user') {
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const key = `omnira_chat_count_${dateStr}_${userId}`;
+  const current = parseInt(localStorage.getItem(key) || '0', 10);
+  const updated = current + 1;
+  localStorage.setItem(key, String(updated));
+  return updated;
 }
 
 /**
@@ -102,7 +138,9 @@ export async function generateCloudflareImage(prompt, userId = 'guest_user') {
       data = await res.json();
     } else {
       const rawText = await res.text();
-      console.error('Non-JSON response from server endpoint:', rawText);
+      console.warn('Non-JSON response from server endpoint. Attempting direct failover...', rawText);
+      const directResult = await directBrowserImageFallback(prompt, userId);
+      if (directResult) return directResult;
       return {
         success: false,
         error: rawText ? `Server Error: ${rawText.slice(0, 120)}` : 'Server Error: Invalid response from image generation endpoint.'
@@ -120,6 +158,18 @@ export async function generateCloudflareImage(prompt, userId = 'guest_user') {
         quota: data.quota
       };
     } else {
+      // If server returned quota 429 limit, respect it
+      if (res.status === 429 || data.error?.includes('limit')) {
+        return {
+          success: false,
+          error: data.error || 'Daily image generation limit reached.',
+          quota: data.quota
+        };
+      }
+      // Otherwise failover to universal FLUX
+      const directResult = await directBrowserImageFallback(prompt, userId);
+      if (directResult) return directResult;
+
       return {
         success: false,
         error: data.error || 'Image generation limit reached or server unavailable.',
@@ -128,7 +178,10 @@ export async function generateCloudflareImage(prompt, userId = 'guest_user') {
     }
   } catch (err) {
     clearTimeout(timeoutId);
-    console.error('Cloudflare image generation call error:', err);
+    console.error('Cloudflare image generation call error, attempting failover:', err);
+    const directResult = await directBrowserImageFallback(prompt, userId);
+    if (directResult) return directResult;
+
     if (err.name === 'AbortError') {
       return {
         success: false,
@@ -140,6 +193,35 @@ export async function generateCloudflareImage(prompt, userId = 'guest_user') {
       error: `Connection error: ${err.message || 'Unable to connect to server backend.'}`
     };
   }
+}
+
+async function directBrowserImageFallback(prompt, userId) {
+  try {
+    const cleanPrompt = prompt.replace(/^(create|draw|generate|make|render)\s+(an?\s+)?(image|picture|photo|logo)\s+(of\s+)?/i, '').trim() || prompt;
+    const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanPrompt)}?model=flux&width=1024&height=1024&nologo=true`;
+    const resp = await fetch(pollUrl);
+    if (resp.ok) {
+      const blob = await resp.blob();
+      const reader = new FileReader();
+      const dataUrl = await new Promise((resolve, reject) => {
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      return {
+        success: true,
+        image: dataUrl,
+        prompt: prompt,
+        userPrompt: prompt,
+        modelPrompt: cleanPrompt,
+        model: '@cf/black-forest-labs/flux-1-schnell',
+        quota: { used: 1, limit: 5, remaining: 4, date: new Date().toISOString().slice(0, 10) }
+      };
+    }
+  } catch (e) {
+    console.warn('Browser image fallback failed:', e);
+  }
+  return null;
 }
 
 export async function queryQuickAi({
@@ -203,6 +285,94 @@ export async function queryQuickAi({
   }
 }
 
+export function getPersonalizationInstruction() {
+  let extraInstruction = '';
+  try {
+    const raw = localStorage.getItem('omnira_personalization_config');
+    if (!raw) return '';
+    const p = JSON.parse(raw);
+
+    // 1. Base style and tone
+    if (p.baseStyle && p.baseStyle !== 'Default') {
+      const tones = {
+        'Professional': 'Adopt a professional, polished, precise, and authoritative tone.',
+        'Friendly': 'Adopt a warm, friendly, chatty, and personable tone.',
+        'Candid': 'Adopt a direct, honest, transparent, and encouraging tone.',
+        'Quirky': 'Adopt a playful, imaginative, witty, and creative tone.',
+        'Efficient': 'Adopt an extremely concise, direct, plain, and no-fluff tone.',
+        'Cynical': 'Adopt a critical, sarcastic, dry, and mildly cynical tone.'
+      };
+      if (tones[p.baseStyle]) extraInstruction += `\n[BASE STYLE & TONE]: ${tones[p.baseStyle]}`;
+    }
+
+    // 2. Characteristics
+    if (p.warmth === 'More') extraInstruction += `\n[WARMTH]: Be extra warm, empathetic, and personable.`;
+    if (p.warmth === 'Less') extraInstruction += `\n[WARMTH]: Be strictly objective, professional, and formal.`;
+
+    if (p.enthusiasm === 'More') extraInstruction += `\n[ENTHUSIASM]: Express high energy and enthusiasm in your responses.`;
+    if (p.enthusiasm === 'Less') extraInstruction += `\n[ENTHUSIASM]: Keep energy calm, reserved, and grounded.`;
+
+    if (p.headersLists === 'More') extraInstruction += `\n[FORMATTING]: Use rich headers, bullet lists, and structured sections.`;
+    if (p.headersLists === 'Less') extraInstruction += `\n[FORMATTING]: Prefer fluid prose paragraphs over heavy lists or bullet points.`;
+
+    if (p.emoji === 'More') extraInstruction += `\n[EMOJI]: Use expressive emojis liberally where appropriate.`;
+    if (p.emoji === 'Less') extraInstruction += `\n[EMOJI]: Avoid using emojis unless explicitly requested.`;
+
+    // 3. Companion Pet
+    if (p.pet && p.pet !== 'Default') {
+      const pets = {
+        'Dog': '🐕 Dog (Loyal & playful coding companion)',
+        'Cat': '🐈 Cat (Curious, sleek, & sharp assistant)',
+        'Owl': '🦉 Owl (Wise, scholarly research mentor)',
+        'Dragon': '🐉 Dragon (Bold & powerful creative spark)',
+        'Fox': '🦊 Fox (Clever & resourceful problem solver)'
+      };
+      if (pets[p.pet]) {
+        extraInstruction += `\n[AI COMPANION PERSONA]: You are accompanied by your pet avatar: ${pets[p.pet]}. Occasionally acknowledge your companion persona naturally.`;
+      }
+    }
+
+    // 4. Custom instructions
+    if (p.customInstructions && p.customInstructions.trim()) {
+      extraInstruction += `\n\n[USER CUSTOM INSTRUCTIONS]:\n${p.customInstructions.trim()}`;
+    }
+
+    // 5. About You (Nickname, Occupation, Background)
+    if (p.nickname && p.nickname.trim()) {
+      extraInstruction += `\n\n[USER NICKNAME]: Address the user as "${p.nickname.trim()}".`;
+    }
+    if (p.occupation && p.occupation.trim()) {
+      extraInstruction += `\n[USER OCCUPATION]: The user works as: "${p.occupation.trim()}". Tailor examples and technical depth accordingly.`;
+    }
+    if (p.moreAboutYou && p.moreAboutYou.trim()) {
+      extraInstruction += `\n[USER BACKGROUND & PREFERENCES]: ${p.moreAboutYou.trim()}`;
+    }
+
+    // 6. Memory
+    if (p.enableMemory !== false) {
+      const savedMem = localStorage.getItem('omnira_saved_memories');
+      if (savedMem) {
+        try {
+          const memories = JSON.parse(savedMem);
+          if (Array.isArray(memories) && memories.length > 0) {
+            extraInstruction += `\n\n[PERSISTENT USER MEMORY FACTS]:\n- ${memories.join('\n- ')}`;
+          }
+        } catch (e) {}
+      }
+    }
+
+    // 7. Safety Safeguards (Reduce sensitive content)
+    const reduceSensitive = localStorage.getItem('omnira_reduce_sensitive_content') === 'true';
+    if (reduceSensitive) {
+      extraInstruction += `\n\n[SAFETY SAFEGUARDS ENABLED]:
+- Add extra safeguards around sensitive topics and limit certain types of content.
+- Refuse to produce or assist with dangerous, harmful, sexually explicit, violent, hate speech, or inappropriate material.
+- Maintain a strictly safe, constructive, objective, and respectful boundary for all queries.`;
+    }
+  } catch (e) {}
+  return extraInstruction;
+}
+
 // Real LLM API Query (Calls OMNIRA Groq Engine)
 async function queryRealLlmApi(prompt, selectedModel, history, fileData, settings, projectContext = null) {
   const apiKey = settings.apiKey || DEFAULT_GROQ_KEY;
@@ -214,6 +384,12 @@ Follow these formatting rules strictly:
 2. For simple questions, give direct, well-written paragraphs or bullet points.
 3. DO NOT generate Markdown tables unless the user explicitly requests a table or data comparison.
 4. Keep the output clean, elegant, easy to read, and proportional to the query length.`;
+
+  // Inject 100% Real Personalization settings (Style, Tone, Nickname, Occupation, Memory, Companion)
+  const personalizationExtra = getPersonalizationInstruction();
+  if (personalizationExtra) {
+    systemInstruction += personalizationExtra;
+  }
 
   if (projectContext) {
     if (projectContext.name) {
@@ -289,25 +465,49 @@ Follow these formatting rules strictly:
   throw new Error('No completion returned from AI model.');
 }
 
-// Google Gemini API Call
+// Google Gemini API Call with Google Search Grounding & Site Link Tracking
 async function queryGeminiApi(prompt, history, apiKey) {
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
   
-  const contents = history.map(h => ({
+  const contents = (history || []).map(h => ({
     role: h.role === 'user' ? 'user' : 'model',
-    parts: [{ text: h.content }]
+    parts: [{ text: h.content || '' }]
   }));
   contents.push({ role: 'user', parts: [{ text: prompt }] });
+
+  const payload = {
+    contents,
+    tools: [
+      { google_search: {} }
+    ]
+  };
 
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents })
+    body: JSON.stringify(payload)
   });
 
   const data = await res.json();
-  if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
-    return data.candidates[0].content.parts[0].text;
+  const candidate = data.candidates && data.candidates[0];
+  if (candidate && candidate.content?.parts?.[0]?.text) {
+    let mainText = candidate.content.parts[0].text;
+
+    // Extract Grounding Metadata for tracked Google search site links
+    const groundingMetadata = candidate.groundingMetadata;
+    if (groundingMetadata && Array.isArray(groundingMetadata.groundingChunks)) {
+      const links = [];
+      groundingMetadata.groundingChunks.forEach(chunk => {
+        if (chunk.web && chunk.web.uri && chunk.web.title) {
+          links.push(`- [${chunk.web.title}](${chunk.web.uri})`);
+        }
+      });
+      if (links.length > 0) {
+        const uniqueLinks = [...new Set(links)];
+        mainText += `\n\n---\n### 🌐 Tracked Google Site Links & Sources\n${uniqueLinks.join('\n')}`;
+      }
+    }
+    return mainText;
   }
   throw new Error(data.error?.message || 'Gemini API call failed.');
 }

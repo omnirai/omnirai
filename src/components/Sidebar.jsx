@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { 
   SquarePen, 
   Search, 
@@ -21,7 +21,8 @@ import {
   ChevronRight,
   Plus,
   Check,
-  X
+  X,
+  Zap
 } from 'lucide-react';
 import { GoogleLogo } from './AuthScreen';
 import { OmniraLogo } from './OmniraLogo';
@@ -45,7 +46,9 @@ export default function Sidebar({
   onLogout,
   projects = [],
   onAssignChatToProject,
-  onCreateProject
+  onCreateProject,
+  userQuota = { used: 0, limit: 5, remaining: 5 },
+  chatQuota = { used: 0, limit: 30, remaining: 30 }
 }) {
   const userName = currentUser?.name || "Guest User";
   const isGuest = !currentUser || currentUser.provider === 'guest' || userName === "Guest User";
@@ -94,7 +97,6 @@ export default function Sidebar({
     const touch = e.touches[0];
     const dx = Math.abs(touch.clientX - touchStartPos.current.x);
     const dy = Math.abs(touch.clientY - touchStartPos.current.y);
-    // If scrolled more than 10px, cancel long-press
     if (dx > 10 || dy > 10) {
       if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
     }
@@ -137,7 +139,7 @@ export default function Sidebar({
     }
   };
 
-  // Separate pinned, active recents, and archived chats (with complete null safety)
+  // Separate pinned, active recents, and archived chats
   const chatList = Array.isArray(chatHistory) ? chatHistory : [];
   const pinnedChats = chatList.filter((c) => c && c.pinned && !c.archived);
   const recentChats = chatList.filter((c) => c && !c.pinned && !c.archived);
@@ -146,43 +148,35 @@ export default function Sidebar({
   // Render individual chat item
   const renderChatItem = (chat) => {
     if (!chat || !chat.id) return null;
-    const isSelected = currentChatId === chat.id && activeMode === 'chat';
-    const chatProject = (chat.projectId && Array.isArray(projects)) 
-      ? projects.find(p => p && p.id === chat.projectId) 
-      : null;
+    const isSelected = chat.id === currentChatId;
+    const isPinned = !!chat.pinned;
 
     return (
       <div
         key={chat.id}
-        onClick={() => {
-          onSelectChat(chat.id);
-          setActiveMode('chat');
-        }}
+        onClick={() => onSelectChat(chat.id)}
+        onContextMenu={(e) => handleContextMenu(chat, e)}
         onTouchStart={(e) => handleTouchStart(chat, e)}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        onContextMenu={(e) => handleContextMenu(chat, e)}
-        className={`group relative flex items-center justify-between px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-all select-none ${
+        className={`group relative flex items-center justify-between px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-all ${
           isSelected 
             ? 'bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold shadow-2xs' 
-            : 'text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+            : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
         }`}
       >
-        <div className="flex items-center gap-2 min-w-0 pr-6">
-          {chat.pinned && (
-            <Pin className="w-3 h-3 text-emerald-500 fill-emerald-500 shrink-0" />
+        <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
+          {isPinned ? (
+            <Pin className="w-3 h-3 text-neutral-900 dark:text-white fill-neutral-900 dark:fill-white shrink-0" />
+          ) : (
+            <MessageSquare className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
           )}
-          <span className="truncate">
-            {chat.title || 'New Chat'}
+          <span className="truncate flex-1 text-left">
+            {chat.title || "Untitled chat"}
           </span>
-          {chatProject && (
-            <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-normal shrink-0 truncate max-w-[85px] group-hover:text-neutral-500">
-              {chatProject.name}
-            </span>
-          )}
         </div>
 
-        {/* Action Button: triggers context popup */}
+        {/* 3 Dots Context Menu Trigger */}
         <button
           type="button"
           onClick={(e) => {
@@ -194,7 +188,7 @@ export default function Sidebar({
               y: rect.bottom + 4
             });
           }}
-          className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all absolute right-1.5 shrink-0"
+          className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all cursor-pointer shrink-0"
           title="Chat options"
         >
           <MoreHorizontal className="w-3.5 h-3.5" />
@@ -205,34 +199,36 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Mobile Backdrop */}
+      {/* Mobile Drawer Overlay Backdrop */}
       {isOpen && (
         <div 
           onClick={() => setIsOpen(false)}
-          className="fixed inset-0 bg-black/40 z-30 lg:hidden backdrop-blur-2xs"
+          className="fixed inset-0 bg-black/50 z-50 lg:hidden backdrop-blur-xs transition-opacity duration-200"
         />
       )}
 
+      {/* Sidebar Root Panel */}
       <aside 
-        className={`fixed lg:static inset-y-0 left-0 z-40 flex flex-col bg-[var(--bg-sidebar)] border-r border-[var(--border-color)] transition-all duration-200 select-none pt-[env(safe-area-inset-top,0px)] ${
-          isOpen ? 'w-64' : 'w-0 lg:w-0 overflow-hidden border-none'
+        className={`fixed inset-y-0 left-0 z-[60] w-64 max-w-[85vw] bg-[var(--bg-sidebar)] border-r border-[var(--border-color)] flex flex-col shadow-2xl transition-all duration-200 ease-in-out lg:static lg:inset-auto lg:h-full lg:shrink-0 lg:z-auto lg:shadow-none ${
+          isOpen ? 'translate-x-0 block' : '-translate-x-full hidden lg:hidden'
         }`}
       >
-        {/* Top Sidebar Header */}
-        <div className="flex items-center justify-between p-3.5 border-b border-transparent">
-          <OmniraLogo iconSize="w-6 h-6" textClassName="text-base font-bold tracking-tight" />
+        {/* Top Header: Brand Logo & Panel Toggle */}
+        <div className="h-14 px-3.5 border-b border-[var(--border-color)] flex items-center justify-between shrink-0">
+          <div 
+            onClick={() => {
+              setActiveMode('chat');
+              onNewChat();
+            }}
+            className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+          >
+            <OmniraLogo className="h-5 object-contain" />
+          </div>
 
           <div className="flex items-center gap-1">
-            <button 
-              onClick={openSettings}
-              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
-              title="Search"
-            >
-              <Search className="w-4 h-4" />
-            </button>
-            <button 
-              onClick={() => setIsOpen(false)} 
-              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
+            <button
+              onClick={() => setIsOpen(false)}
+              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
               title="Close sidebar"
             >
               <PanelLeftClose className="w-4 h-4" />
@@ -240,41 +236,44 @@ export default function Sidebar({
           </div>
         </div>
 
-        {/* New Chat Button */}
-        <div className="px-3 py-1">
+        {/* Primary Action Button: New Chat */}
+        <div className="p-3 pb-2 space-y-1.5">
           <button
+            type="button"
             onClick={() => {
-              onNewChat();
               setActiveMode('chat');
+              onNewChat();
             }}
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-all text-sm font-medium shadow-2xs group cursor-pointer"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 hover:opacity-90 transition-all shadow-xs cursor-pointer"
           >
-            <div className="flex items-center gap-2.5">
-              <SquarePen className="w-4 h-4 text-[var(--text-primary)]" />
+            <div className="flex items-center gap-2">
+              <Plus className="w-4 h-4" />
               <span>New chat</span>
             </div>
+            <SquarePen className="w-3.5 h-3.5 opacity-60" />
           </button>
         </div>
 
-        {/* Primary Features Navigation */}
-        <div className="px-2 py-2 space-y-0.5 border-b border-[var(--border-color)]">
+        {/* Navigation Categories Section */}
+        <div className="px-2 py-1 space-y-0.5 border-b border-[var(--border-color)]/60">
           {mainNavItems.map((item) => {
             const Icon = item.icon;
-            const isActive = activeMode === (item.modeTarget || item.id);
+            const isItemActive = activeMode === item.modeTarget && item.modeTarget !== undefined;
+
             return (
               <div
                 key={item.id}
                 onClick={() => {
                   if (item.action === 'settings') {
-                    openSettings();
+                    openSettings && openSettings('general');
                   } else if (item.modeTarget) {
                     setActiveMode(item.modeTarget);
                   }
                 }}
-                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer group ${
-                  isActive 
+                className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-medium cursor-pointer transition-colors ${
+                  isItemActive 
                     ? 'bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold' 
-                    : 'text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+                    : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -314,7 +313,7 @@ export default function Sidebar({
           {pinnedChats.length > 0 && (
             <div className="space-y-0.5">
               <div className="px-2.5 text-[10px] font-bold text-[var(--text-muted)] tracking-wider uppercase flex items-center gap-1.5 mb-1">
-                <Pin className="w-3 h-3 text-emerald-500 fill-emerald-500" />
+                <Pin className="w-3 h-3 text-neutral-900 dark:text-white fill-neutral-900 dark:fill-white" />
                 <span>Pinned</span>
               </div>
               {pinnedChats.map(renderChatItem)}
@@ -368,8 +367,16 @@ export default function Sidebar({
             className="flex items-center justify-between p-2 rounded-xl hover:bg-[var(--bg-hover)] cursor-pointer transition-colors"
           >
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-7 h-7 rounded-full bg-emerald-700 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs">
-                {userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'GU'}
+              <div className="w-7 h-7 rounded-full bg-black dark:bg-white text-white dark:text-black font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
+                {currentUser?.picture || currentUser?.photoURL || (currentUser?.avatar && (currentUser.avatar.startsWith('data:') || currentUser.avatar.startsWith('http'))) ? (
+                  <img 
+                    src={currentUser.picture || currentUser.photoURL || currentUser.avatar} 
+                    alt={userName} 
+                    className="w-full h-full object-cover" 
+                  />
+                ) : (
+                  userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'GU'
+                )}
               </div>
               
               <div className="truncate text-xs">
@@ -385,19 +392,19 @@ export default function Sidebar({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (openSettings) openSettings('billing');
+                openSettings && openSettings('account');
               }}
-              className="px-2.5 py-1 rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] text-[11px] font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-hover)] shadow-2xs shrink-0"
+              className="p-1 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--border-color)] transition-colors"
+              title="Settings"
             >
-              Upgrade
+              <MoreHorizontal className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Sign In with Google / Account button if in Guest mode */}
-          {isGuest && openAuth ? (
+          {isGuest ? (
             <button
               onClick={openAuth}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer shadow-sm"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-black transition-colors cursor-pointer shadow-sm"
             >
               <GoogleLogo className="w-4 h-4" />
               <span>Sign In with Google</span>
@@ -418,7 +425,7 @@ export default function Sidebar({
       {/* Context Menu Popup (Matches User Screenshot: Pin, Rename, Archive, Delete) */}
       {contextMenu && contextMenu.chat && (
         <div 
-          className="fixed z-50 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl shadow-2xl py-2 w-48 backdrop-blur-md animate-fade-in text-sm font-medium"
+          className="fixed z-[70] bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl shadow-2xl py-2 w-48 backdrop-blur-md animate-fade-in text-sm font-medium"
           style={{
             top: Math.max(16, Math.min(contextMenu.y, window.innerHeight - 230)),
             left: Math.max(16, Math.min(contextMenu.x, window.innerWidth - 210))
@@ -433,7 +440,7 @@ export default function Sidebar({
             }}
             className="w-full flex items-center gap-3.5 px-4 py-2.5 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
           >
-            <Pin className={`w-4 h-4 shrink-0 ${contextMenu.chat.pinned ? 'fill-emerald-500 text-emerald-500' : 'text-[var(--text-primary)]'}`} />
+            <Pin className={`w-4 h-4 shrink-0 ${contextMenu.chat.pinned ? 'fill-black text-black dark:fill-white dark:text-white' : 'text-[var(--text-primary)]'}`} />
             <span>{contextMenu.chat.pinned ? 'Unpin' : 'Pin'}</span>
           </button>
 
@@ -519,7 +526,7 @@ export default function Sidebar({
       {/* Real Rename Modal */}
       {renameModal && (
         <div 
-          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs"
+          className="fixed inset-0 bg-black/60 z-[80] flex items-center justify-center p-4 backdrop-blur-xs"
           onClick={() => setRenameModal(null)}
         >
           <div 
@@ -527,7 +534,7 @@ export default function Sidebar({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-2">
-              <Pencil className="w-4 h-4 text-emerald-500" />
+              <Pencil className="w-4 h-4 text-black dark:text-white" />
               <h3 className="font-semibold text-sm text-[var(--text-primary)]">Rename Chat</h3>
             </div>
             
@@ -544,7 +551,7 @@ export default function Sidebar({
                 }
               }}
               autoFocus
-              className="w-full px-3 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-sm text-[var(--text-primary)] outline-none focus:border-emerald-500"
+              className="w-full px-3 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] text-sm text-[var(--text-primary)] outline-none focus:border-black dark:focus:border-white"
               placeholder="Enter new chat title..."
             />
             
@@ -562,7 +569,7 @@ export default function Sidebar({
                   onRenameChat?.(renameModal.chat.id, renameModal.title);
                   setRenameModal(null);
                 }}
-                className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-xs cursor-pointer"
+                className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-black transition-colors shadow-xs cursor-pointer"
               >
                 Save
               </button>

@@ -10,14 +10,34 @@ import ImagesStudio from './components/ImagesStudio';
 import ProjectsStudio from './components/ProjectsStudio';
 import SettingsModal from './components/SettingsModal';
 import AuthScreen from './components/AuthScreen';
-import { queryQuickAi, getBackendImageQuota, isImagePrompt } from './engine/quickAiEngine';
+import NotFoundPage from './components/NotFoundPage';
+import { 
+  queryQuickAi, 
+  getBackendImageQuota, 
+  isImagePrompt, 
+  getDailyChatUsage, 
+  incrementDailyChatUsage 
+} from './engine/quickAiEngine';
+
+const VALID_MODES = ['chat', 'code', 'images', 'projects', 'doc', 'math', 'svg'];
+
+const getModeFromPath = (pathname) => {
+  if (!pathname) return 'chat';
+  const clean = pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
+  if (!clean || clean === 'chat') return 'chat';
+  if (VALID_MODES.includes(clean)) return clean;
+  return '404';
+};
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('chat');
-  const [activeMode, setActiveMode] = useState('chat'); // 'chat' | 'code' | 'doc' | 'math' | 'svg'
+  const [activeMode, setActiveMode] = useState(() => {
+    return typeof window !== 'undefined' ? getModeFromPath(window.location.pathname) : 'chat';
+  });
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     return typeof window !== 'undefined' ? window.innerWidth >= 1024 : false;
   });
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState('account');
   const handleOpenSettings = (tab = 'account') => {
@@ -26,7 +46,8 @@ export default function App() {
   };
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [userQuota, setUserQuota] = useState({ used: 0, limit: 25, remaining: 25 });
+  const [userQuota, setUserQuota] = useState({ used: 0, limit: 5, remaining: 5 });
+  const [chatQuota, setChatQuota] = useState({ used: 0, limit: 30, remaining: 30 });
 
   // Authentication State - Default to ACTIVE (Guest User) so anyone enters app directly!
   const [currentUser, setCurrentUser] = useState(() => {
@@ -166,12 +187,13 @@ export default function App() {
     localStorage.setItem('chatgpt_current_id', currentChatId);
   }, [currentChatId]);
 
-  // Fetch Backend Image Quota on user change / mount
+  // Fetch Backend Image Quota & Chat Quota on user change / mount
   useEffect(() => {
     const userId = currentUser?.uid || currentUser?.email || 'guest_user';
-    getBackendImageQuota(userId).then((quota) => {
+    getBackendImageQuota(userId, currentUser?.plan).then((quota) => {
       if (quota) setUserQuota(quota);
     });
+    setChatQuota(getDailyChatUsage(userId, currentUser?.plan));
   }, [currentUser]);
 
   // Firebase Auth state change listener
@@ -179,12 +201,14 @@ export default function App() {
     import('./firebase').then(({ auth, onAuthStateChanged }) => {
       const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
         if (firebaseUser) {
+          const customAvatar = localStorage.getItem('omnira_user_avatar');
           setCurrentUser({
             name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
             email: firebaseUser.email,
             username: `@${(firebaseUser.email || 'user').split('@')[0]}`,
-            avatar: firebaseUser.photoURL || firebaseUser.displayName?.charAt(0) || 'U',
-            picture: firebaseUser.photoURL,
+            avatar: customAvatar || firebaseUser.photoURL || firebaseUser.displayName?.charAt(0) || 'U',
+            picture: customAvatar || firebaseUser.photoURL,
+            photoURL: customAvatar || firebaseUser.photoURL,
             provider: 'firebase',
             uid: firebaseUser.uid,
             plan: 'Pro'
@@ -239,6 +263,54 @@ export default function App() {
     };
 
     const isImageReq = options.isImage || isImagePrompt(userText, activeMode, selectedModel);
+    if (isImageReq && selectedModel !== 'cloudflare-image') {
+      setSelectedModel('cloudflare-image');
+    }
+    const userId = currentUser?.uid || currentUser?.email || 'guest_user';
+
+    // 1. Strict Daily Image Limit Check (5 images/day on Free tier)
+    if (isImageReq && currentUser?.plan !== 'Pro' && (userQuota.used >= (userQuota.limit || 5))) {
+      const limitImgMsg = {
+        id: `img-limit-${Date.now()}`,
+        role: 'assistant',
+        type: 'image_generation',
+        error: `Daily limit reached (${userQuota.limit || 5}/${userQuota.limit || 5} images today). Quota resets at 00:00 UTC. Upgrade to Pro for high-capacity generation.`,
+        prompt: userText,
+        isLoading: false,
+        timestamp: new Date().toLocaleTimeString()
+      };
+      setChatSessions((prevSessions) =>
+        prevSessions.map((s) =>
+          s.id === (currentSession?.id || currentChatId)
+            ? { ...s, messages: [...messages, userMsg, limitImgMsg] }
+            : s
+        )
+      );
+      return;
+    }
+
+    // 2. Strict Daily Chat Limit Check (30 chats/day on Free tier)
+    if (!isImageReq) {
+      const currentUsage = getDailyChatUsage(userId, currentUser?.plan);
+      if (currentUser?.plan !== 'Pro' && currentUsage.used >= currentUsage.limit) {
+        const limitChatMsg = {
+          role: 'assistant',
+          content: `⚠️ **Daily Chat Limit Reached**: You have used all **${currentUsage.limit} free chat messages** for today. Your daily limit resets at 00:00 UTC.\n\n[Open Settings to Upgrade to Pro Plan] for unlimited chats.`,
+          timestamp: new Date().toLocaleTimeString()
+        };
+        setChatSessions((prevSessions) =>
+          prevSessions.map((s) =>
+            s.id === (currentSession?.id || currentChatId)
+              ? { ...s, messages: [...messages, userMsg, limitChatMsg] }
+              : s
+          )
+        );
+        return;
+      }
+      incrementDailyChatUsage(userId);
+      setChatQuota(getDailyChatUsage(userId, currentUser?.plan));
+    }
+
     const loadingId = `img-loading-${Date.now()}`;
 
     const placeholderImageMsg = isImageReq ? {
@@ -303,6 +375,14 @@ export default function App() {
       if (typeof response === 'object' && response !== null && (response.image || response.error || response.success !== undefined)) {
         if (response.quota) {
           setUserQuota(response.quota);
+        } else if (response.image) {
+          // Local fallback sync
+          const dateStr = new Date().toISOString().slice(0, 10);
+          const localImgKey = `omnira_img_count_${dateStr}_${userId}`;
+          const currentCount = parseInt(localStorage.getItem(localImgKey) || '0', 10) + 1;
+          localStorage.setItem(localImgKey, String(currentCount));
+          const limit = currentUser?.plan === 'Pro' ? 50 : 5;
+          setUserQuota({ used: currentCount, limit, remaining: Math.max(0, limit - currentCount), date: dateStr });
         }
         if (response.image) {
           try {
@@ -377,13 +457,32 @@ export default function App() {
     }
   };
 
+  // URL Route Synchronization and Browser Popstate listener
+  useEffect(() => {
+    const handlePopState = () => {
+      setActiveMode(getModeFromPath(window.location.pathname));
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleSwitchMode = (newMode, pushHistory = true) => {
+    setActiveMode(newMode);
+    if (pushHistory && typeof window !== 'undefined') {
+      const targetPath = newMode === 'chat' ? '/' : `/${newMode}`;
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState({}, '', targetPath);
+      }
+    }
+  };
+
   // Create New Chat
   const handleNewChat = () => {
     const newId = `session-${Date.now()}`;
     const newSession = { id: newId, title: 'New chat', messages: [] };
     setChatSessions((prev) => [newSession, ...prev]);
     setCurrentChatId(newId);
-    setActiveMode('chat');
+    handleSwitchMode('chat');
   };
 
   // Create New Chat inside a Specific Project
@@ -398,7 +497,7 @@ export default function App() {
     };
     setChatSessions((prev) => [newSession, ...prev]);
     setCurrentChatId(newId);
-    setActiveMode('chat');
+    handleSwitchMode('chat');
   };
 
   // Assign / Move a Chat to a Project
@@ -455,7 +554,10 @@ export default function App() {
         onNewChat={handleNewChat}
         chatHistory={chatSessions}
         currentChatId={currentChatId}
-        onSelectChat={(id) => setCurrentChatId(id)}
+        onSelectChat={(id) => {
+          setCurrentChatId(id);
+          handleSwitchMode('chat');
+        }}
         onDeleteChat={handleDeleteChat}
         onPinChat={handlePinChat}
         onRenameChat={handleRenameChat}
@@ -463,15 +565,17 @@ export default function App() {
         openSettings={handleOpenSettings}
         openAuth={() => setIsAuthModalOpen(true)}
         activeMode={activeMode}
-        setActiveMode={setActiveMode}
+        setActiveMode={handleSwitchMode}
         currentUser={currentUser}
         onLogout={handleLogout}
         projects={projects}
         onAssignChatToProject={handleAssignChatToProject}
         onCreateProject={() => {
-          setActiveMode('projects');
+          handleSwitchMode('projects');
           setIsCreateProjectModalOpen(true);
         }}
+        userQuota={userQuota}
+        chatQuota={chatQuota}
       />
 
       {/* Main Area */}
@@ -495,7 +599,7 @@ export default function App() {
           activeProject={(currentSession?.projectId && Array.isArray(projects)) ? projects.find(p => p && p.id === currentSession.projectId) : null}
         />
 
-        {/* View Switcher: Main ChatGPT View or Studio Views */}
+        {/* View Switcher: Main ChatGPT View, Studio Views, or Custom 404 Not Found Page */}
         <div className="flex-1 overflow-hidden relative">
           {activeMode === 'chat' && (
             <ChatStudio
@@ -510,6 +614,8 @@ export default function App() {
               settings={settings}
               userQuota={userQuota}
               currentUser={currentUser}
+              selectedModel={selectedModel}
+              onSelectModel={setSelectedModel}
             />
           )}
 
@@ -537,7 +643,7 @@ export default function App() {
                 chatSessions={chatSessions}
                 onSelectChat={(id) => {
                   setCurrentChatId(id);
-                  setActiveMode('chat');
+                  handleSwitchMode('chat');
                 }}
                 onNewChatInProject={handleNewChatInProject}
                 activeProjectId={activeProjectId}
@@ -565,6 +671,26 @@ export default function App() {
               <SvgStudio settings={settings} />
             </div>
           )}
+
+          {(!VALID_MODES.includes(activeMode) || activeMode === '404') && (
+            <div className="h-full overflow-hidden">
+              <NotFoundPage
+                currentPath={typeof window !== 'undefined' ? window.location.pathname : '/404'}
+                onNavigateHome={() => handleSwitchMode('chat')}
+                onNavigateMode={(mode) => handleSwitchMode(mode)}
+                onStartNewChat={(promptText) => {
+                  handleNewChat();
+                  handleSwitchMode('chat');
+                  if (promptText) {
+                    setTimeout(() => handleSendMessage(promptText), 60);
+                  }
+                }}
+                darkMode={darkMode}
+                setDarkMode={setDarkMode}
+                currentUser={currentUser}
+              />
+            </div>
+          )}
         </div>
 
       </div>
@@ -580,6 +706,7 @@ export default function App() {
         currentUser={currentUser}
         onUpdateUser={handleUpdateUser}
         onLogout={handleLogout}
+        onLogin={handleLogin}
         initialTab={settingsInitialTab}
       />
 

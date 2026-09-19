@@ -20,12 +20,15 @@ import {
   AlertCircle,
   Video,
   Music,
-  Code
+  Code,
+  Pencil
 } from 'lucide-react';
 import { marked } from 'marked';
 import ImageGenerationMessage from './ImageGenerationMessage';
 import { isImagePrompt } from '../engine/quickAiEngine';
 import { OmniraIcon } from './OmniraLogo';
+import MeetVoiceModal from './MeetVoiceModal';
+import VoiceChatModal from './VoiceChatModal';
 
 export default function ChatStudio({ 
   messages, 
@@ -34,7 +37,9 @@ export default function ChatStudio({
   isGenerating, 
   settings,
   userQuota = { used: 0, limit: 25, remaining: 25 },
-  currentUser
+  currentUser,
+  selectedModel = 'gpt-4o',
+  onSelectModel
 }) {
   const [input, setInput] = useState('');
   const [attachedFile, setAttachedFile] = useState(null);
@@ -43,6 +48,39 @@ export default function ChatStudio({
   const [isThinkingMode, setIsThinkingMode] = useState(true);
   const [isImageMode, setIsImageMode] = useState(false);
   const [lastUserPrompt, setLastUserPrompt] = useState('');
+
+  // Voice Mode & Meet Voice Modal States
+  const [isMeetVoiceOpen, setIsMeetVoiceOpen] = useState(false);
+  const [isVoiceChatOpen, setIsVoiceChatOpen] = useState(false);
+
+  const handleVoiceChatClick = () => {
+    const hasSeen = typeof window !== 'undefined' && localStorage.getItem('omnira_has_seen_voice_intro') === 'true';
+    if (!hasSeen) {
+      setIsMeetVoiceOpen(true);
+    } else {
+      setIsVoiceChatOpen(true);
+    }
+  };
+
+  const handleMeetVoiceContinue = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('omnira_has_seen_voice_intro', 'true');
+    }
+    setIsMeetVoiceOpen(false);
+    setIsVoiceChatOpen(true);
+  };
+
+  // Auto-detect image prompts as user types and automatically switch active model to FLUX image model
+  useEffect(() => {
+    const trimmed = input.trim();
+    if (trimmed.length >= 3) {
+      if (isImagePrompt(trimmed, 'chat', selectedModel)) {
+        if (selectedModel !== 'cloudflare-image') {
+          onSelectModel?.('cloudflare-image');
+        }
+      }
+    }
+  }, [input, selectedModel, onSelectModel]);
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -103,12 +141,40 @@ export default function ChatStudio({
     }
   };
 
-  // Text-to-Speech
+  // Text-to-Speech using configured Voice persona (Ember, Breeze, Cove, etc.)
   const speakText = (text) => {
     if (!('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
     const cleanText = text.replace(/[#*`_~]/g, '');
     const utterance = new SpeechSynthesisUtterance(cleanText);
+
+    try {
+      const raw = localStorage.getItem('omnira_voice_config');
+      if (raw) {
+        const vConfig = JSON.parse(raw);
+        const personaPitches = {
+          ember: 1.05, breeze: 1.15, cove: 0.90, juniper: 1.20,
+          sky: 1.00, sol: 0.95, spruce: 0.85, vale: 1.10, arbor: 0.92, maple: 1.25
+        };
+        const personaRates = {
+          ember: 1.02, breeze: 1.08, cove: 0.92, juniper: 1.05,
+          sky: 1.00, sol: 0.95, spruce: 1.10, vale: 1.00, arbor: 0.96, maple: 1.04
+        };
+        if (vConfig.voiceId && personaPitches[vConfig.voiceId]) {
+          utterance.pitch = personaPitches[vConfig.voiceId];
+          utterance.rate = personaRates[vConfig.voiceId] || 1.0;
+        }
+        if (vConfig.language && vConfig.language !== 'Auto-detect') {
+          const langMap = {
+            'Nepali': 'ne-NP', 'Hindi': 'hi-IN', 'Spanish': 'es-ES',
+            'French': 'fr-FR', 'German': 'de-DE', 'Japanese': 'ja-JP',
+            'Chinese': 'zh-CN', 'Bengali': 'bn-IN', 'English (US)': 'en-US'
+          };
+          if (langMap[vConfig.language]) utterance.lang = langMap[vConfig.language];
+        }
+      }
+    } catch(e) {}
+
     window.speechSynthesis.speak(utterance);
   };
 
@@ -117,8 +183,13 @@ export default function ChatStudio({
     if ((!input.trim() && !attachedFile) || isGenerating) return;
 
     const finalPrompt = input.trim();
+    const isImg = isImageMode || isImagePrompt(finalPrompt, 'chat', selectedModel);
+    if (isImg && selectedModel !== 'cloudflare-image') {
+      onSelectModel?.('cloudflare-image');
+    }
+
     setLastUserPrompt(finalPrompt);
-    onSendMessage(finalPrompt, attachedFile, { isImage: isImageMode });
+    onSendMessage(finalPrompt, attachedFile, { isImage: isImg });
     setInput('');
     setAttachedFile(null);
   };
@@ -165,61 +236,43 @@ export default function ChatStudio({
   const quickOptionItems = [
     {
       icon: ImageIcon,
-      label: 'Create an image',
-      prompt: 'Create an image of a serene mountain landscape at sunrise'
+      label: 'Create an image or sticker',
+      prompt: 'Create an image of a vibrant modern illustration sticker',
+      isImage: true
     },
     {
-      icon: Code,
-      label: 'Write code',
-      prompt: 'Write a clean, responsive React Tailwind component with animations'
-    },
-    {
-      icon: Sparkles,
-      label: 'Brainstorm ideas',
-      prompt: 'Give me 5 unique product ideas combining AI with productivity tools'
+      icon: Pencil,
+      label: 'Write or edit',
+      prompt: 'Help me draft a clear, engaging article'
     },
     {
       icon: Globe,
       label: 'Search the web',
-      prompt: 'Summarize recent technological breakthroughs in artificial intelligence'
+      prompt: 'Search the web for recent advancements in AI'
     }
   ];
 
   const isCurrentGeneratingImage = isGenerating && isImagePrompt(lastUserPrompt || input || '');
 
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden min-w-0">
+    <div className="flex flex-col h-full w-full overflow-hidden min-w-0 relative">
       
       {/* Thread Messages Stream */}
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full min-w-0">
         
         {messages.length === 0 ? (
-          /* Empty Chat View */
-          <div className="h-full flex flex-col items-center justify-center text-center px-4 max-w-xl mx-auto">
-            <OmniraIcon className="w-14 h-14 mb-3 drop-shadow-md" filterId="chat-welcome" />
+          /* Empty Chat View matching reference */
+          <div className="h-full flex flex-col items-center justify-center text-center px-2 sm:px-6 w-full max-w-full sm:max-w-4xl mx-auto">
             
-            {/* Title */}
-            <h1 className="text-2xl sm:text-3xl font-medium tracking-tight mb-2 text-[var(--text-primary)]">
-              Ready when you are.
+            {/* Minimalist Title */}
+            <h1 className="text-3xl sm:text-4xl md:text-[42px] font-normal tracking-tight mb-8 sm:mb-10 text-[var(--text-primary)] select-none">
+              Where should we begin?
             </h1>
 
-            {/* Quota Counter Badge */}
-            <div className="mb-6 flex items-center justify-center gap-2">
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${
-                userQuota.used >= userQuota.limit 
-                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400' 
-                  : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-              }`}>
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Images today: {userQuota.used}/{userQuota.limit}</span>
-              </span>
-            </div>
-
-            {/* Main Floating Input Composer Box */}
-            <div className="w-full mb-6">
-              
+            {/* Main Floating Input Composer Box - Full Width Fresh Pill */}
+            <div className="w-full mb-8">
               {attachedFile && (
-                <div className="mb-2 p-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl text-xs flex items-center justify-between shadow-2xs">
+                <div className="mb-2.5 p-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl text-xs flex items-center justify-between shadow-2xs">
                   <div className="flex items-center gap-2 truncate">
                     {attachedFile.type?.startsWith('image/') || attachedFile.content?.startsWith('data:image/') ? (
                       <img src={attachedFile.content} alt={attachedFile.name} className="w-8 h-8 object-cover rounded-lg shrink-0 border border-[var(--border-color)]" />
@@ -228,7 +281,7 @@ export default function ChatStudio({
                     ) : attachedFile.type?.startsWith('audio/') || attachedFile.content?.startsWith('data:audio/') ? (
                       <Music className="w-4 h-4 text-amber-500 shrink-0" />
                     ) : (
-                      <FileText className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <FileText className="w-4 h-4 text-neutral-800 dark:text-neutral-200 shrink-0" />
                     )}
                     <span className="font-mono text-[var(--text-primary)] truncate max-w-[200px]">{attachedFile.name}</span>
                     <span className="text-[var(--text-muted)]">({(attachedFile.size / 1024).toFixed(1)} KB)</span>
@@ -236,7 +289,7 @@ export default function ChatStudio({
                   <button 
                     type="button" 
                     onClick={() => setAttachedFile(null)} 
-                    className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded-full hover:bg-[var(--bg-hover)]"
+                    className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded-full hover:bg-[var(--bg-hover)] cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -245,7 +298,7 @@ export default function ChatStudio({
 
               <form 
                 onSubmit={handleSubmit}
-                className="rounded-[26px] border border-[var(--border-color)] bg-[var(--bg-input)] shadow-lg p-2.5 sm:p-3 transition-all focus-within:border-[var(--border-strong)] flex flex-col gap-2"
+                className="w-full rounded-full border border-neutral-200/90 dark:border-neutral-700/80 bg-[var(--bg-card)] shadow-[0_2px_14px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_22px_rgba(0,0,0,0.09)] focus-within:shadow-[0_4px_26px_rgba(0,0,0,0.12)] focus-within:border-neutral-400 dark:focus-within:border-neutral-500 transition-all px-4 sm:px-6 py-2.5 sm:py-3.5 flex items-center gap-2.5 sm:gap-3.5"
               >
                 <input 
                   type="file" 
@@ -255,110 +308,104 @@ export default function ChatStudio({
                   accept="*/*"
                 />
 
-                {/* Top: Full-Width Expanding Textarea */}
-                <textarea
+                {/* Left: Plus Attachment Button */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-neutral-500 hover:text-black dark:hover:text-white transition-colors shrink-0 cursor-pointer"
+                  title="Add file or photo"
+                >
+                  <Plus className="w-5 h-5 stroke-[2.2]" />
+                </button>
+
+                {/* Center: Input */}
+                <input
+                  type="text"
                   ref={emptyTextareaRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSubmit();
-                    }
-                  }}
-                  placeholder={isImageMode ? "Describe the image you want..." : "Ask anything or type 'Create an image of...'"}
-                  rows={1}
-                  className="w-full bg-transparent border-none outline-none resize-none text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] py-1.5 px-1 font-normal min-h-[36px] max-h-[180px] overflow-y-auto leading-relaxed"
+                  placeholder="Ask anything"
+                  className="flex-1 bg-transparent border-none outline-none text-base sm:text-[17px] text-[var(--text-primary)] placeholder:text-neutral-400 dark:placeholder:text-neutral-500 font-normal min-w-0"
                 />
 
-                {/* Bottom: Dedicated Action Controls Row */}
-                <div className="flex items-center justify-between pt-1 border-t border-[var(--border-color)]/40">
-                  
-                  {/* Left: Attachment + Mode Toggles */}
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors shrink-0"
-                      title="Add attachment"
-                    >
-                      <Plus className="w-5 h-5" />
-                    </button>
+                {/* Right Controls */}
+                <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+                  {/* Think Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setIsThinkingMode(!isThinkingMode)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                      isThinkingMode 
+                        ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-semibold shadow-2xs' 
+                        : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                    }`}
+                    title="Deep Reasoning Mode"
+                  >
+                    <Brain className="w-4 h-4" />
+                    <span className="hidden sm:inline">Think</span>
+                  </button>
 
-                    <button
-                      type="button"
-                      onClick={() => setIsImageMode(!isImageMode)}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                        isImageMode 
-                          ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold shadow-2xs' 
-                          : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
-                      }`}
-                      title="Toggle Image Mode"
-                    >
-                      <ImageSvg className="w-3.5 h-3.5" />
-                      <span className="hidden xs:inline">Image</span>
-                    </button>
+                  {/* Mic Button */}
+                  <button
+                    type="button"
+                    onClick={toggleVoiceInput}
+                    className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                      isListening 
+                        ? 'bg-red-500 text-white animate-pulse' 
+                        : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                    }`}
+                    title="Voice input"
+                  >
+                    {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4.5 h-4.5" />}
+                  </button>
 
-                    <button
-                      type="button"
-                      onClick={() => setIsThinkingMode(!isThinkingMode)}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                        isThinkingMode 
-                          ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold shadow-2xs' 
-                          : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
-                      }`}
-                      title="Toggle Reasoning Depth"
-                    >
-                      <Brain className="w-3.5 h-3.5" />
-                      <span className="hidden xs:inline">Think</span>
-                    </button>
-                  </div>
-
-                  {/* Right: Mic Dictation + Send Button */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={toggleVoiceInput}
-                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                        isListening 
-                          ? 'bg-red-500 text-white animate-pulse' 
-                          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
-                      }`}
-                      title="Voice Dictation"
-                    >
-                      {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                    </button>
-
+                  {/* Circular Blue Action / Send Button matching Screenshot 1 */}
+                  {input.trim() || attachedFile ? (
                     <button
                       type="submit"
-                      disabled={(!input.trim() && !attachedFile) || isGenerating}
-                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                        input.trim() || attachedFile
-                          ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] shadow-sm hover:opacity-90'
-                          : 'bg-neutral-200 dark:bg-neutral-800 text-[var(--text-muted)] cursor-not-allowed'
-                      }`}
+                      disabled={isGenerating}
+                      className="w-10 h-10 rounded-full bg-[#1a73e8] hover:bg-[#1557b0] text-white flex items-center justify-center transition-transform active:scale-95 shadow-md shrink-0 cursor-pointer disabled:opacity-40"
+                      title="Send message"
                     >
-                      <ArrowUp className="w-4.5 h-4.5 stroke-[2.5]" />
+                      <ArrowUp className="w-5 h-5 stroke-[2.5]" />
                     </button>
-                  </div>
-
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleVoiceChatClick}
+                      className="w-10 h-10 rounded-full bg-[#8ab4f8] hover:bg-[#7baaf7] text-white flex items-center justify-center transition-transform hover:scale-105 active:scale-95 shadow-md shrink-0 cursor-pointer"
+                      title="Start Voice Chat"
+                      aria-label="Start Voice Chat"
+                    >
+                      {/* Exact 3 vertical soundwave bars from Screenshot 1 */}
+                      <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                        <rect x="5" y="8" width="2.5" height="8" rx="1.25" />
+                        <rect x="10.75" y="4" width="2.5" height="16" rx="1.25" />
+                        <rect x="16.5" y="7" width="2.5" height="10" rx="1.25" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </form>
             </div>
 
-            <div className="flex flex-col items-start gap-2.5 w-full max-w-sm pl-2">
+            {/* Quick Suggestions (3 clean left-aligned options matching Screenshot 1) */}
+            <div className="flex flex-col items-start gap-4 w-full max-w-4xl pl-4 sm:pl-6">
               {quickOptionItems.map((opt, idx) => {
                 const Icon = opt.icon;
                 return (
                   <button
                     key={idx}
                     onClick={() => {
+                      if (opt.isImage && selectedModel !== 'cloudflare-image') {
+                        onSelectModel?.('cloudflare-image');
+                      }
                       setLastUserPrompt(opt.prompt);
-                      onSendMessage(opt.prompt, null);
+                      onSendMessage(opt.prompt, null, { isImage: !!opt.isImage });
                     }}
-                    className="flex items-center gap-3 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors py-1 group"
+                    className="flex items-center gap-3.5 text-sm sm:text-[15px] text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer group"
                   >
-                    <Icon className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)]" />
+                    <Icon className="w-4.5 h-4.5 text-neutral-500 group-hover:text-black dark:group-hover:text-white transition-colors" />
                     <span>{opt.label}</span>
                   </button>
                 );
@@ -368,7 +415,7 @@ export default function ChatStudio({
           </div>
         ) : (
           /* Active Messages Thread */
-          <div className="w-full max-w-3xl mx-auto px-3 sm:px-4 py-4 space-y-6">
+          <div className="w-full max-w-full sm:max-w-3xl mx-auto px-2 sm:px-4 py-3 sm:py-4 space-y-4 sm:space-y-6">
             {messages.map((m, index) => {
               const isUser = m.role === 'user';
               const isImageMsg = !isUser && (m.type === 'image_generation' || m.imageUrl || m.isLoading || m.error?.includes('image') || m.error?.includes('limit'));
@@ -376,97 +423,92 @@ export default function ChatStudio({
               return (
                 <div 
                   key={index} 
-                  className={`flex gap-3 sm:gap-4 w-full min-w-0 ${isUser ? 'justify-end' : 'justify-start'}`}
+                  className={`flex gap-2.5 sm:gap-4 w-full min-w-0 ${isUser ? 'justify-end' : 'justify-start'}`}
                 >
+                  {/* Assistant Avatar */}
                   {!isUser && (
-                    <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center shrink-0 mt-1 shadow-2xs border border-[var(--border-color)] bg-[var(--bg-card)]">
-                      <OmniraIcon className="w-5 h-5 object-contain" />
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                      <OmniraIcon className="w-4 h-4 sm:w-4.5 sm:h-4.5 object-contain" />
                     </div>
                   )}
 
-                  <div className={`space-y-1.5 max-w-[90%] sm:max-w-[80%] min-w-0 ${isUser ? 'items-end' : 'items-start'}`}>
+                  {/* Message Bubble Content */}
+                  <div className={`flex flex-col gap-1.5 min-w-0 ${isUser ? 'max-w-[90%] sm:max-w-[75%] items-end' : 'w-full max-w-full flex-1'}`}>
                     
-                    {isImageMsg ? (
-                      <ImageGenerationMessage 
-                        message={m} 
-                        onRegenerate={(promptToRegen) => {
-                          setLastUserPrompt(promptToRegen);
-                          onSendMessage(promptToRegen, null, { isImage: true });
-                        }} 
-                        onImageLoaded={() => {
-                          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-                        }}
-                      />
-                    ) : (
-                      <div 
-                        className={`p-3.5 sm:p-4 rounded-2xl text-sm leading-relaxed overflow-hidden min-w-0 max-w-full ${
-                          isUser 
-                            ? 'bg-neutral-200 dark:bg-neutral-800 text-[var(--text-primary)] rounded-tr-xs' 
-                            : 'bg-transparent text-[var(--text-primary)]'
-                        }`}
-                      >
-                        {m.attachedFile && (
-                          <div className="mb-3 p-2 bg-[var(--bg-hover)] border border-[var(--border-color)] rounded-xl text-xs flex flex-col gap-2 text-[var(--text-muted)]">
-                            {m.attachedFile.type?.startsWith('image/') || m.attachedFile.content?.startsWith('data:image/') ? (
-                              <img src={m.attachedFile.content} alt={m.attachedFile.name} className="max-w-full max-h-64 rounded-xl object-contain shadow-md border border-[var(--border-color)]" />
-                            ) : m.attachedFile.type?.startsWith('video/') || m.attachedFile.content?.startsWith('data:video/') ? (
-                              <video src={m.attachedFile.content} controls className="max-w-full max-h-64 rounded-xl shadow-md" />
-                            ) : m.attachedFile.type?.startsWith('audio/') || m.attachedFile.content?.startsWith('data:audio/') ? (
-                              <audio src={m.attachedFile.content} controls className="w-full max-w-md" />
+                    {/* User Text Bubble */}
+                    {isUser ? (
+                      <div className="bg-[var(--bg-hover)] text-[var(--text-primary)] px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-[20px] text-base leading-relaxed break-words shadow-2xs text-justify [text-align-last:left] [text-justify:inter-word]">
+                        {m.file && (
+                          <div className="mb-2 p-1.5 bg-black/5 dark:bg-white/5 rounded-xl flex items-center gap-2 text-xs">
+                            {m.file.type?.startsWith('image/') || m.file.content?.startsWith('data:image/') ? (
+                              <img src={m.file.content} alt={m.file.name} className="w-7 h-7 object-cover rounded-md" />
                             ) : (
-                              <div className="flex items-center gap-2">
-                                <FileText className="w-4 h-4 text-[var(--text-primary)] shrink-0" />
-                                <span className="font-mono font-medium truncate">{m.attachedFile.name}</span>
-                                <span className="text-[10px] text-[var(--text-muted)]">({(m.attachedFile.size / 1024).toFixed(1)} KB)</span>
-                              </div>
+                              <FileText className="w-4 h-4 text-[var(--text-muted)]" />
                             )}
+                            <span className="font-mono truncate max-w-[160px]">{m.file.name}</span>
                           </div>
                         )}
-
+                        <p className="whitespace-pre-wrap text-justify [text-align-last:left] [text-justify:inter-word]">{m.content}</p>
+                      </div>
+                    ) : isImageMsg ? (
+                      /* FLUX Image Generation Component */
+                      <ImageGenerationMessage 
+                        message={m} 
+                        index={index} 
+                        onRetry={(p) => onSendMessage(p, null, { isImage: true })}
+                      />
+                    ) : (
+                      /* Standard Assistant Response Stream */
+                      <div className="flex flex-col gap-2 w-full min-w-0">
                         <div 
-                          className="markdown-body min-w-0 max-w-full overflow-hidden"
-                          dangerouslySetInnerHTML={{ 
-                            __html: marked.parse(m.content || '') 
-                          }} 
+                          className="prose dark:prose-invert max-w-none w-full text-base leading-relaxed text-[var(--text-primary)] break-words text-justify [text-align-last:left] [text-justify:inter-word] hyphens-auto"
+                          dangerouslySetInnerHTML={{ __html: marked.parse(m.content || '') }}
                         />
+
+                        {/* Message Action Controls (Copy / TTS) */}
+                        <div className="flex items-center gap-1 mt-1 text-[var(--text-muted)]">
+                          <button
+                            onClick={() => handleCopy(m.content, index)}
+                            className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                            title="Copy response"
+                          >
+                            {copiedId === index ? <Check className="w-4 h-4 text-black dark:text-white" /> : <Copy className="w-4 h-4" />}
+                          </button>
+                          <button
+                            onClick={() => speakText(m.content)}
+                            className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                            title="Read aloud"
+                          >
+                            <Volume2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     )}
-
-                    {!isUser && !isImageMsg && (
-                      <div className="flex items-center gap-3 px-1 text-xs text-[var(--text-muted)]">
-                        <button
-                          onClick={() => handleCopy(m.content, index)}
-                          className="hover:text-[var(--text-primary)] flex items-center gap-1 transition-colors"
-                        >
-                          {copiedId === index ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                          <span>{copiedId === index ? 'Copied' : 'Copy'}</span>
-                        </button>
-
-                        <button
-                          onClick={() => speakText(m.content)}
-                          className="hover:text-[var(--text-primary)] flex items-center gap-1 transition-colors"
-                        >
-                          <Volume2 className="w-3.5 h-3.5" />
-                          <span>Read aloud</span>
-                        </button>
-                      </div>
-                    )}
-
                   </div>
                 </div>
               );
             })}
 
-            {/* Loading Generation State */}
+            {/* Live Typing & Generation Indicator */}
             {isGenerating && (
-              <div className="flex items-center gap-3 p-3 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] max-w-sm shadow-2xs">
-                <div className="w-6 h-6 rounded-full overflow-hidden flex items-center justify-center shrink-0 border border-[var(--border-color)] bg-[var(--bg-sidebar)]">
-                  <OmniraIcon className="w-4 h-4 animate-spin animate-pulse object-contain" />
+              <div className="flex items-center gap-3 w-full animate-in fade-in duration-200">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] flex items-center justify-center shrink-0 shadow-2xs">
+                  <OmniraIcon className="w-4 h-4 object-contain" />
                 </div>
                 {isCurrentGeneratingImage ? (
-                  <span className="text-xs text-[var(--text-primary)] font-medium">OMNIRA is creating your image...</span>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-xs text-[var(--text-primary)] font-semibold">Creating images...</span>
+                    <span className="text-[10px] text-[var(--text-muted)]">Synthesizing FLUX neural vectors</span>
+                  </div>
                 ) : (
-                  <span className="text-xs text-[var(--text-muted)] font-medium">OMNIRA is thinking...</span>
+                  <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] font-medium">
+                    <span>OMNIRA is typing</span>
+                    <span className="inline-flex gap-1 items-center ml-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 dark:bg-neutral-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 dark:bg-neutral-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 dark:bg-neutral-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </span>
+                  </div>
                 )}
               </div>
             )}
@@ -478,8 +520,8 @@ export default function ChatStudio({
 
       {/* Docked Bottom Composer Bar (In normal flex flow - CANNOT overlap messages) */}
       {messages.length > 0 && (
-        <div className="shrink-0 w-full px-3 sm:px-4 pt-2 pb-3 sm:pb-4 z-20">
-          <div className="w-full max-w-3xl mx-auto">
+        <div className="shrink-0 w-full px-2 sm:px-6 pt-2 pb-3 sm:pb-5 z-20">
+          <div className="w-full max-w-full sm:max-w-4xl mx-auto">
             {attachedFile && (
               <div className="mb-2 p-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl text-xs flex items-center justify-between shadow-2xs">
                 <div className="flex items-center gap-2 truncate">
@@ -490,7 +532,7 @@ export default function ChatStudio({
                   ) : attachedFile.type?.startsWith('audio/') || attachedFile.content?.startsWith('data:audio/') ? (
                     <Music className="w-4 h-4 text-amber-500 shrink-0" />
                   ) : (
-                    <FileText className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <FileText className="w-4 h-4 text-neutral-800 dark:text-neutral-200 shrink-0" />
                   )}
                   <span className="font-mono text-[var(--text-primary)] truncate max-w-[200px]">{attachedFile.name}</span>
                   <span className="text-[var(--text-muted)]">({(attachedFile.size / 1024).toFixed(1)} KB)</span>
@@ -507,7 +549,7 @@ export default function ChatStudio({
 
             <form 
               onSubmit={handleSubmit}
-              className="rounded-[26px] border border-[var(--border-color)] bg-[var(--bg-input)] shadow-lg p-2.5 sm:p-3 transition-all focus-within:border-[var(--border-strong)] flex flex-col gap-2"
+              className="w-full rounded-full border border-neutral-200/90 dark:border-neutral-700/80 bg-[var(--bg-card)] shadow-[0_2px_14px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_22px_rgba(0,0,0,0.09)] focus-within:shadow-[0_4px_26px_rgba(0,0,0,0.12)] focus-within:border-neutral-400 dark:focus-within:border-neutral-500 transition-all px-4 sm:px-6 py-2 sm:py-2.5 flex items-center gap-2.5 sm:gap-3.5"
             >
               <input 
                 type="file" 
@@ -517,7 +559,17 @@ export default function ChatStudio({
                 accept="*/*"
               />
 
-              {/* Top: Full-Width Expanding Textarea */}
+              {/* Left: Plus Attachment Button */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-neutral-500 hover:text-black dark:hover:text-white transition-colors shrink-0 cursor-pointer"
+                title="Add file or photo"
+              >
+                <Plus className="w-5 h-5 stroke-[2.2]" />
+              </button>
+
+              {/* Center: Input Textarea */}
               <textarea
                 ref={activeTextareaRef}
                 value={input}
@@ -528,88 +580,95 @@ export default function ChatStudio({
                     handleSubmit();
                   }
                 }}
-                placeholder={isImageMode ? "Describe the image you want..." : "Ask anything"}
+                placeholder="Ask anything"
                 rows={1}
-                className="w-full bg-transparent border-none outline-none resize-none text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] py-1.5 px-1 min-h-[36px] max-h-[180px] overflow-y-auto leading-relaxed font-normal"
+                className="flex-1 bg-transparent border-none outline-none resize-none text-base text-[var(--text-primary)] placeholder:text-neutral-400 dark:placeholder:text-neutral-500 py-1.5 min-h-[36px] max-h-[140px] overflow-y-auto leading-relaxed font-normal min-w-0"
               />
 
-              {/* Bottom: Dedicated Action Controls Row */}
-              <div className="flex items-center justify-between pt-1 border-t border-[var(--border-color)]/40">
-                
-                {/* Left: Attachment + Mode Toggles */}
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors shrink-0"
-                    title="Add attachment"
-                  >
-                    <Plus className="w-5 h-5" />
-                  </button>
+              {/* Right Controls */}
+              <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+                {/* Think Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setIsThinkingMode(!isThinkingMode)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                    isThinkingMode 
+                      ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 font-semibold shadow-2xs' 
+                      : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                  }`}
+                  title="Deep Reasoning Mode"
+                >
+                  <Brain className="w-4 h-4" />
+                  <span className="hidden sm:inline">Think</span>
+                </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setIsImageMode(!isImageMode)}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                      isImageMode 
-                        ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold shadow-2xs' 
-                        : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
-                    }`}
-                    title="Toggle Image Mode"
-                  >
-                    <ImageSvg className="w-3.5 h-3.5" />
-                    <span className="hidden xs:inline">Image</span>
-                  </button>
-                </div>
+                {/* Mic Button */}
+                <button
+                  type="button"
+                  onClick={toggleVoiceInput}
+                  className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                    isListening 
+                      ? 'bg-red-500 text-white animate-pulse' 
+                      : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                  }`}
+                  title="Voice input"
+                >
+                  {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4.5 h-4.5" />}
+                </button>
 
-                {/* Right: Mic Dictation + Send Button */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={toggleVoiceInput}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                      isListening 
-                        ? 'bg-red-500 text-white animate-pulse' 
-                        : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
-                    }`}
-                    title="Voice Dictation"
-                  >
-                    {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                  </button>
-
+                {/* Circular Action / Send Button matching Screenshot 1 */}
+                {input.trim() || attachedFile ? (
                   <button
                     type="submit"
-                    disabled={(!input.trim() && !attachedFile) || isGenerating}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                      input.trim() || attachedFile
-                        ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] shadow-sm hover:opacity-90'
-                        : 'bg-neutral-200 dark:bg-neutral-800 text-[var(--text-muted)] cursor-not-allowed'
-                    }`}
+                    disabled={isGenerating}
+                    className="w-10 h-10 rounded-full bg-[#1a73e8] hover:bg-[#1557b0] text-white flex items-center justify-center transition-transform active:scale-95 shadow-md shrink-0 cursor-pointer disabled:opacity-40"
+                    title="Send message"
                   >
-                    <ArrowUp className="w-4.5 h-4.5 stroke-[2.5]" />
+                    <ArrowUp className="w-5 h-5 stroke-[2.5]" />
                   </button>
-                </div>
-
-              </div>
-            </form>
-
-            {/* Daily Quota Counter Bar */}
-            <div className="flex items-center justify-between px-2 mt-2 text-[11px] text-[var(--text-muted)]">
-              <div>
-                {userQuota.used >= userQuota.limit ? (
-                  <span className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    Daily image limit reached ({userQuota.limit}/{userQuota.limit}). You can generate more images tomorrow.
-                  </span>
                 ) : (
-                  <span>Images today: {userQuota.used}/{userQuota.limit} ({userQuota.remaining} remaining)</span>
+                  <button
+                    type="button"
+                    onClick={handleVoiceChatClick}
+                    className="w-10 h-10 rounded-full bg-[#8ab4f8] hover:bg-[#7baaf7] text-white flex items-center justify-center transition-transform hover:scale-105 active:scale-95 shadow-md shrink-0 cursor-pointer"
+                    title="Start Voice Chat"
+                    aria-label="Start Voice Chat"
+                  >
+                    <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                      <rect x="5" y="8" width="2.5" height="8" rx="1.25" />
+                      <rect x="10.75" y="4" width="2.5" height="16" rx="1.25" />
+                      <rect x="16.5" y="7" width="2.5" height="10" rx="1.25" />
+                    </svg>
+                  </button>
                 )}
               </div>
-              <div>OMNIRA AI Engine</div>
-            </div>
+            </form>
           </div>
         </div>
       )}
+
+      {/* First-Time "Meet Voice" Onboarding Modal (Screenshot 2) */}
+      <MeetVoiceModal
+        isOpen={isMeetVoiceOpen}
+        onClose={() => setIsMeetVoiceOpen(false)}
+        onContinue={handleMeetVoiceContinue}
+      />
+
+      {/* Full-Screen Interactive Voice Chat Modal (Screenshot 3) */}
+      <VoiceChatModal
+        isOpen={isVoiceChatOpen}
+        onClose={() => setIsVoiceChatOpen(false)}
+        onOpenTypeChat={() => {
+          setIsVoiceChatOpen(false);
+          emptyTextareaRef.current?.focus();
+          activeTextareaRef.current?.focus();
+        }}
+        selectedModel={selectedModel}
+        currentUser={currentUser}
+        onVoiceMessageComplete={(userSpoken, botSpoken) => {
+          onSendMessage(userSpoken, null, { voiceResponse: botSpoken });
+        }}
+      />
 
     </div>
   );

@@ -121,7 +121,7 @@ export default function GithubConnectModal({ isOpen, onClose, onConnect }) {
                 href="https://github.com/settings/tokens"
                 target="_blank"
                 rel="noreferrer"
-                className="text-[10px] text-emerald-500 hover:underline flex items-center gap-0.5"
+                className="text-[10px] text-black dark:text-white hover:underline flex items-center gap-0.5"
               >
                 <span>Get token</span>
                 <ExternalLink className="w-2.5 h-2.5" />
@@ -137,7 +137,7 @@ export default function GithubConnectModal({ isOpen, onClose, onConnect }) {
           </div>
 
           <div className="p-3 rounded-xl bg-[var(--bg-sidebar)] border border-[var(--border-color)] text-[11px] text-[var(--text-muted)] flex items-start gap-2 leading-relaxed">
-            <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+            <ShieldCheck className="w-4 h-4 text-black dark:text-white shrink-0 mt-0.5" />
             <span>OMNIRA only uses public read permission to link your developer profile.</span>
           </div>
 
@@ -153,7 +153,7 @@ export default function GithubConnectModal({ isOpen, onClose, onConnect }) {
             <button
               type="submit"
               disabled={isLoading || !username.trim()}
-              className="px-5 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-5 py-2 rounded-full bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 dark:text-black text-white font-semibold text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               {isLoading ? (
                 <>

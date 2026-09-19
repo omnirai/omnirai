@@ -291,7 +291,7 @@ export default function CodeStudio({ settings, chatSessions = [] }) {
           {/* History Header */}
           <div className="p-3 border-b border-[var(--border-color)] bg-[var(--bg-hover)]/30 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-emerald-500" />
+              <Clock className="w-4 h-4 text-black dark:text-white" />
               <span className="font-semibold text-xs text-[var(--text-primary)]">
                 Coding History ({codeHistory.length})
               </span>
@@ -301,7 +301,7 @@ export default function CodeStudio({ settings, chatSessions = [] }) {
               className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] text-xs flex items-center gap-1 font-medium transition-colors"
               title="New Clean Snippet"
             >
-              <Plus className="w-3.5 h-3.5 text-emerald-500" />
+              <Plus className="w-3.5 h-3.5 text-black dark:text-white" />
               <span>New</span>
             </button>
           </div>
@@ -315,7 +315,7 @@ export default function CodeStudio({ settings, chatSessions = [] }) {
                 value={historySearch}
                 onChange={(e) => setHistorySearch(e.target.value)}
                 placeholder="Search history..."
-                className="w-full pl-7 pr-2 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-hover)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-emerald-500"
+                className="w-full pl-7 pr-2 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-hover)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-black dark:focus:border-white"
               />
             </div>
           </div>
@@ -340,7 +340,7 @@ export default function CodeStudio({ settings, chatSessions = [] }) {
                     onClick={() => handleSelectSnippet(item)}
                     className={`p-2.5 rounded-xl border transition-all cursor-pointer group flex flex-col justify-between ${
                       isSelected
-                        ? 'border-emerald-500/50 bg-emerald-500/10 text-[var(--text-primary)]'
+                        ? 'border-black/50 dark:border-white/50 bg-black/5 dark:bg-white/5 text-[var(--text-primary)]'
                         : 'border-[var(--border-color)]/60 bg-[var(--bg-hover)]/20 hover:bg-[var(--bg-hover)] text-[var(--text-primary)]'
                     }`}
                   >
@@ -404,7 +404,7 @@ export default function CodeStudio({ settings, chatSessions = [] }) {
               <button
                 onClick={handleSaveToHistory}
                 disabled={!code.trim()}
-                className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
+                className="px-3 py-1 rounded-lg bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 dark:text-black text-white font-semibold text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
                 title="Save code to your history"
               >
                 <Save className="w-3.5 h-3.5" />
@@ -429,7 +429,7 @@ export default function CodeStudio({ settings, chatSessions = [] }) {
                 className="p-1.5 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
                 title="Copy code"
               >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? <Check className="w-3.5 h-3.5 text-black dark:text-white" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
 
               {/* Download */}
@@ -487,12 +487,12 @@ export default function CodeStudio({ settings, chatSessions = [] }) {
                 onChange={(e) => setAiPrompt(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAiAction('generate')}
                 placeholder={`Ask OMNIRA to write ${selectedLang.toUpperCase()} code...`}
-                className="flex-1 px-3 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] text-xs text-[var(--text-primary)] outline-none focus:border-emerald-500"
+                className="flex-1 px-3 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] text-xs text-[var(--text-primary)] outline-none focus:border-black dark:focus:border-white"
               />
               <button
                 onClick={() => handleAiAction('generate')}
                 disabled={isAiLoading || !aiPrompt.trim()}
-                className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                className="px-4 py-1.5 rounded-lg bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 dark:text-black text-white font-semibold text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
               >
                 {isAiLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                 <span>Generate</span>

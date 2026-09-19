@@ -42,7 +42,7 @@ except Exception:
     DB_DIR = tempfile.gettempdir()
 
 DB_PATH = os.path.join(DB_DIR, "omnira_quota.db")
-DAILY_LIMIT = int(os.getenv("DAILY_IMAGE_LIMIT", "25"))
+DAILY_LIMIT = int(os.getenv("DAILY_IMAGE_LIMIT", "5"))
 
 def get_db():
     conn = sqlite3.connect(DB_PATH, timeout=10.0)

@@ -472,7 +472,7 @@ export default function PluginsStudio({ onSelectChat }) {
               <h1 className="text-3xl font-bold tracking-tight text-[var(--text-primary)]">
                 Plugins
               </h1>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-neutral-100 dark:bg-neutral-800 text-black dark:text-white dark:text-black dark:text-white border border-neutral-300 dark:border-neutral-700">
                 Official Logos & Real APIs
               </span>
             </div>
@@ -528,7 +528,7 @@ export default function PluginsStudio({ onSelectChat }) {
           <div className="space-y-3">
             <div className="flex items-center justify-between text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                <CheckCircle2 className="w-4 h-4 text-black dark:text-white" />
                 <span>Installed ({installedPlugins.length})</span>
               </span>
             </div>
@@ -598,12 +598,12 @@ export default function PluginsStudio({ onSelectChat }) {
                         onClick={() => toggleInstall(plugin.id)}
                         className={`p-2 rounded-full border transition-all cursor-pointer ${
                           isInstalled
-                            ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                            ? 'border-black/40 dark:border-white/40 bg-black/5 dark:bg-white/5 text-black dark:text-white dark:text-black dark:text-white'
                             : 'border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
                         }`}
                         title={isInstalled ? 'Uninstall plugin' : 'Install plugin'}
                       >
-                        {isInstalled ? <Check className="w-4 h-4 text-emerald-500" /> : <Plus className="w-4 h-4" />}
+                        {isInstalled ? <Check className="w-4 h-4 text-black dark:text-white" /> : <Plus className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
@@ -658,12 +658,12 @@ export default function PluginsStudio({ onSelectChat }) {
                         onClick={() => toggleInstall(plugin.id)}
                         className={`p-2 rounded-full border transition-all cursor-pointer ${
                           isInstalled
-                            ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                            ? 'border-black/40 dark:border-white/40 bg-black/5 dark:bg-white/5 text-black dark:text-white dark:text-black dark:text-white'
                             : 'border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
                         }`}
                         title={isInstalled ? 'Uninstall plugin' : 'Install plugin'}
                       >
-                        {isInstalled ? <Check className="w-4 h-4 text-emerald-500" /> : <Plus className="w-4 h-4" />}
+                        {isInstalled ? <Check className="w-4 h-4 text-black dark:text-white" /> : <Plus className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
@@ -718,12 +718,12 @@ export default function PluginsStudio({ onSelectChat }) {
                         onClick={() => toggleInstall(plugin.id)}
                         className={`p-2 rounded-full border transition-all cursor-pointer ${
                           isInstalled
-                            ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                            ? 'border-black/40 dark:border-white/40 bg-black/5 dark:bg-white/5 text-black dark:text-white dark:text-black dark:text-white'
                             : 'border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
                         }`}
                         title={isInstalled ? 'Uninstall plugin' : 'Install plugin'}
                       >
-                        {isInstalled ? <Check className="w-4 h-4 text-emerald-500" /> : <Plus className="w-4 h-4" />}
+                        {isInstalled ? <Check className="w-4 h-4 text-black dark:text-white" /> : <Plus className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
@@ -795,7 +795,7 @@ export default function PluginsStudio({ onSelectChat }) {
               <div className="p-3.5 rounded-2xl bg-[var(--bg-sidebar)] border border-[var(--border-color)] space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-semibold text-[var(--text-primary)]">
-                    <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                    <ShieldCheck className="w-4 h-4 text-black dark:text-white" />
                     <span>Real API Endpoint Verification</span>
                   </div>
 
@@ -803,7 +803,7 @@ export default function PluginsStudio({ onSelectChat }) {
                     type="button"
                     onClick={executeRealApiTest}
                     disabled={isTesting}
-                    className="px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    className="px-3 py-1.5 rounded-full bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 dark:text-black text-white font-semibold text-xs transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
                     {isTesting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
                     <span>{isTesting ? 'Testing API...' : 'Test Real Connection'}</span>
@@ -813,7 +813,7 @@ export default function PluginsStudio({ onSelectChat }) {
                 {testResult && (
                   <div className={`p-3 rounded-xl border text-xs space-y-1 ${
                     testResult.success 
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400' 
+                      ? 'bg-neutral-100 dark:bg-neutral-800 border-neutral-300 dark:border-neutral-700 text-black dark:text-white dark:text-black dark:text-white' 
                       : 'bg-red-500/10 border-red-500/30 text-red-500'
                   }`}>
                     <div className="font-semibold flex items-center gap-1.5">

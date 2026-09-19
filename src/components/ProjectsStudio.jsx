@@ -245,7 +245,7 @@ export default function ProjectsStudio({
               {/* Why Projects Guide Toggle */}
               <button
                 onClick={toggleBenefitsBanner}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-xs font-medium text-violet-600 dark:text-violet-400 transition-colors cursor-pointer shadow-2xs shrink-0"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-xs font-medium text-black dark:text-white transition-colors cursor-pointer shadow-2xs shrink-0"
                 title="View benefits & guide"
               >
                 <Sparkles className="w-3.5 h-3.5" />
@@ -287,13 +287,13 @@ export default function ProjectsStudio({
             <div className="mb-6 p-4 sm:p-5 rounded-2xl border border-violet-500/20 bg-gradient-to-r from-violet-500/5 via-blue-500/5 to-purple-500/5 backdrop-blur-xs relative transition-all animate-fadeIn">
               <div className="flex items-center justify-between gap-4 mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="flex h-6 w-6 rounded-lg bg-violet-600/10 text-violet-600 dark:text-violet-400 items-center justify-center font-bold text-xs">
+                  <span className="flex h-6 w-6 rounded-lg bg-violet-600/10 text-black dark:text-white items-center justify-center font-bold text-xs">
                     <Sparkles className="w-3.5 h-3.5" />
                   </span>
                   <h2 className="text-sm font-bold text-[var(--text-primary)]">
                     Why use Projects in OMNIRA AI?
                   </h2>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-500/10 text-black dark:text-white border border-violet-500/20">
                     Pro Workspace
                   </span>
                 </div>
@@ -308,8 +308,8 @@ export default function ProjectsStudio({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
-                <div className="p-3.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)]/60 shadow-2xs hover:border-violet-500/40 transition-colors">
-                  <div className="flex items-center gap-2 text-xs font-bold text-violet-600 dark:text-violet-400 mb-1">
+                <div className="p-3.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)]/60 shadow-2xs hover:border-black/40 dark:hover:border-white/40 transition-colors">
+                  <div className="flex items-center gap-2 text-xs font-bold text-black dark:text-white mb-1">
                     <Zap className="w-4 h-4" />
                     <span>Never Repeat Prompts</span>
                   </div>
@@ -318,8 +318,8 @@ export default function ProjectsStudio({
                   </p>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)]/60 shadow-2xs hover:border-blue-500/40 transition-colors">
-                  <div className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 mb-1">
+                <div className="p-3.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)]/60 shadow-2xs hover:border-black/40 dark:hover:border-white/40 transition-colors">
+                  <div className="flex items-center gap-2 text-xs font-bold text-black dark:text-white mb-1">
                     <Brain className="w-4 h-4" />
                     <span>Dedicated Context & Memory</span>
                   </div>
@@ -328,8 +328,8 @@ export default function ProjectsStudio({
                   </p>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)]/60 shadow-2xs hover:border-emerald-500/40 transition-colors">
-                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1">
+                <div className="p-3.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)]/60 shadow-2xs hover:border-black/40 dark:hover:border-white/40 transition-colors">
+                  <div className="flex items-center gap-2 text-xs font-bold text-black dark:text-white dark:text-black dark:text-white mb-1">
                     <Folder className="w-4 h-4" />
                     <span>Zero Clutter Organization</span>
                   </div>
@@ -505,7 +505,7 @@ export default function ProjectsStudio({
                     {viewingProject.name}
                   </h1>
                   {viewingProject.isPinned && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-neutral-100 dark:bg-neutral-800 text-black dark:text-white dark:text-black dark:text-white border border-neutral-300 dark:border-neutral-700">
                       Pinned
                     </span>
                   )}
@@ -552,7 +552,7 @@ export default function ProjectsStudio({
               </div>
               <button
                 onClick={(e) => handleOpenSettingsModal(viewingProject, e)}
-                className="text-[11px] text-violet-600 dark:text-violet-400 hover:underline font-medium cursor-pointer"
+                className="text-[11px] text-black dark:text-white hover:underline font-medium cursor-pointer"
               >
                 Edit
               </button>

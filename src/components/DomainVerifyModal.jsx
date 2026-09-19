@@ -48,7 +48,7 @@ export default function DomainVerifyModal({ isOpen, onClose, onVerifyDomain }) {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5 font-bold text-base">
-            <Globe className="w-5 h-5 text-emerald-500" />
+            <Globe className="w-5 h-5 text-black dark:text-white" />
             <span>Verify Custom Domain Ownership</span>
           </div>
 
@@ -91,7 +91,7 @@ export default function DomainVerifyModal({ isOpen, onClose, onVerifyDomain }) {
               <button
                 onClick={() => setStep('dns')}
                 disabled={!domainName.trim()}
-                className="px-5 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all shadow-md cursor-pointer disabled:opacity-50"
+                className="px-5 py-2 rounded-full bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 dark:text-black text-white font-semibold text-xs transition-all shadow-md cursor-pointer disabled:opacity-50"
               >
                 Continue to DNS Setup
               </button>
@@ -111,7 +111,7 @@ export default function DomainVerifyModal({ isOpen, onClose, onVerifyDomain }) {
               {/* Type */}
               <div className="flex items-center justify-between">
                 <span className="text-[var(--text-muted)] font-sans text-xs">Record Type:</span>
-                <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold">TXT</span>
+                <span className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-black dark:text-white font-bold">TXT</span>
               </div>
 
               {/* Host/Name */}
@@ -120,9 +120,9 @@ export default function DomainVerifyModal({ isOpen, onClose, onVerifyDomain }) {
                   <span className="text-[var(--text-muted)] font-sans text-xs">Host / Name:</span>
                   <button
                     onClick={() => handleCopy(challengeName, 'name')}
-                    className="flex items-center gap-1 text-[11px] text-emerald-500 hover:underline font-sans"
+                    className="flex items-center gap-1 text-[11px] text-black dark:text-white hover:underline font-sans"
                   >
-                    {copiedName ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                    {copiedName ? <Check className="w-3 h-3 text-black dark:text-white" /> : <Copy className="w-3 h-3" />}
                     <span>{copiedName ? 'Copied' : 'Copy Name'}</span>
                   </button>
                 </div>
@@ -137,13 +137,13 @@ export default function DomainVerifyModal({ isOpen, onClose, onVerifyDomain }) {
                   <span className="text-[var(--text-muted)] font-sans text-xs">TXT Value / Content:</span>
                   <button
                     onClick={() => handleCopy(challengeValue, 'txt')}
-                    className="flex items-center gap-1 text-[11px] text-emerald-500 hover:underline font-sans"
+                    className="flex items-center gap-1 text-[11px] text-black dark:text-white hover:underline font-sans"
                   >
-                    {copiedTxt ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                    {copiedTxt ? <Check className="w-3 h-3 text-black dark:text-white" /> : <Copy className="w-3 h-3" />}
                     <span>{copiedTxt ? 'Copied' : 'Copy TXT Value'}</span>
                   </button>
                 </div>
-                <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] text-emerald-400 font-bold truncate text-[11px]">
+                <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] text-black dark:text-white font-bold truncate text-[11px]">
                   {challengeValue}
                 </div>
               </div>
@@ -162,7 +162,7 @@ export default function DomainVerifyModal({ isOpen, onClose, onVerifyDomain }) {
               <button
                 onClick={handleVerifyDNS}
                 disabled={isVerifying}
-                className="px-5 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="px-5 py-2 rounded-full bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 dark:text-black text-white font-semibold text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
                 {isVerifying ? (
                   <>
@@ -182,7 +182,7 @@ export default function DomainVerifyModal({ isOpen, onClose, onVerifyDomain }) {
 
         {step === 'verified' && (
           <div className="py-6 text-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto shadow-lg">
+            <div className="w-12 h-12 rounded-full bg-neutral-200 dark:bg-neutral-700 text-black dark:text-white flex items-center justify-center mx-auto shadow-lg">
               <ShieldCheck className="w-7 h-7" />
             </div>
             <h3 className="text-base font-bold text-[var(--text-primary)]">

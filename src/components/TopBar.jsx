@@ -82,7 +82,7 @@ export const AI_MODELS = [
     name: 'OMNIRA Native Neural',
     shortName: 'Native AI',
     badge: 'Zero API Key',
-    color: '#10b981',
+    color: '#000000',
     iconType: 'omnira',
     description: '100% client-side instant AI processing.'
   }
@@ -146,7 +146,7 @@ export function ModelIcon({ type, className = "w-4 h-4" }) {
     );
   }
   if (type === 'flux') {
-    return <span className="text-sm">🎨</span>;
+    return <Sparkles className={className} />;
   }
   return (
     <OmniraIcon className={className} />
@@ -259,7 +259,7 @@ export default function TopBar({
                       <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
                         {m.badge}
                       </span>
-                      {isSelected && <Check className="w-3.5 h-3.5 text-emerald-500" />}
+                      {isSelected && <Check className="w-3.5 h-3.5 text-black dark:text-white" />}
                     </div>
                   </button>
                 );
@@ -324,11 +324,15 @@ export default function TopBar({
 
         <button
           onClick={() => openSettings && openSettings('account')}
-          className="w-7 h-7 rounded-full bg-emerald-700 text-white font-semibold text-xs flex items-center justify-center hover:opacity-90 transition-opacity shadow-2xs cursor-pointer overflow-hidden shrink-0"
+          className="w-7 h-7 rounded-full bg-black dark:bg-white text-white dark:text-black font-semibold text-xs flex items-center justify-center hover:opacity-90 transition-opacity shadow-2xs cursor-pointer overflow-hidden shrink-0"
           title={displayUserName}
         >
-          {currentUser?.picture ? (
-            <img src={currentUser.picture} alt={displayUserName} className="w-full h-full object-cover" />
+          {currentUser?.picture || currentUser?.photoURL || (currentUser?.avatar && (currentUser.avatar.startsWith('data:') || currentUser.avatar.startsWith('http'))) ? (
+            <img 
+              src={currentUser.picture || currentUser.photoURL || currentUser.avatar} 
+              alt={displayUserName} 
+              className="w-full h-full object-cover" 
+            />
           ) : (
             displayUserName.charAt(0).toUpperCase()
           )}

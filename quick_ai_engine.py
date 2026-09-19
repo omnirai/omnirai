@@ -99,13 +99,19 @@ class QuickAiEngine:
             if pplx_res:
                 return pplx_res
 
-        # 3. Try Ultra-Fast 100% Free GroqCloud LPU Engine first
+        # 2.6 Google Search Grounding / Site Link Tracking Handler
+        is_google_link_req = any(k in lower for k in ["google", "site link", "website link", "web link", "provide link", "give link", "track from google", "track google", "search google", "url"])
+        if is_google_link_req or model == "gemini-1.5-flash":
+            gemini_res = self._query_gemini(clean_prompt)
+            if gemini_res:
+                return gemini_res
+
+        # 3. Try Ultra-Fast 100% Free GroqCloud LPU Engine
         groq_res = self._query_groq(clean_prompt)
         if groq_res:
             return groq_res
 
-
-        # 4. Try Google Gemini 100% Free API Engine
+        # 4. Try Google Gemini API Engine
         gemini_res = self._query_gemini(clean_prompt)
         if gemini_res:
             return gemini_res
@@ -267,17 +273,22 @@ class QuickAiEngine:
         return None
 
     def _query_gemini(self, prompt: str) -> Optional[str]:
-        """Calls official Google Gemini REST API."""
+        """Calls official Google Gemini REST API with Google Search Grounding for live site link tracking."""
         if not self.gemini_api_key:
             return None
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={self.gemini_api_key}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.gemini_api_key}"
             payload = json.dumps({
                 "contents": [
                     {
                         "parts": [
                             {"text": prompt}
                         ]
+                    }
+                ],
+                "tools": [
+                    {
+                        "google_search": {}
                     }
                 ]
             }).encode('utf-8')
@@ -292,9 +303,22 @@ class QuickAiEngine:
                     data = json.loads(response.read().decode('utf-8'))
                     candidates = data.get('candidates', [])
                     if candidates and len(candidates) > 0:
-                        parts = candidates[0].get('content', {}).get('parts', [])
+                        cand = candidates[0]
+                        parts = cand.get('content', {}).get('parts', [])
                         if parts and len(parts) > 0:
                             content = parts[0].get('text', '')
+                            grounding = cand.get('groundingMetadata', {})
+                            chunks = grounding.get('groundingChunks', [])
+                            links = []
+                            for chunk in chunks:
+                                web = chunk.get('web', {})
+                                uri = web.get('uri')
+                                title = web.get('title')
+                                if uri and title:
+                                    links.append(f"- [{title}]({uri})")
+                            if links:
+                                unique_links = list(dict.fromkeys(links))
+                                content += "\n\n---\n### 🌐 Tracked Google Site Links & Sources\n" + "\n".join(unique_links)
                             if content and len(content.strip()) > 0:
                                 return content
         except Exception:

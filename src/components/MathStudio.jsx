@@ -98,7 +98,7 @@ export default function MathStudio({ settings }) {
           <span className="font-semibold text-primary">STEP-BY-STEP SOLUTION</span>
           {solution && (
             <button onClick={handleCopy} className="btn btn-sm text-xs">
-              {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+              {copied ? <Check className="w-3 h-3 text-black dark:text-white" /> : <Copy className="w-3 h-3" />}
               <span>{copied ? 'Copied' : 'Copy Solution'}</span>
             </button>
           )}

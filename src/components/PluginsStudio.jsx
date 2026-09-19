@@ -477,7 +477,7 @@ export default function PluginsStudio({ onSelectChat }) {
               </span>
             </div>
             <p className="text-sm text-[var(--text-muted)]">
-              Work with ChatGPT across your favorite tools.
+              Work with OMNIRA across your favorite tools.
             </p>
           </div>
 

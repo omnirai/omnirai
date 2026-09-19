@@ -141,39 +141,56 @@ export default function ChatStudio({
     }
   };
 
-  // Text-to-Speech using configured Voice persona (Ember, Breeze, Cove, etc.)
+  // Multilingual Text-to-Speech using configured Voice persona (Ember, Breeze, Cove, etc.)
   const speakText = (text) => {
-    if (!('speechSynthesis' in window)) return;
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
-    const cleanText = text.replace(/[#*`_~]/g, '');
-    const utterance = new SpeechSynthesisUtterance(cleanText);
+    window.speechSynthesis.resume();
 
-    try {
-      const raw = localStorage.getItem('omnira_voice_config');
-      if (raw) {
-        const vConfig = JSON.parse(raw);
-        const personaPitches = {
-          ember: 1.05, breeze: 1.15, cove: 0.90, juniper: 1.20,
-          sky: 1.00, sol: 0.95, spruce: 0.85, vale: 1.10, arbor: 0.92, maple: 1.25
-        };
-        const personaRates = {
-          ember: 1.02, breeze: 1.08, cove: 0.92, juniper: 1.05,
-          sky: 1.00, sol: 0.95, spruce: 1.10, vale: 1.00, arbor: 0.96, maple: 1.04
-        };
-        if (vConfig.voiceId && personaPitches[vConfig.voiceId]) {
-          utterance.pitch = personaPitches[vConfig.voiceId];
-          utterance.rate = personaRates[vConfig.voiceId] || 1.0;
-        }
-        if (vConfig.language && vConfig.language !== 'Auto-detect') {
-          const langMap = {
-            'Nepali': 'ne-NP', 'Hindi': 'hi-IN', 'Spanish': 'es-ES',
-            'French': 'fr-FR', 'German': 'de-DE', 'Japanese': 'ja-JP',
-            'Chinese': 'zh-CN', 'Bengali': 'bn-IN', 'English (US)': 'en-US'
-          };
-          if (langMap[vConfig.language]) utterance.lang = langMap[vConfig.language];
-        }
-      }
-    } catch(e) {}
+    const cleanText = text
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/[#*`_~[\]()]/g, ' ')
+      .replace(/https?:\/\/\S+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!cleanText) return;
+
+    // Detect language script (Nepali, Hindi, Spanish, etc.)
+    let detectedLang = 'en-US';
+    if (/[\u0900-\u097F]/.test(cleanText)) {
+      detectedLang = /(छ|छन्|भयो|गर्छ|तपाईं|के|हो|छैन|नमस्ते|गर्नुहोस्|हामी|मलाई|नेपाली)/.test(cleanText) ? 'ne-NP' : 'hi-IN';
+    } else if (/[\u0600-\u06FF]/.test(cleanText)) {
+      detectedLang = 'ar-SA';
+    } else if (/[\u4E00-\u9FFF]/.test(cleanText)) {
+      detectedLang = 'zh-CN';
+    } else if (/[\u3040-\u30FF]/.test(cleanText)) {
+      detectedLang = 'ja-JP';
+    } else if (/[\uAC00-\uD7AF]/.test(cleanText)) {
+      detectedLang = 'ko-KR';
+    } else if (/[\u0400-\u04FF]/.test(cleanText)) {
+      detectedLang = 'ru-RU';
+    } else if (/(hola|gracias|buenos|días|español)/i.test(cleanText)) {
+      detectedLang = 'es-ES';
+    } else if (/(bonjour|merci|français)/i.test(cleanText)) {
+      detectedLang = 'fr-FR';
+    } else if (/(hallo|danke|deutsch)/i.test(cleanText)) {
+      detectedLang = 'de-DE';
+    }
+
+    const voices = window.speechSynthesis.getVoices();
+    const langPrefix = detectedLang.split('-')[0].toLowerCase();
+    let matchedVoice = voices.find(v => v.lang.toLowerCase().replace('_', '-') === detectedLang.toLowerCase()) ||
+      voices.find(v => v.lang.toLowerCase().startsWith(langPrefix)) ||
+      voices.find(v => (v.name.includes('Google') || v.name.includes('Natural') || v.lang.startsWith('en')) && !v.name.includes('whisper')) ||
+      voices[0];
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.volume = 1.0;
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.lang = detectedLang;
+    if (matchedVoice) utterance.voice = matchedVoice;
 
     window.speechSynthesis.speak(utterance);
   };

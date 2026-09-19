@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Mic, MicOff, Plus, AlertCircle, Globe } from 'lucide-react';
+import { X, Mic, MicOff, AlertCircle, Globe, Volume2 } from 'lucide-react';
 import { queryQuickAi } from '../engine/quickAiEngine';
 
 // Helper to detect language script
@@ -7,7 +7,7 @@ function detectScriptLanguage(text) {
   if (!text) return 'en-US';
   // Devanagari (Nepali / Hindi)
   if (/[\u0900-\u097F]/.test(text)) {
-    if (/(छ|छन्|भयो|गर्छ|तपाईं|के|हो|छैन|नमस्ते|गर्नुहोस्|हामी|मलाई)/.test(text)) return 'ne-NP';
+    if (/(छ|छन्|भयो|गर्छ|तपाईं|के|हो|छैन|नमस्ते|गर्नुहोस्|हामी|मलाई|नेपाली|धन्यवाद|कस्तो|हुन्छ)/.test(text)) return 'ne-NP';
     return 'hi-IN';
   }
   // Arabic / Persian
@@ -20,7 +20,13 @@ function detectScriptLanguage(text) {
   if (/[\uAC00-\uD7AF]/.test(text)) return 'ko-KR';
   // Cyrillic (Russian)
   if (/[\u0400-\u04FF]/.test(text)) return 'ru-RU';
-  
+  // Spanish keywords
+  if (/(hola|gracias|buenos|días|cómo|estás|por favor|español)/i.test(text)) return 'es-ES';
+  // French keywords
+  if (/(bonjour|merci|salut|français|s'il vous plaît)/i.test(text)) return 'fr-FR';
+  // German keywords
+  if (/(hallo|danke|bitte|deutsch|guten tag)/i.test(text)) return 'de-DE';
+
   const savedLang = localStorage.getItem('omnira_language');
   if (savedLang && savedLang !== 'Auto-detect') {
     const map = {
@@ -46,15 +52,21 @@ function getBestVoiceForLanguage(langCode, voices) {
   if (!voices || voices.length === 0) return null;
   const langPrefix = langCode.split('-')[0].toLowerCase();
   
-  // 1. Exact match (e.g. 'ne-NP', 'hi-IN', 'es-ES')
+  // 1. Exact match (e.g. 'ne-NP', 'hi-IN', 'es-ES', 'fr-FR')
   let match = voices.find(v => v.lang.toLowerCase().replace('_', '-') === langCode.toLowerCase());
   if (match) return match;
   
   // 2. Prefix match (e.g. 'ne', 'hi', 'es', 'fr', 'de', 'ja', 'zh')
   match = voices.find(v => v.lang.toLowerCase().startsWith(langPrefix));
   if (match) return match;
+
+  // 3. Fallback for Nepali (use Hindi or Indian voice if dedicated Nepali voice not in browser)
+  if (langPrefix === 'ne') {
+    match = voices.find(v => v.lang.toLowerCase().startsWith('hi') || v.lang.toLowerCase().includes('in'));
+    if (match) return match;
+  }
   
-  // 3. Natural / high-clarity fallback
+  // 4. Natural / high-clarity voice
   return voices.find(v => 
     (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha') || v.name.includes('Jenny') || v.lang.startsWith('en')) &&
     !v.name.includes('whisper')
@@ -185,7 +197,7 @@ export default function VoiceChatModal({
     }
   }, [isOpen, isMuted]);
 
-  // Multilingual Full-Speech Function (Speaks entire text cleanly without cutting off)
+  // Multilingual Full-Speech Function (Speaks entire text loudly and cleanly)
   const speakText = useCallback((textToSpeak, onComplete) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       setVoiceState('listening');
@@ -228,7 +240,7 @@ export default function VoiceChatModal({
       // Animate orb pulsation during speech
       if (speakingIntervalRef.current) clearInterval(speakingIntervalRef.current);
       speakingIntervalRef.current = setInterval(() => {
-        setAudioVolume(0.45 + Math.random() * 0.45);
+        setAudioVolume(0.5 + Math.random() * 0.4);
       }, 100);
 
       isSpeakingUtteranceRef.current = true;
@@ -255,7 +267,7 @@ export default function VoiceChatModal({
           if (isOpen && !isMuted) {
             setTimeout(() => {
               restartRecognitionSafe();
-            }, 250);
+            }, 300);
           }
 
           if (onComplete) onComplete();
@@ -314,36 +326,35 @@ export default function VoiceChatModal({
 
     try {
       // Build real phone-call prompt with multilingual instructions
-      const prompt = `You are in a live phone call voice conversation with the user.
-User just said: "${query}".
+      const prompt = `You are OMNIRA AI in a real-time natural two-way voice call with the user.
+User just said in audio: "${query}".
 
-RULES:
-1. Respond in the EXACT SAME LANGUAGE that the user spoke in (e.g. if Nepali, reply in Nepali; if Hindi, reply in Hindi; if Spanish, reply in Spanish; if English, reply in English, etc.).
-2. Answer directly, warmly, intelligently, and completely in 1 to 3 spoken sentences, like a human talking on a phone call.
-3. Never use markdown formatting, bullets, asterisks, or code blocks.
-4. Always speak fully and answer whatever the user asks.`;
+CRITICAL VOICE INSTRUCTIONS:
+1. LANGUAGE MATCHING: If the user speaks in Nepali, reply in natural, fluent Nepali. If in Hindi, reply in Hindi. If in Spanish, in Spanish. If in English, in English. Always match whatever language the user is speaking in, or whichever language they ask you to speak in!
+2. PHONE CALL STYLE: Keep your response concise (1 to 3 sentences), highly articulate, warm, friendly, intelligent, and natural for human speech.
+3. NO MARKDOWN: Never use markdown symbols (no asterisks, bolding, hashtags, bullet points, or code blocks) because your response is being read aloud directly to the user's ears.
+4. COMPLETE ANSWER: Always directly answer what the user asked with 100% accuracy and clarity.`;
 
-      const response = await queryQuickAi(
+      const response = await queryQuickAi({
         prompt,
-        callHistoryRef.current,
-        selectedModel || 'gpt-4o',
-        {
-          temperature: 0.75,
-          max_tokens: 350
-        },
-        null,
-        'chat'
-      );
+        history: callHistoryRef.current,
+        selectedModel: selectedModel || 'gpt-4o',
+        mode: 'chat',
+        currentUser
+      });
 
       reply = response?.content || response?.text || (typeof response === 'string' ? response : "");
-      // Strip any reasoning tags if present
-      reply = reply.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+      // Strip any reasoning tags or markdown symbols if present
+      reply = reply
+        .replace(/<think>[\s\S]*?<\/think>/gi, '')
+        .replace(/[*#_`~[\]]/g, '')
+        .trim();
     } catch (err) {
       console.warn("Voice AI query error:", err);
     }
 
     if (!reply) {
-      reply = `I heard you clearly. Let me answer that right away. What else would you like to know?`;
+      reply = `I heard you clearly. Let me answer that right away. What else would you like to explore?`;
     }
 
     // Save into conversational history for continuous memory
@@ -361,7 +372,7 @@ RULES:
     }
 
     speakText(reply);
-  }, [onVoiceMessageComplete, selectedModel, speakText]);
+  }, [currentUser, onVoiceMessageComplete, selectedModel, speakText]);
 
   const startAudioAnalyser = useCallback(async (stream) => {
     try {
@@ -461,7 +472,6 @@ RULES:
         pendingSpeechRef.current = interimStr;
         setVoiceState('listening');
 
-        // Trigger after a brief pause even if final event hasn't fired yet
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
         silenceTimerRef.current = setTimeout(() => {
           if (pendingSpeechRef.current.trim().length > 1 && !isProcessingRef.current) {
@@ -469,7 +479,7 @@ RULES:
             pendingSpeechRef.current = '';
             processUserSpeech(speechToProcess);
           }
-        }, 850);
+        }, 900);
       }
 
       if (finalStr.trim()) {
@@ -498,94 +508,94 @@ RULES:
       }
     };
 
+    recognitionRef.current = recognition;
+
     try {
       recognition.start();
-      recognitionRef.current = recognition;
       setVoiceState('listening');
-    } catch (e) {}
+    } catch (e) {
+      console.warn("Recognition start notice:", e);
+    }
   }, [isOpen, isMuted, processUserSpeech, startAudioAnalyser, voiceLang]);
 
-  // Handle language switch
+  useEffect(() => {
+    if (isOpen) {
+      setErrorMessage(null);
+      setBotResponseText('');
+      setUserTranscript('');
+      setInterimTranscript('');
+      setIsMuted(false);
+      startListening();
+    } else {
+      stopAllAudio();
+    }
+
+    return () => {
+      stopAllAudio();
+    };
+  }, [isOpen, startListening, stopAllAudio]);
+
+  const toggleMute = () => {
+    if (isMuted) {
+      setIsMuted(false);
+      startListening();
+    } else {
+      setIsMuted(true);
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch (e) {}
+      }
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        try { window.speechSynthesis.cancel(); } catch (e) {}
+      }
+      setVoiceState('muted');
+      setAudioVolume(0);
+    }
+  };
+
   const handleLanguageChange = (newLang) => {
     setVoiceLang(newLang);
-    localStorage.setItem('omnira_voice_lang', newLang);
+    try {
+      localStorage.setItem('omnira_voice_lang', newLang);
+    } catch (e) {}
+
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
       } catch (e) {}
     }
-  };
-
-  // Initial greeting and lifecycle
-  useEffect(() => {
-    if (isOpen) {
-      setErrorMessage(null);
-      setUserTranscript('');
-      setInterimTranscript('');
-      setBotResponseText("I'm listening, go ahead...");
-      callHistoryRef.current = [];
-      pendingSpeechRef.current = '';
-      isProcessingRef.current = false;
-
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.resume();
+    setTimeout(() => {
+      if (isOpen && !isMuted) {
+        startListening();
       }
-
-      startListening();
-
-      const greetTimer = setTimeout(() => {
-        speakText("I'm listening. Ask me anything in any language!");
-      }, 300);
-
-      return () => {
-        clearTimeout(greetTimer);
-        stopAllAudio();
-      };
-    } else {
-      stopAllAudio();
-    }
-  }, [isOpen, speakText, startListening, stopAllAudio]);
-
-  const toggleMute = () => {
-    if (isMuted) {
-      setIsMuted(false);
-      setVoiceState('listening');
-      if (recognitionRef.current) {
-        try { recognitionRef.current.start(); } catch (e) {}
-      }
-    } else {
-      setIsMuted(true);
-      setVoiceState('muted');
-      if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch (e) {}
-      }
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
-    }
+    }, 200);
   };
 
   if (!isOpen) return null;
 
+  // Dynamic Orb Scale & Morphing based on Real Audio Amplitude
+  const orbScale = 1 + audioVolume * 0.45;
+  const outerGlowScale = 1 + audioVolume * 0.75;
+
   return (
-    <div className="fixed inset-0 z-50 bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white flex flex-col items-center justify-between p-4 sm:p-8 animate-in fade-in duration-300 select-none overflow-hidden">
-      
-      {/* Liquid Water Shader Animations */}
+    <div 
+      className="fixed inset-0 z-50 flex flex-col items-center justify-between p-4 sm:p-8 bg-white dark:bg-[#0d0d0d] text-neutral-900 dark:text-white select-none animate-in fade-in duration-300 font-sans overflow-hidden"
+    >
+      {/* Wave keyframe styles */}
       <style>{`
         @keyframes liquidWaveA {
-          0% { transform: translateY(0%) scaleY(1) rotate(0deg); }
-          50% { transform: translateY(-12%) scaleY(1.18) rotate(180deg); }
-          100% { transform: translateY(0%) scaleY(1) rotate(360deg); }
+          0% { transform: translate(-8%, 10%) rotate(0deg) scale(1.05); }
+          50% { transform: translate(6%, -6%) rotate(180deg) scale(1.25); }
+          100% { transform: translate(-8%, 10%) rotate(360deg) scale(1.05); }
         }
         @keyframes liquidWaveB {
-          0% { transform: translateY(-8%) scaleX(1.1) rotate(360deg); }
-          50% { transform: translateY(6%) scaleX(0.95) rotate(180deg); }
-          100% { transform: translateY(-8%) scaleX(1.1) rotate(0deg); }
+          0% { transform: translate(10%, -8%) rotate(360deg) scale(1.2); }
+          50% { transform: translate(-6%, 8%) rotate(180deg) scale(1.05); }
+          100% { transform: translate(10%, -8%) rotate(0deg) scale(1.2); }
         }
         @keyframes liquidWaveC {
-          0% { transform: translate(-8%, -8%) rotate(0deg); }
-          50% { transform: translate(8%, 8%) rotate(180deg); }
-          100% { transform: translate(-8%, -8%) rotate(360deg); }
+          0% { transform: rotate(0deg) scale(1); }
+          50% { transform: rotate(180deg) scale(1.15); }
+          100% { transform: rotate(360deg) scale(1); }
         }
         .liquid-wave-a {
           animation: liquidWaveA 7s ease-in-out infinite;
@@ -607,12 +617,12 @@ RULES:
       />
 
       {/* Top Header Bar */}
-      <div className="w-full max-w-5xl flex items-center justify-between z-10 px-2 sm:px-4">
+      <div className="w-full max-w-5xl flex items-center justify-between z-10 px-1 sm:px-4">
         <div className="flex items-center gap-2.5">
           <span className="font-semibold text-base sm:text-lg tracking-tight text-neutral-800 dark:text-neutral-100">
-            ChatGPT Voice
+            OMNIRA Voice
           </span>
-          <span className="text-[11px] bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 px-2.5 py-0.5 rounded-full font-medium">
+          <span className="text-[11px] bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 px-2.5 py-0.5 rounded-full font-medium capitalize">
             {voiceState}
           </span>
         </div>
@@ -620,11 +630,11 @@ RULES:
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Multilingual Speech Selector */}
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800/90 border border-neutral-200 dark:border-neutral-700/80 text-xs shadow-2xs">
-            <Globe className="w-3.5 h-3.5 text-neutral-500" />
+            <Globe className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
             <select
               value={voiceLang}
               onChange={(e) => handleLanguageChange(e.target.value)}
-              className="bg-transparent text-[11px] font-semibold text-neutral-800 dark:text-neutral-200 outline-none cursor-pointer pr-1"
+              className="bg-transparent text-[11px] font-semibold text-neutral-800 dark:text-neutral-200 outline-none cursor-pointer pr-1 max-w-[120px] sm:max-w-none truncate"
               title="Select speech language"
             >
               <option value="en-US" className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white">English (US)</option>
@@ -638,211 +648,131 @@ RULES:
               <option value="ar-SA" className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white">العربية (Arabic)</option>
               <option value="pt-BR" className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white">Português (Portuguese)</option>
               <option value="ru-RU" className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white">Русский (Russian)</option>
-              <option value="it-IT" className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white">Italiano (Italian)</option>
             </select>
           </div>
 
           <button
             onClick={onClose}
-            className="p-2 rounded-full text-neutral-400 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
-            aria-label="Close voice mode"
+            className="p-2 rounded-full text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+            aria-label="Close voice chat"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* Error Message Toast */}
-      {errorMessage && (
-        <div className="z-10 max-w-md bg-red-50 dark:bg-red-950/80 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 text-xs px-4 py-2.5 rounded-2xl flex items-center gap-2 shadow-lg animate-in slide-in-from-top-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span className="flex-1">{errorMessage}</span>
-          <button onClick={() => setErrorMessage(null)} className="p-1 hover:text-black dark:hover:text-white">
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-
-      {/* Center Stage: Mathematically Concentric Wave SVG & Liquid Watercolor Orb */}
-      <div className="relative flex flex-col items-center justify-center my-auto z-10 w-full max-w-xl">
+      {/* Main Center Area: Living Water Orb + Live Multilingual Subtitles */}
+      <div className="flex-1 flex flex-col items-center justify-center relative w-full max-w-xl z-10 my-auto px-4 text-center">
         
-        {/* Fixed 420x420 Concentric Container (Grid Centered - Zero Transform Drift) */}
-        <div className="relative w-[340px] h-[340px] sm:w-[420px] sm:h-[420px] grid place-items-center">
+        {/* Soft Background Radial Light */}
+        <div 
+          className="absolute w-80 h-80 rounded-full bg-gradient-to-tr from-sky-400/30 via-blue-500/20 to-transparent blur-3xl pointer-events-none transition-transform duration-200"
+          style={{ transform: `scale(${outerGlowScale})` }}
+        />
 
-          {/* SVG Vector Concentric Wave Rings (Mathematically Anchored at cx=210, cy=210) */}
-          <svg 
-            viewBox="0 0 420 420" 
-            className="absolute inset-0 w-full h-full pointer-events-none overflow-visible"
-          >
-            {/* Outer Ring 3 */}
-            <circle
-              cx="210"
-              cy="210"
-              r={150 + audioVolume * 40}
-              fill="none"
-              stroke="#38bdf8"
-              strokeWidth="1.2"
-              strokeOpacity={voiceState === 'listening' || voiceState === 'speaking' ? "0.2" : "0.04"}
-              className="transition-all duration-300"
-            />
+        {/* Realistic Flowing Liquid Water Sphere */}
+        <div 
+          className="relative w-48 h-48 sm:w-60 sm:h-60 rounded-full shadow-[0_20px_50px_rgba(14,165,233,0.3)] dark:shadow-[0_20px_60px_rgba(2,132,199,0.25)] overflow-hidden border border-white/80 dark:border-white/20 flex items-center justify-center transition-transform duration-100 bg-[#cbe9fe]"
+          style={{ transform: `scale(${orbScale})` }}
+        >
+          {/* Base Ambient Water Layer */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#e0f2fe] via-[#bae6fd] to-[#38bdf8] opacity-90" />
+          
+          {/* Flowing Organic Liquid Blobs */}
+          <div className="absolute -inset-4 rounded-[42%] bg-gradient-to-tr from-[#0284c7] via-[#38bdf8] to-transparent opacity-85 liquid-wave-a blur-xs" />
+          <div className="absolute -inset-4 rounded-[38%] bg-gradient-to-bl from-[#0369a1] via-[#0ea5e9] to-[#7dd3fc] opacity-80 liquid-wave-b blur-xs" />
+          <div className="absolute -inset-2 rounded-[46%] bg-gradient-to-r from-[#38bdf8]/60 via-[#bae6fd]/40 to-transparent opacity-75 liquid-wave-c" />
 
-            {/* Middle Ring 2 */}
-            <circle
-              cx="210"
-              cy="210"
-              r={125 + audioVolume * 30}
-              fill="none"
-              stroke="#0ea5e9"
-              strokeWidth="1.5"
-              strokeOpacity={voiceState === 'listening' || voiceState === 'speaking' ? "0.35" : "0.08"}
-              className="transition-all duration-200"
-            />
-
-            {/* Inner Ring 1 */}
-            <circle
-              cx="210"
-              cy="210"
-              r={105 + audioVolume * 20}
-              fill="none"
-              stroke="#38bdf8"
-              strokeWidth="1.8"
-              strokeOpacity={voiceState === 'listening' || voiceState === 'speaking' ? "0.6" : "0.15"}
-              className="transition-all duration-150"
-            />
-
-            {/* Soft Ambient Radial Blur behind Orb */}
-            <circle
-              cx="210"
-              cy="210"
-              r={95 + audioVolume * 15}
-              fill="url(#ambientGlow)"
-              opacity={voiceState === 'speaking' ? "0.7" : "0.5"}
-            />
-
-            <defs>
-              <radialGradient id="ambientGlow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.45" />
-                <stop offset="60%" stopColor="#60a5fa" stopOpacity="0.2" />
-                <stop offset="100%" stopColor="#38bdf8" stopOpacity="0" />
-              </radialGradient>
-            </defs>
-          </svg>
-
-          {/* The Liquid Water Watercolor Orb (matching User Reference 2) */}
-          <div 
-            className="relative w-44 h-44 sm:w-52 sm:h-52 rounded-full shadow-2xl overflow-hidden border border-white/90 dark:border-white/20 transition-transform duration-300 flex items-center justify-center z-10"
-            style={{
-              transform: `scale(${1 + (voiceState === 'listening' || voiceState === 'speaking' ? audioVolume * 0.15 : 0)})`,
-              boxShadow: '0 16px 45px -10px rgba(14, 165, 233, 0.45), 0 0 25px 2px rgba(255, 255, 255, 0.7) inset',
-              background: '#e0f2fe'
-            }}
-          >
-            {/* Base Sky Water Background */}
-            <div className="absolute inset-0 bg-gradient-to-b from-[#f0f9ff] via-[#bae6fd] to-[#0284c7]" />
-
-            {/* Wave 1: Deep Aqua Liquid Flow */}
-            <div 
-              className="absolute -inset-10 rounded-[44%] bg-gradient-to-tr from-[#0284c7] via-[#0ea5e9] to-transparent opacity-85 liquid-wave-a blur-xs"
-            />
-
-            {/* Wave 2: Vibrant Cyan Water Cloud */}
-            <div 
-              className="absolute -inset-10 rounded-[40%] bg-gradient-to-bl from-[#0369a1] via-[#38bdf8] to-[#e0f2fe] opacity-80 liquid-wave-b blur-xs"
-            />
-
-            {/* Wave 3: Soft White Vapor Foam */}
-            <div 
-              className="absolute -inset-10 rounded-[46%] bg-gradient-to-r from-white via-[#e0f2fe] to-transparent opacity-90 liquid-wave-c blur-xs"
-            />
-
-            {/* Frosted Water Glass Refraction & Gloss */}
-            <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/70 via-white/20 to-transparent pointer-events-none" />
-            <div className="absolute top-4 left-8 w-16 h-8 rounded-full bg-white/80 blur-xs rotate-[-24deg] pointer-events-none" />
-
-            {/* Center Dynamic Audio Visualizer Dots */}
-            <div className="relative z-20 flex items-center gap-1.5 opacity-95">
-              {[0.4, 0.8, 1, 0.8, 0.4].map((mult, idx) => (
-                <span
-                  key={idx}
-                  className="w-1.5 bg-white rounded-full transition-all duration-75 shadow-xs"
-                  style={{
-                    height: voiceState === 'speaking' || voiceState === 'listening'
-                      ? `${Math.max(6, (audioVolume * 36 + 10) * mult)}px`
-                      : '6px',
-                    opacity: voiceState === 'muted' ? 0.3 : 0.95
-                  }}
-                />
-              ))}
-            </div>
-          </div>
+          {/* Top Glass Caustic Reflections */}
+          <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/70 via-white/20 to-transparent pointer-events-none" />
+          <div className="absolute top-3 left-6 w-16 h-8 rounded-full bg-white/75 blur-xs rotate-[-25deg] pointer-events-none" />
+          <div className="absolute bottom-4 right-6 w-12 h-6 rounded-full bg-sky-200/50 blur-xs rotate-[15deg] pointer-events-none" />
         </div>
 
-        {/* Live Subtitle / State Caption */}
-        <div className="mt-6 text-center max-w-md px-4 min-h-[48px] flex flex-col items-center justify-center">
-          {interimTranscript ? (
-            <p className="text-sm sm:text-base font-medium text-sky-600 dark:text-sky-300 animate-pulse italic">
-              &ldquo;{interimTranscript}&rdquo;
+        {/* Live Conversation Subtitles */}
+        <div className="mt-8 min-h-[70px] w-full flex flex-col items-center justify-center px-4">
+          {voiceState === 'listening' && (
+            <p className="text-base sm:text-lg text-neutral-600 dark:text-neutral-300 font-medium animate-in fade-in max-w-md">
+              {interimTranscript ? (
+                <span>&ldquo;{interimTranscript}&rdquo;</span>
+              ) : userTranscript ? (
+                <span>&ldquo;{userTranscript}&rdquo;</span>
+              ) : (
+                <span className="text-neutral-400 dark:text-neutral-500 font-normal">Listening... speak in any language</span>
+              )}
             </p>
-          ) : userTranscript && voiceState === 'thinking' ? (
-            <p className="text-sm font-medium text-neutral-600 dark:text-neutral-300">
-              &ldquo;{userTranscript}&rdquo;
-            </p>
-          ) : voiceState === 'speaking' ? (
-            <p className="text-xs sm:text-sm font-medium text-neutral-800 dark:text-neutral-200 line-clamp-3 leading-relaxed">
-              {botResponseText}
-            </p>
-          ) : voiceState === 'muted' ? (
-            <p className="text-xs font-medium text-red-500">
-              Microphone is paused. Click mic to unmute.
-            </p>
-          ) : (
-            <p className="text-xs sm:text-sm font-medium text-neutral-400 dark:text-neutral-500">
-              Say what&apos;s on your mind...
-            </p>
+          )}
+
+          {voiceState === 'thinking' && (
+            <div className="flex items-center gap-2 text-sm sm:text-base text-sky-600 dark:text-sky-400 font-semibold animate-pulse">
+              <span className="inline-block w-2 h-2 rounded-full bg-current" />
+              <span>Thinking & processing answer...</span>
+            </div>
+          )}
+
+          {voiceState === 'speaking' && botResponseText && (
+            <div className="space-y-1 animate-in fade-in">
+              <div className="flex items-center justify-center gap-1.5 text-xs text-sky-500 font-semibold">
+                <Volume2 className="w-3.5 h-3.5 animate-bounce" />
+                <span>Speaking</span>
+              </div>
+              <p className="text-sm sm:text-base text-neutral-800 dark:text-neutral-100 font-medium max-w-lg leading-relaxed">
+                &ldquo;{botResponseText}&rdquo;
+              </p>
+            </div>
+          )}
+
+          {voiceState === 'muted' && (
+            <p className="text-sm text-amber-500 font-medium">Microphone is muted</p>
+          )}
+
+          {errorMessage && (
+            <div className="mt-2 flex items-center gap-1.5 text-xs text-red-500 font-medium">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Floating Bottom Control Bar */}
-      <div className="z-10 w-full flex justify-center pb-3 sm:pb-6">
-        <div className="bg-neutral-100/90 dark:bg-neutral-900/90 backdrop-blur-xl border border-neutral-200 dark:border-neutral-800 rounded-full px-5 py-2.5 flex items-center gap-5 shadow-xl">
-          {/* Type / Text Mode Button */}
-          <button
-            onClick={() => {
-              onClose();
-              onOpenTypeChat?.();
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white text-xs font-semibold transition-all active:scale-95 cursor-pointer"
-            title="Switch to typing"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Type</span>
-          </button>
+      {/* Bottom Control Bar */}
+      <div className="w-full max-w-sm flex items-center justify-center gap-6 z-10 pb-4">
+        {/* Switch to Type / Text Chat */}
+        <button
+          onClick={onOpenTypeChat}
+          className="w-12 h-12 rounded-full border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-800/80 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 flex items-center justify-center transition-all shadow-xs active:scale-95 cursor-pointer"
+          title="Switch to keyboard typing"
+          aria-label="Switch to keyboard typing"
+        >
+          <svg className="w-5 h-5 fill-none stroke-current stroke-[2]" viewBox="0 0 24 24">
+            <rect x="2" y="4" width="20" height="16" rx="2" />
+            <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M7 16h10" />
+          </svg>
+        </button>
 
-          {/* Microphone Mute / Unmute Button */}
-          <button
-            onClick={toggleMute}
-            className={`w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-95 shadow-xs cursor-pointer ${
-              isMuted
-                ? 'bg-red-500/20 border border-red-500 text-red-600 dark:text-red-400 hover:bg-red-500/30'
-                : 'bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-800 dark:text-white'
-            }`}
-            aria-label={isMuted ? "Unmute microphone" : "Mute microphone"}
-            title={isMuted ? "Unmute mic" : "Mute mic"}
-          >
-            {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-          </button>
+        {/* Central Mute / Unmute Microphone Button */}
+        <button
+          onClick={toggleMute}
+          className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95 cursor-pointer ${
+            isMuted 
+              ? 'bg-red-500 hover:bg-red-600 text-white' 
+              : 'bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-black'
+          }`}
+          title={isMuted ? "Unmute microphone" : "Mute microphone"}
+          aria-label={isMuted ? "Unmute microphone" : "Mute microphone"}
+        >
+          {isMuted ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
+        </button>
 
-          {/* End / Close Voice Session Button */}
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-full bg-black text-white dark:bg-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-            aria-label="End voice session"
-            title="End session"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        {/* Close Voice Call */}
+        <button
+          onClick={onClose}
+          className="w-12 h-12 rounded-full border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-800/80 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 flex items-center justify-center transition-all shadow-xs active:scale-95 cursor-pointer"
+          title="End voice session"
+          aria-label="End voice session"
+        >
+          <X className="w-5 h-5 stroke-[2.5]" />
+        </button>
       </div>
     </div>
   );

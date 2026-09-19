@@ -787,7 +787,7 @@ export default function ProjectsStudio({
                   Instructions
                 </label>
                 <p className="text-[11px] text-neutral-500 mb-1.5">
-                  Set context and customize how ChatGPT responds in this project.
+                  Set context and customize how OMNIRA responds in this project.
                 </p>
                 <textarea
                   rows={4}

@@ -188,10 +188,10 @@ export default function TopBar({
   }, []);
 
   return (
-    <header className="sticky top-0 left-0 right-0 z-50 w-full pt-[max(66px,calc(env(safe-area-inset-top,0px)+18px))] sm:pt-3 pb-2.5 px-2.5 sm:px-4 flex items-center justify-between bg-[var(--bg-primary)] border-b border-[var(--border-color)] transition-colors shrink-0 gap-1.5 sm:gap-4 overflow-visible shadow-2xs">
+    <header className="sticky top-0 left-0 right-0 z-40 w-full py-2.5 sm:py-3 px-2.5 sm:px-4 flex items-center justify-between bg-[var(--bg-primary)] border-b border-[var(--border-color)] transition-colors shrink-0 gap-1.5 sm:gap-4 overflow-visible shadow-2xs">
 
       {/* Left: Back Arrow + Sidebar Toggle + Model Selector Pill Dropdown */}
-      <div className="flex items-center gap-1 sm:gap-2 min-w-0 shrink">
+      <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1 sm:flex-initial">
 
         {/* Back Arrow Button to reset to New Chat */}
         {hasMessages && onNewChat && (

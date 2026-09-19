@@ -10,6 +10,7 @@ import ImagesStudio from './components/ImagesStudio';
 import ProjectsStudio from './components/ProjectsStudio';
 import SettingsModal from './components/SettingsModal';
 import AuthScreen from './components/AuthScreen';
+import GoogleOneTapPrompt from './components/GoogleOneTapPrompt';
 import NotFoundPage from './components/NotFoundPage';
 import LegalAndHelpModal from './components/LegalAndHelpModal';
 import { 
@@ -177,19 +178,7 @@ export default function App() {
     localStorage.setItem('omnira_user', JSON.stringify(currentUser));
   }, [currentUser]);
 
-  // Auto-prompt sign-in modal for first-time or non-authenticated visitors
-  useEffect(() => {
-    const isDismissed = sessionStorage.getItem('omnira_auth_prompt_dismissed') === 'true';
-    const hasLoggedIn = localStorage.getItem('omnira_logged_in') === 'true';
-    const isGuest = currentUser?.provider === 'guest' || !currentUser?.email || currentUser.email === 'guest@omnira.ai';
-    
-    if (!hasLoggedIn && !isDismissed && isGuest) {
-      const timer = setTimeout(() => {
-        setIsAuthModalOpen(true);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, []);
+
 
   // Handle Google Redirect Result and Firebase Auth state changes
   useEffect(() => {
@@ -746,6 +735,12 @@ export default function App() {
         onLogout={handleLogout}
         onLogin={handleLogin}
         initialTab={settingsInitialTab}
+      />
+
+      {/* Google One Tap Top-Right Prompt (Like Google / big sites) */}
+      <GoogleOneTapPrompt 
+        onLogin={handleLogin} 
+        currentUser={currentUser} 
       />
 
       {/* Auth Modal (Google & Email Login) */}

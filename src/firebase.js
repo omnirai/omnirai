@@ -11,14 +11,15 @@ import {
   onAuthStateChanged 
 } from 'firebase/auth';
 
+// Real OMNIRA AI Firebase Configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyA8g1tx_I4un9LNjg6-G4EAlCXy3dFu2VI",
-  authDomain: "quick-ai-b8d3a.firebaseapp.com",
-  projectId: "quick-ai-b8d3a",
-  storageBucket: "quick-ai-b8d3a.firebasestorage.app",
-  messagingSenderId: "818640898000",
-  appId: "1:818640898000:web:2f160df182c8836ed51bd5",
-  measurementId: "G-MYN1L8NY48"
+  apiKey: "AIzaSyAB8J4pangEoEHDntnOPSBdwe40wm4SuvY",
+  authDomain: "omnira-ai-39c47.firebaseapp.com",
+  projectId: "omnira-ai-39c47",
+  storageBucket: "omnira-ai-39c47.firebasestorage.app",
+  messagingSenderId: "776634005021",
+  appId: "1:776634005021:web:913b9c73caac131e72b8f4",
+  measurementId: "G-WM1M95R0NN"
 };
 
 const app = initializeApp(firebaseConfig);

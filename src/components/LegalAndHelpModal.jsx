@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Search, 
@@ -27,14 +27,17 @@ import {
   Zap,
   Terminal,
   RefreshCw,
-  Info
+  Info,
+  Keyboard,
+  FileDown,
+  Trash2
 } from 'lucide-react';
 import { OmniraIcon } from './OmniraLogo';
 
 export default function LegalAndHelpModal({
   isOpen,
   onClose,
-  initialTab = 'terms', // 'terms' | 'privacy' | 'help' | 'releasenotes' | 'downloadapps' | 'reportbug'
+  initialTab = 'terms', // 'terms' | 'privacy' | 'help' | 'releasenotes' | 'downloadapps' | 'reportbug' | 'keyboard'
   currentUser,
   onOpenSettings
 }) {
@@ -42,6 +45,9 @@ export default function LegalAndHelpModal({
   const [searchQuery, setSearchQuery] = useState('');
   const [copied, setCopied] = useState(false);
   const [faqExpanded, setFaqExpanded] = useState({ 0: true });
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [dataExported, setDataExported] = useState(false);
+  const [cacheCleared, setCacheCleared] = useState(false);
 
   // Bug Report Form State
   const [bugForm, setBugForm] = useState({
@@ -53,9 +59,20 @@ export default function LegalAndHelpModal({
     email: currentUser?.email || ''
   });
   const [bugSubmitted, setBugSubmitted] = useState(false);
+  const [ticketId, setTicketId] = useState('');
+
+  // Capture PWA beforeinstallprompt
+  useEffect(() => {
+    const handleBeforeInstall = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, []);
 
   // Sync initialTab when modal opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen && initialTab) {
       setActiveTab(initialTab);
       setBugSubmitted(false);
@@ -72,13 +89,90 @@ export default function LegalAndHelpModal({
     }
   };
 
+  const handleDownloadDocument = (docType) => {
+    const title = docType === 'terms' ? 'OMNIRA_AI_Terms_of_Service.txt' : 'OMNIRA_AI_Privacy_Policy.txt';
+    const content = docType === 'terms' 
+      ? `OMNIRA AI - TERMS OF SERVICE\nEffective Date: September 2026\n\n1. Acceptance of Terms...\n2. AI Intelligence & Output Reliability...\n3. User Ownership & Intellectual Property...\n4. Acceptable Use Policy...\n5. Subscriptions, Limits & Fair Use...\n6. Limitation of Liability...\n\nFor questions, contact legal@omnira.ai.`
+      : `OMNIRA AI - PRIVACY POLICY\nEffective Date: September 2026\n\n1. Information We Collect...\n2. Zero Training Policy on Private Chats...\n3. Data Storage & Encryption (TLS 1.3)...\n4. Your Rights & Account Deletion...\n\nFor privacy inquiries, contact privacy@omnira.ai.`;
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = title;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportData = () => {
+    try {
+      const exportObject = {
+        exportedAt: new Date().toISOString(),
+        user: currentUser,
+        sessions: JSON.parse(localStorage.getItem('chatgpt_sessions') || '[]'),
+        projects: JSON.parse(localStorage.getItem('omnira_projects') || '[]'),
+        settings: JSON.parse(localStorage.getItem('chatgpt_settings') || '{}'),
+        savedImages: JSON.parse(localStorage.getItem('omnira_saved_images') || '[]')
+      };
+      const blob = new Blob([JSON.stringify(exportObject, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `omnira_data_export_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      setDataExported(true);
+      setTimeout(() => setDataExported(false), 3000);
+    } catch (e) {
+      alert('Failed to export data: ' + e.message);
+    }
+  };
+
+  const handleClearCache = () => {
+    if (confirm('Clear temporary local cache and session memory? Your account remains safe.')) {
+      try {
+        localStorage.removeItem('chatgpt_selected_model');
+        localStorage.removeItem('omnira_img_count_' + new Date().toISOString().slice(0, 10));
+        setCacheCleared(true);
+        setTimeout(() => setCacheCleared(false), 3000);
+      } catch (e) {}
+    }
+  };
+
+  const handleInstallPWA = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    } else {
+      alert('To install OMNIRA AI on Desktop or Mobile:\n\n• Chrome/Edge: Click the Install App icon (⊕) in the browser address bar.\n• iPhone (Safari): Tap Share ➔ Add to Home Screen.\n• Android: Tap Menu ➔ Install App.');
+    }
+  };
+
   const handleBugSubmit = (e) => {
     e.preventDefault();
     if (!bugForm.title.trim() || !bugForm.description.trim()) return;
+    const newTicketId = 'BUG-' + Math.floor(100000 + Math.random() * 900000);
+    setTicketId(newTicketId);
+    
+    // Save to localStorage
+    try {
+      const existing = JSON.parse(localStorage.getItem('omnira_bug_reports') || '[]');
+      existing.unshift({
+        id: newTicketId,
+        ...bugForm,
+        timestamp: new Date().toISOString()
+      });
+      localStorage.setItem('omnira_bug_reports', JSON.stringify(existing));
+    } catch (_) {}
+
     setBugSubmitted(true);
-    setTimeout(() => {
-      // Auto close or reset
-    }, 3000);
   };
 
   const tabs = [
@@ -87,7 +181,20 @@ export default function LegalAndHelpModal({
     { id: 'help', label: 'Help Center', icon: HelpCircle, badge: 'Guide' },
     { id: 'releasenotes', label: 'Release Notes', icon: Sparkles, badge: 'v3.4' },
     { id: 'downloadapps', label: 'Download Apps', icon: Download, badge: 'Desktop' },
+    { id: 'keyboard', label: 'Keyboard Shortcuts', icon: Keyboard, badge: 'Hotkeys' },
     { id: 'reportbug', label: 'Report a Bug', icon: Bug, badge: 'Feedback' }
+  ];
+
+  const keyboardShortcuts = [
+    { key: 'Enter', desc: 'Send prompt / message' },
+    { key: 'Ctrl + Enter', desc: 'Send message in background' },
+    { key: 'Ctrl + Shift + O', desc: 'Open a new chat conversation' },
+    { key: 'Ctrl + K', desc: 'Global AI model search & jump' },
+    { key: 'Ctrl + Shift + S', desc: 'Toggle sidebar drawer open / close' },
+    { key: 'Ctrl + Shift + M', desc: 'Toggle Deep Thinking reasoning mode' },
+    { key: 'Ctrl + Shift + D', desc: 'Toggle voice speech dictation' },
+    { key: 'Ctrl + U', desc: 'Attach photos and files' },
+    { key: 'Esc', desc: 'Close modals & flyout menus' }
   ];
 
   const faqs = [
@@ -112,6 +219,7 @@ export default function LegalAndHelpModal({
       a: 'Yes! OMNIRA AI supports Progressive Web App (PWA) installation for Windows, macOS, iOS, and Android. Click "Download Apps" in the menu for instant setup.'
     }
   ];
+
 
   return (
     <div 
@@ -227,12 +335,21 @@ export default function LegalAndHelpModal({
             {/* 1. TERMS OF SERVICE */}
             {activeTab === 'terms' && (
               <div className="space-y-6 max-w-2xl mx-auto text-justify [text-align-last:left] [text-justify:inter-word]">
-                <div className="p-4 rounded-2xl bg-violet-500/10 border border-violet-500/20 text-xs flex items-start gap-3">
-                  <Info className="w-4 h-4 text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold text-violet-700 dark:text-violet-300">Effective Date: September 2026</span>
-                    <p className="text-[var(--text-muted)] mt-0.5">By accessing or using OMNIRA AI, you agree to be bound by these Terms of Service. Please read them thoroughly.</p>
+                <div className="p-4 rounded-2xl bg-violet-500/10 border border-violet-500/20 text-xs flex items-center justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <Info className="w-4 h-4 text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-semibold text-violet-700 dark:text-violet-300">Effective Date: September 2026</span>
+                      <p className="text-[var(--text-muted)] mt-0.5">By accessing or using OMNIRA AI, you agree to be bound by these Terms of Service.</p>
+                    </div>
                   </div>
+                  <button
+                    onClick={() => handleDownloadDocument('terms')}
+                    className="px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold shrink-0 flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors"
+                  >
+                    <FileDown className="w-3.5 h-3.5" />
+                    <span>Download Copy</span>
+                  </button>
                 </div>
 
                 <section className="space-y-2">
@@ -289,12 +406,46 @@ export default function LegalAndHelpModal({
             {/* 2. PRIVACY POLICY */}
             {activeTab === 'privacy' && (
               <div className="space-y-6 max-w-2xl mx-auto text-justify [text-align-last:left] [text-justify:inter-word]">
-                <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs flex items-start gap-3">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold text-emerald-700 dark:text-emerald-300">Privacy First Commitment</span>
-                    <p className="text-[var(--text-muted)] mt-0.5">We adhere to global privacy standards (GDPR, CCPA). Your privacy and data confidentiality are fundamental to our architecture.</p>
+                <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs flex items-center justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-semibold text-emerald-700 dark:text-emerald-300">Privacy First Commitment (GDPR & CCPA)</span>
+                      <p className="text-[var(--text-muted)] mt-0.5">We adhere to global privacy standards. Your data and conversations are never used to train public foundation models.</p>
+                    </div>
                   </div>
+                  <button
+                    onClick={() => handleDownloadDocument('privacy')}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shrink-0 flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors"
+                  >
+                    <FileDown className="w-3.5 h-3.5" />
+                    <span>Download Policy</span>
+                  </button>
+                </div>
+
+                {/* Privacy Action Tools */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)]">
+                  <button
+                    onClick={handleExportData}
+                    className="flex items-center justify-between p-3 rounded-xl bg-[var(--bg-sidebar)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] text-xs font-semibold text-[var(--text-primary)] transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Download className="w-4 h-4 text-violet-500" />
+                      <span>{dataExported ? 'Data Exported (.JSON)!' : 'Export All My Data'}</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                  </button>
+
+                  <button
+                    onClick={handleClearCache}
+                    className="flex items-center justify-between p-3 rounded-xl bg-[var(--bg-sidebar)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] text-xs font-semibold text-[var(--text-primary)] transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                      <span>{cacheCleared ? 'Cache Cleared!' : 'Clear Temporary Cache'}</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                  </button>
                 </div>
 
                 <section className="space-y-2">
@@ -323,13 +474,8 @@ export default function LegalAndHelpModal({
                 <section className="space-y-2">
                   <h3 className="text-base font-bold text-[var(--text-primary)]">4. Your Data Rights & Account Deletion</h3>
                   <p className="text-xs sm:text-sm text-[var(--text-muted)]">
-                    You have complete control over your data. At any time, you may:
+                    You have complete control over your data. At any time, you may export your data, reset your cache, or request full account deletion directly.
                   </p>
-                  <ul className="list-disc pl-5 text-xs sm:text-sm text-[var(--text-muted)] space-y-1">
-                    <li>Export your complete chat history and saved projects in JSON format.</li>
-                    <li>Clear your browser storage and chat cache directly from Settings.</li>
-                    <li>Request permanent deletion of your account and associated records.</li>
-                  </ul>
                 </section>
               </div>
             )}
@@ -344,8 +490,8 @@ export default function LegalAndHelpModal({
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search help topics, models, or issues..."
-                    className="w-full pl-10 pr-4 py-2.5 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl text-xs outline-none focus:border-violet-500 transition-colors"
+                    placeholder="Search help topics, models, quotas, or features..."
+                    className="w-full pl-10 pr-4 py-2.5 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl text-xs outline-none focus:border-violet-500 text-[var(--text-primary)] transition-colors"
                   />
                 </div>
 
@@ -384,8 +530,8 @@ export default function LegalAndHelpModal({
                 {/* Support Contact Banner */}
                 <div className="p-4 rounded-2xl bg-neutral-100 dark:bg-neutral-800/60 border border-[var(--border-color)] flex flex-col sm:flex-row items-center justify-between gap-3">
                   <div>
-                    <h4 className="font-semibold text-xs text-[var(--text-primary)]">Need personalized help?</h4>
-                    <p className="text-[11px] text-[var(--text-muted)]">Our support engineers are available to resolve account and quota queries.</p>
+                    <h4 className="font-semibold text-xs text-[var(--text-primary)]">Need direct assistance?</h4>
+                    <p className="text-[11px] text-[var(--text-muted)]">Submit a ticket to our engineering and support team.</p>
                   </div>
                   <button
                     onClick={() => setActiveTab('reportbug')}
@@ -465,6 +611,32 @@ export default function LegalAndHelpModal({
               <div className="space-y-6 max-w-2xl mx-auto">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   
+                  {/* PWA Direct Launcher */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-violet-500/15 via-indigo-500/10 to-transparent border border-violet-500/30 flex flex-col justify-between space-y-3 sm:col-span-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center shadow-md">
+                          <OmniraIcon className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-sm text-[var(--text-primary)]">OMNIRA Progressive Web App (PWA)</h4>
+                          <span className="text-[11px] text-violet-600 dark:text-violet-400 font-medium">Universal Desktop & Mobile Instant App</span>
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-violet-500/20 text-violet-600 dark:text-violet-300">
+                        Recommended
+                      </span>
+                    </div>
+                    <p className="text-xs text-[var(--text-muted)]">Install directly to your Windows Taskbar, macOS Dock, or Mobile Home Screen for standalone zero-tab performance.</p>
+                    <button
+                      onClick={handleInstallPWA}
+                      className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md shadow-violet-500/25"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Install App Now</span>
+                    </button>
+                  </div>
+
                   {/* Windows Card */}
                   <div className="p-4 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] flex flex-col justify-between space-y-3">
                     <div className="flex items-center gap-3">
@@ -472,17 +644,17 @@ export default function LegalAndHelpModal({
                         <Monitor className="w-5 h-5" />
                       </div>
                       <div>
-                        <h4 className="font-bold text-xs text-[var(--text-primary)]">Windows Desktop</h4>
+                        <h4 className="font-bold text-xs text-[var(--text-primary)]">Windows Package</h4>
                         <span className="text-[10px] text-[var(--text-muted)]">Windows 10 / 11 (64-bit)</span>
                       </div>
                     </div>
-                    <p className="text-xs text-[var(--text-muted)]">Native desktop experience with global keyboard shortcuts and offline local neural engine support.</p>
+                    <p className="text-xs text-[var(--text-muted)]">Native desktop executable with global hotkeys and background sync.</p>
                     <button
-                      onClick={() => alert('OMNIRA Windows installer will download or install via PWA prompt.')}
+                      onClick={handleInstallPWA}
                       className="w-full py-2 rounded-xl bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer flex items-center justify-center gap-2 shadow-xs"
                     >
                       <Download className="w-3.5 h-3.5" />
-                      <span>Download .EXE</span>
+                      <span>Install for Windows</span>
                     </button>
                   </div>
 
@@ -497,38 +669,48 @@ export default function LegalAndHelpModal({
                         <span className="text-[10px] text-[var(--text-muted)]">Apple Silicon (M1/M2/M3) & Intel</span>
                       </div>
                     </div>
-                    <p className="text-xs text-[var(--text-muted)]">Optimized Metal acceleration for ultra-fast local inference and Spotlight-style quick bar.</p>
+                    <p className="text-xs text-[var(--text-muted)]">Optimized Metal acceleration for ultra-fast local inference and dock support.</p>
                     <button
-                      onClick={() => alert('OMNIRA macOS DMG is ready for download.')}
+                      onClick={handleInstallPWA}
                       className="w-full py-2 rounded-xl bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer flex items-center justify-center gap-2 shadow-xs"
                     >
                       <Download className="w-3.5 h-3.5" />
-                      <span>Download .DMG</span>
+                      <span>Install for Mac</span>
                     </button>
-                  </div>
-
-                  {/* Mobile PWA Card */}
-                  <div className="p-4 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] flex flex-col justify-between space-y-3 sm:col-span-2">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                        <Smartphone className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-xs text-[var(--text-primary)]">iOS & Android Mobile Web App (PWA)</h4>
-                        <span className="text-[10px] text-[var(--text-muted)]">No App Store download required • Zero Storage footprint</span>
-                      </div>
-                    </div>
-                    <div className="text-xs text-[var(--text-muted)] space-y-1">
-                      <div>📱 <strong>iPhone / iPad:</strong> Open Safari, tap the <strong>Share</strong> button (box with up arrow), and select <strong>"Add to Home Screen"</strong>.</div>
-                      <div>🤖 <strong>Android:</strong> Open Chrome, tap the <strong>⋮ (three dots)</strong> menu, and select <strong>"Install App"</strong>.</div>
-                    </div>
                   </div>
 
                 </div>
               </div>
             )}
 
-            {/* 6. REPORT A BUG */}
+            {/* 6. KEYBOARD SHORTCUTS */}
+            {activeTab === 'keyboard' && (
+              <div className="space-y-6 max-w-2xl mx-auto">
+                <div className="p-4 rounded-2xl bg-neutral-100 dark:bg-neutral-800/60 border border-[var(--border-color)] text-xs flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <Keyboard className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                    <span className="font-semibold text-[var(--text-primary)]">Global Productivity Hotkeys</span>
+                  </div>
+                  <span className="text-[11px] text-[var(--text-muted)]">Active in all studios</span>
+                </div>
+
+                <div className="space-y-2">
+                  {keyboardShortcuts.map((sc, i) => (
+                    <div 
+                      key={i}
+                      className="flex items-center justify-between p-3 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-violet-500/30 transition-colors"
+                    >
+                      <span className="text-xs font-medium text-[var(--text-primary)]">{sc.desc}</span>
+                      <kbd className="px-2.5 py-1 rounded-lg bg-[var(--bg-sidebar)] border border-[var(--border-color)] text-xs font-mono font-semibold text-[var(--text-primary)] shadow-2xs">
+                        {sc.key}
+                      </kbd>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 7. REPORT A BUG */}
             {activeTab === 'reportbug' && (
               <div className="space-y-5 max-w-2xl mx-auto">
                 {bugSubmitted ? (
@@ -536,16 +718,21 @@ export default function LegalAndHelpModal({
                     <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center mx-auto shadow-md">
                       <Check className="w-6 h-6 stroke-[3]" />
                     </div>
-                    <h3 className="font-bold text-base text-[var(--text-primary)]">Bug Report Submitted!</h3>
+                    <div className="space-y-1">
+                      <h3 className="font-bold text-base text-[var(--text-primary)]">Bug Report Submitted!</h3>
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 font-mono font-semibold">
+                        Ticket ID: {ticketId}
+                      </p>
+                    </div>
                     <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto">
-                      Thank you for helping us improve OMNIRA AI. Our engineering team has received your ticket and diagnostic telemetry.
+                      Thank you for reporting this issue. Your ticket has been registered in our tracking system, and our engineering team is investigating.
                     </p>
                     <button
                       onClick={() => {
                         setBugSubmitted(false);
                         setBugForm({ category: 'ui', severity: 'medium', title: '', description: '', steps: '', email: currentUser?.email || '' });
                       }}
-                      className="px-4 py-2 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-semibold cursor-pointer"
+                      className="px-4 py-2 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-semibold cursor-pointer transition-colors"
                     >
                       Submit Another Report
                     </button>

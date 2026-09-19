@@ -4,6 +4,7 @@ import {
   auth, 
   googleProvider, 
   signInWithPopup, 
+  signInWithRedirect,
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword 
 } from '../firebase';
@@ -45,12 +46,26 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Real Google Sign-In with Firebase Auth
-  const handleGoogleLogin = async () => {
+  // Real Google Sign-In with Firebase Auth (Supports direct popup + seamless redirect fallback)
+  const handleGoogleLogin = async (preferRedirect = false) => {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await signInWithPopup(auth, googleProvider);
+      if (preferRedirect) {
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
+      let result;
+      try {
+        result = await signInWithPopup(auth, googleProvider);
+      } catch (popupErr) {
+        // If popup was blocked or closed, seamlessly proceed via direct redirect
+        if (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/cancelled-popup-request' || popupErr.code === 'auth/popup-closed-by-user' || popupErr.code === 'auth/internal-error') {
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        }
+        throw popupErr;
+      }
       const user = result.user;
       const loggedInUser = {
         name: user.displayName || user.email?.split('@')[0] || 'Google User',
@@ -81,7 +96,7 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
       if (err.code === 'auth/popup-closed-by-user') {
         setError('Google sign-in popup was closed.');
       } else {
-        setError(`Google Auth Error: ${err.message || err.code}`);
+        setError(`Google Auth: ${err.message || err.code}`);
       }
     }
   };

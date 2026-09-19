@@ -159,6 +159,53 @@ export default function App() {
     localStorage.setItem('omnira_user', JSON.stringify(currentUser));
   }, [currentUser]);
 
+  // Handle Google Redirect Result and Firebase Auth state changes
+  useEffect(() => {
+    import('./firebase').then(({ auth, getRedirectResult, onAuthStateChanged }) => {
+      if (getRedirectResult) {
+        getRedirectResult(auth).then((result) => {
+          if (result && result.user) {
+            const u = result.user;
+            const loggedInUser = {
+              name: u.displayName || u.email?.split('@')[0] || 'Google User',
+              email: u.email,
+              username: `@${(u.email || 'user').split('@')[0]}`,
+              avatar: u.photoURL || (u.displayName || 'G').charAt(0),
+              picture: u.photoURL,
+              provider: 'google',
+              uid: u.uid,
+              plan: 'Pro'
+            };
+            setCurrentUser(loggedInUser);
+            setIsAuthenticated(true);
+            setIsAuthModalOpen(false);
+          }
+        }).catch((err) => {
+          console.warn('Redirect sign-in notice:', err);
+        });
+      }
+
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        if (user) {
+          const loggedInUser = {
+            name: user.displayName || user.email?.split('@')[0] || 'User',
+            email: user.email,
+            username: `@${(user.email || 'user').split('@')[0]}`,
+            avatar: user.photoURL || (user.displayName || 'U').charAt(0),
+            picture: user.photoURL,
+            provider: user.providerData?.[0]?.providerId === 'google.com' ? 'google' : 'email',
+            uid: user.uid,
+            plan: 'Pro'
+          };
+          setCurrentUser(loggedInUser);
+          setIsAuthenticated(true);
+        }
+      });
+
+      return () => unsubscribe();
+    });
+  }, []);
+
   // Save Model Selection
   useEffect(() => {
     localStorage.setItem('chatgpt_selected_model', selectedModel);

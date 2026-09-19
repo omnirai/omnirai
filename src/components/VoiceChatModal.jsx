@@ -256,10 +256,11 @@ export default function VoiceChatModal({
       const chunkText = sentenceChunks[currentChunkIdx];
       currentChunkIdx++;
 
-      // 1. Try Google High-Fidelity Neural Audio Stream (100% native pronunciation)
+      // 1. Try Backend Neural Audio Stream (100% native pronunciation without CORS issues)
       const encoded = encodeURIComponent(chunkText.slice(0, 190));
-      const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${shortCode}&q=${encoded}`;
+      const audioUrl = `/api/tts?text=${encoded}&lang=${shortCode}`;
       const audio = new Audio(audioUrl);
+      audio.volume = 1.0;
       currentAudioRef.current = audio;
 
       audio.onended = () => {

@@ -178,21 +178,53 @@ export default function ChatStudio({
       detectedLang = 'de-DE';
     }
 
-    const voices = window.speechSynthesis.getVoices();
-    const langPrefix = detectedLang.split('-')[0].toLowerCase();
-    let matchedVoice = voices.find(v => v.lang.toLowerCase().replace('_', '-') === detectedLang.toLowerCase()) ||
-      voices.find(v => v.lang.toLowerCase().startsWith(langPrefix)) ||
-      voices.find(v => (v.name.includes('Google') || v.name.includes('Natural') || v.lang.startsWith('en')) && !v.name.includes('whisper')) ||
-      voices[0];
+    // Detect short ISO language code
+    let shortCode = 'en';
+    if (/[\u0900-\u097F]/.test(cleanText)) {
+      shortCode = /(छ|छन्|भयो|गर्छ|तपाईं|के|हो|छैन|नमस्ते|गर्नुहोस्|हामी|मलाई|नेपाली)/.test(cleanText) ? 'ne' : 'hi';
+    } else if (/[\u0600-\u06FF]/.test(cleanText)) {
+      shortCode = 'ar';
+    } else if (/[\u4E00-\u9FFF]/.test(cleanText)) {
+      shortCode = 'zh';
+    } else if (/[\u3040-\u30FF]/.test(cleanText)) {
+      shortCode = 'ja';
+    } else if (/[\uAC00-\uD7AF]/.test(cleanText)) {
+      shortCode = 'ko';
+    } else if (/[\u0400-\u04FF]/.test(cleanText)) {
+      shortCode = 'ru';
+    } else if (/(hola|gracias|buenos|días|español)/i.test(cleanText)) {
+      shortCode = 'es';
+    } else if (/(bonjour|merci|français)/i.test(cleanText)) {
+      shortCode = 'fr';
+    } else if (/(hallo|danke|deutsch)/i.test(cleanText)) {
+      shortCode = 'de';
+    }
 
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.volume = 1.0;
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-    utterance.lang = detectedLang;
-    if (matchedVoice) utterance.voice = matchedVoice;
+    const encoded = encodeURIComponent(cleanText.slice(0, 190));
+    const audio = new Audio(`/api/tts?text=${encoded}&lang=${shortCode}`);
+    audio.volume = 1.0;
 
-    window.speechSynthesis.speak(utterance);
+    audio.onerror = () => {
+      const voices = window.speechSynthesis.getVoices();
+      const langPrefix = detectedLang.split('-')[0].toLowerCase();
+      let matchedVoice = voices.find(v => v.lang.toLowerCase().replace('_', '-') === detectedLang.toLowerCase()) ||
+        voices.find(v => v.lang.toLowerCase().startsWith(langPrefix)) ||
+        voices.find(v => (v.name.includes('Google') || v.name.includes('Natural') || v.lang.startsWith('en')) && !v.name.includes('whisper')) ||
+        voices[0];
+
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.volume = 1.0;
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      utterance.lang = detectedLang;
+      if (matchedVoice) utterance.voice = matchedVoice;
+
+      window.speechSynthesis.speak(utterance);
+    };
+
+    audio.play().catch(() => {
+      audio.onerror(new Event('error'));
+    });
   };
 
   const handleSubmit = (e) => {

@@ -12,6 +12,7 @@ if root_dir not in sys.path:
 from quick_ai_engine import QuickAiEngine
 from api.cloudflare_ai import generate_image_with_quota, check_quota
 from api.email_service import send_auto_email
+from api.tts import get_tts_audio_bytes
 
 engine = QuickAiEngine()
 
@@ -111,6 +112,21 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             path = self.path.split('?')[0].rstrip('/')
+            if path in ['/api/tts', '/tts']:
+                query = urllib.parse.urlparse(self.path).query
+                params = urllib.parse.parse_qs(query)
+                text = params.get('text', [''])[0]
+                lang = params.get('lang', ['en'])[0]
+                audio_data = get_tts_audio_bytes(text, lang)
+                self.send_response(200)
+                self.send_header('Content-Type', 'audio/mpeg')
+                self.send_header('Content-Length', str(len(audio_data)))
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Cache-Control', 'public, max-age=86400')
+                self.end_headers()
+                self.wfile.write(audio_data)
+                return
+
             if path in ['/api/image-quota', '/image-quota']:
                 # Extract user_id from query params or header
                 query = urllib.parse.urlparse(self.path).query if hasattr(urllib.parse, 'urlparse') else ''

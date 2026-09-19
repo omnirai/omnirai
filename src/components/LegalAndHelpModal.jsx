@@ -903,34 +903,19 @@ export default function LegalAndHelpModal({
             {/* 7. REPORT A BUG */}
             {activeTab === 'reportbug' && (
               <div className="space-y-5 max-w-4xl mx-auto">
-                {/* Admin Routing Indicator Banner */}
-                <div className="p-3.5 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-between text-xs flex-wrap gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
-                    <span className="font-semibold text-[var(--text-primary)]">Direct Admin Dispatch</span>
-                    <span className="text-[11px] font-mono text-violet-600 dark:text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-md border border-violet-500/20 font-semibold">
-                      bishaldev949@gmail.com
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-[var(--text-muted)]">Encrypted payload • Direct inbox escalation</span>
-                </div>
-
                 {bugSubmitted ? (
                   <div className="p-8 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center space-y-4 animate-fade-in">
                     <div className="w-14 h-14 rounded-2xl bg-emerald-500 text-white flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/25">
                       <Check className="w-7 h-7 stroke-[3]" />
                     </div>
                     <div className="space-y-1.5">
-                      <h3 className="font-bold text-lg text-[var(--text-primary)]">Issue Dispatched to Admin!</h3>
+                      <h3 className="font-bold text-lg text-[var(--text-primary)]">Issue Report Submitted!</h3>
                       <p className="text-xs text-emerald-600 dark:text-emerald-400 font-mono font-semibold">
                         Tracking ID: {ticketId}
                       </p>
-                      <p className="text-[11px] text-[var(--text-muted)]">
-                        Recipient: <span className="font-mono font-semibold text-[var(--text-primary)]">bishaldev949@gmail.com</span>
-                      </p>
                     </div>
                     <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto leading-relaxed">
-                      Your bug report along with any captured screenshots and logs has been securely dispatched to the engineering inbox.
+                      Thank you for reporting this issue. Your ticket and diagnostic logs have been registered in our tracking system, and our engineering team is investigating.
                     </p>
                     <div className="pt-2">
                       <button
@@ -1091,10 +1076,7 @@ export default function LegalAndHelpModal({
                       />
                     </div>
 
-                    <div className="pt-2 flex items-center justify-between">
-                      <span className="text-[11px] text-[var(--text-muted)]">
-                        Recipient: <strong className="text-[var(--text-primary)]">bishaldev949@gmail.com</strong>
-                      </span>
+                    <div className="pt-2 flex items-center justify-end">
                       <button
                         type="submit"
                         disabled={isSendingEmail}

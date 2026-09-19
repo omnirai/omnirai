@@ -454,6 +454,7 @@ export default function Sidebar({
             >
               {/* Header Item */}
               <div 
+                onMouseEnter={() => setIsHelpFlyoutOpen(false)}
                 onClick={() => {
                   setIsUserMenuOpen(false);
                   openSettings && openSettings('account');
@@ -488,6 +489,7 @@ export default function Sidebar({
 
               {/* Upgrade plan */}
               <button
+                onMouseEnter={() => setIsHelpFlyoutOpen(false)}
                 onClick={() => {
                   setIsUserMenuOpen(false);
                   openSettings && openSettings('billing');
@@ -500,6 +502,7 @@ export default function Sidebar({
 
               {/* Personalization */}
               <button
+                onMouseEnter={() => setIsHelpFlyoutOpen(false)}
                 onClick={() => {
                   setIsUserMenuOpen(false);
                   openSettings && openSettings('personalization');
@@ -512,6 +515,7 @@ export default function Sidebar({
 
               {/* Profile */}
               <button
+                onMouseEnter={() => setIsHelpFlyoutOpen(false)}
                 onClick={() => {
                   setIsUserMenuOpen(false);
                   openSettings && openSettings('account');
@@ -524,6 +528,7 @@ export default function Sidebar({
 
               {/* Settings */}
               <button
+                onMouseEnter={() => setIsHelpFlyoutOpen(false)}
                 onClick={() => {
                   setIsUserMenuOpen(false);
                   openSettings && openSettings('general');
@@ -539,14 +544,14 @@ export default function Sidebar({
               {/* Help with Submenu (Screenshot 1 & 2) */}
               <div 
                 className="relative"
-                onMouseEnter={handleHelpMouseEnter}
-                onMouseLeave={handleHelpMouseLeave}
+                onMouseEnter={() => setIsHelpFlyoutOpen(true)}
               >
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setIsHelpFlyoutOpen(prev => !prev);
                   }}
+                  onMouseEnter={() => setIsHelpFlyoutOpen(true)}
                   className={`w-full flex items-center justify-between px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left text-xs cursor-pointer ${
                     isHelpFlyoutOpen ? 'bg-[var(--bg-hover)] font-semibold' : ''
                   }`}
@@ -558,12 +563,11 @@ export default function Sidebar({
                   <ChevronRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
                 </button>
 
-                {/* Connected Help Flyout Submenu (Matching Screenshot 2) */}
+                {/* Connected Help Flyout Submenu (Seamlessly Attached) */}
                 {isHelpFlyoutOpen && (
                   <div 
-                    onMouseEnter={handleHelpMouseEnter}
-                    onMouseLeave={handleHelpMouseLeave}
-                    className="absolute left-full bottom-0 ml-1 w-60 z-[95] bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl shadow-2xl py-2 backdrop-blur-md animate-fade-in text-xs font-medium before:absolute before:-left-3 before:top-0 before:bottom-0 before:w-4 before:content-['']"
+                    onMouseEnter={() => setIsHelpFlyoutOpen(true)}
+                    className="absolute left-[calc(100%-2px)] bottom-0 w-60 z-[99] bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl shadow-2xl py-2 backdrop-blur-md animate-fade-in text-xs font-medium"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <button
@@ -657,6 +661,7 @@ export default function Sidebar({
 
               {/* Log out / Sign in */}
               <button
+                onMouseEnter={() => setIsHelpFlyoutOpen(false)}
                 onClick={() => {
                   setIsUserMenuOpen(false);
                   if (isGuest) {

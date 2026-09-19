@@ -75,6 +75,22 @@ export default function Sidebar({
 
   const touchTimerRef = useRef(null);
   const touchStartPos = useRef({ x: 0, y: 0 });
+  const helpTimerRef = useRef(null);
+
+  const handleHelpMouseEnter = () => {
+    if (helpTimerRef.current) {
+      clearTimeout(helpTimerRef.current);
+      helpTimerRef.current = null;
+    }
+    setIsHelpFlyoutOpen(true);
+  };
+
+  const handleHelpMouseLeave = () => {
+    if (helpTimerRef.current) clearTimeout(helpTimerRef.current);
+    helpTimerRef.current = setTimeout(() => {
+      setIsHelpFlyoutOpen(false);
+    }, 300);
+  };
 
   // Close menus on outside click or escape
   useEffect(() => {
@@ -96,6 +112,7 @@ export default function Sidebar({
     return () => {
       window.removeEventListener('click', handleGlobalClick);
       window.removeEventListener('keydown', handleKeyDown);
+      if (helpTimerRef.current) clearTimeout(helpTimerRef.current);
     };
   }, []);
 
@@ -522,12 +539,17 @@ export default function Sidebar({
               {/* Help with Submenu (Screenshot 1 & 2) */}
               <div 
                 className="relative"
-                onMouseEnter={() => setIsHelpFlyoutOpen(true)}
-                onMouseLeave={() => setIsHelpFlyoutOpen(false)}
+                onMouseEnter={handleHelpMouseEnter}
+                onMouseLeave={handleHelpMouseLeave}
               >
                 <button
-                  onClick={() => setIsHelpFlyoutOpen(!isHelpFlyoutOpen)}
-                  className="w-full flex items-center justify-between px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left text-xs cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsHelpFlyoutOpen(prev => !prev);
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left text-xs cursor-pointer ${
+                    isHelpFlyoutOpen ? 'bg-[var(--bg-hover)] font-semibold' : ''
+                  }`}
                 >
                   <div className="flex items-center gap-3">
                     <HelpCircle className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
@@ -539,7 +561,10 @@ export default function Sidebar({
                 {/* Connected Help Flyout Submenu (Matching Screenshot 2) */}
                 {isHelpFlyoutOpen && (
                   <div 
-                    className="absolute left-full bottom-0 ml-1.5 w-60 z-[85] bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl shadow-2xl py-2 backdrop-blur-md animate-fade-in text-xs font-medium"
+                    onMouseEnter={handleHelpMouseEnter}
+                    onMouseLeave={handleHelpMouseLeave}
+                    className="absolute left-full bottom-0 ml-1 w-60 z-[95] bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl shadow-2xl py-2 backdrop-blur-md animate-fade-in text-xs font-medium before:absolute before:-left-3 before:top-0 before:bottom-0 before:w-4 before:content-['']"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <button
                       onClick={() => {

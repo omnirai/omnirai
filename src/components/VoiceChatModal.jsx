@@ -201,8 +201,8 @@ export default function VoiceChatModal({
     }
   }, [isOpen, isMuted]);
 
-  // Dual-Engine Spoken Voice Function (Google Neural TTS Stream with Web Speech fallback)
-  const speakText = useCallback((textToSpeak, onComplete) => {
+  // Dual-Engine Spoken Voice Function (Web Audio PCM Decoder + HTML5 + Web Speech fallback)
+  const speakText = useCallback(async (textToSpeak, onComplete) => {
     stopAllAudioAudioOnly();
 
     const cleanText = textToSpeak
@@ -224,6 +224,17 @@ export default function VoiceChatModal({
     isSpeakingUtteranceRef.current = true;
     setVoiceState('speaking');
 
+    // Ensure audio context is active
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!audioContextRef.current && AudioCtx) {
+        audioContextRef.current = new AudioCtx();
+      }
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
+    } catch (e) {}
+
     // Animate audio orb wave pulsation during speech
     if (speakingIntervalRef.current) clearInterval(speakingIntervalRef.current);
     speakingIntervalRef.current = setInterval(() => {
@@ -232,7 +243,7 @@ export default function VoiceChatModal({
 
     let currentChunkIdx = 0;
 
-    const playNextChunk = () => {
+    const playNextChunk = async () => {
       if (currentChunkIdx >= sentenceChunks.length || !isSpeakingUtteranceRef.current) {
         // Finished speaking
         isSpeakingUtteranceRef.current = false;
@@ -256,55 +267,86 @@ export default function VoiceChatModal({
       const chunkText = sentenceChunks[currentChunkIdx];
       currentChunkIdx++;
 
-      // 1. Try Backend Neural Audio Stream (100% native pronunciation without CORS issues)
+      // 1. Primary: Stream via /api/tts using Web Audio API (Guaranteed PCM Playback)
       const encoded = encodeURIComponent(chunkText.slice(0, 190));
       const audioUrl = `/api/tts?text=${encoded}&lang=${shortCode}`;
-      const audio = new Audio(audioUrl);
-      audio.volume = 1.0;
-      currentAudioRef.current = audio;
 
-      audio.onended = () => {
-        playNextChunk();
-      };
+      let playedViaWebAudio = false;
 
-      audio.onerror = () => {
-        // 2. Fallback to Web Speech Synthesis API
-        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-          try {
-            window.speechSynthesis.cancel();
-            window.speechSynthesis.resume();
-
-            const utterance = new SpeechSynthesisUtterance(chunkText);
-            utterance.volume = 1.0;
-            utterance.rate = 1.0;
-            utterance.pitch = 1.0;
-            utterance.lang = langCode;
-
-            const voices = voicesListRef.current.length > 0 ? voicesListRef.current : window.speechSynthesis.getVoices();
-            const matchedVoice = getBestVoiceForLanguage(langCode, voices);
-            if (matchedVoice) utterance.voice = matchedVoice;
-
-            utterance.onend = () => {
-              playNextChunk();
-            };
-
-            utterance.onerror = () => {
-              playNextChunk();
-            };
-
-            window.speechSynthesis.speak(utterance);
-          } catch (e) {
-            playNextChunk();
+      try {
+        const ctx = audioContextRef.current;
+        if (ctx) {
+          if (ctx.state === 'suspended') await ctx.resume();
+          const res = await fetch(audioUrl);
+          if (res.ok) {
+            const arrayBuf = await res.arrayBuffer();
+            const audioBuf = await ctx.decodeAudioData(arrayBuf);
+            if (isSpeakingUtteranceRef.current) {
+              const source = ctx.createBufferSource();
+              source.buffer = audioBuf;
+              source.connect(ctx.destination);
+              source.onended = () => {
+                playNextChunk();
+              };
+              source.start(0);
+              playedViaWebAudio = true;
+              return;
+            }
           }
-        } else {
-          playNextChunk();
         }
-      };
+      } catch (webAudioErr) {
+        console.warn("WebAudio decoding notice, trying HTML5 audio fallback:", webAudioErr);
+      }
 
-      audio.play().catch((playErr) => {
-        console.warn("Audio play blocked, using synthesis fallback:", playErr);
-        audio.onerror(new Event('error'));
-      });
+      if (playedViaWebAudio) return;
+
+      // 2. Secondary: HTML5 Audio
+      try {
+        const audio = new Audio(audioUrl);
+        audio.volume = 1.0;
+        currentAudioRef.current = audio;
+
+        audio.onended = () => {
+          playNextChunk();
+        };
+
+        audio.onerror = () => {
+          fallbackToSpeechSynthesis(chunkText, langCode, playNextChunk);
+        };
+
+        await audio.play();
+      } catch (html5Err) {
+        fallbackToSpeechSynthesis(chunkText, langCode, playNextChunk);
+      }
+    };
+
+    const fallbackToSpeechSynthesis = (chunkText, langCode, nextCallback) => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        try {
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.resume();
+
+          const utterance = new SpeechSynthesisUtterance(chunkText);
+          utterance.volume = 1.0;
+          utterance.rate = 1.0;
+          utterance.pitch = 1.0;
+          // Fallback ne-NP to hi-IN on Windows if Nepali speech pack is missing
+          utterance.lang = langCode.startsWith('ne') ? 'hi-IN' : langCode;
+
+          const voices = voicesListRef.current.length > 0 ? voicesListRef.current : window.speechSynthesis.getVoices();
+          const matchedVoice = getBestVoiceForLanguage(langCode, voices);
+          if (matchedVoice) utterance.voice = matchedVoice;
+
+          utterance.onend = () => nextCallback();
+          utterance.onerror = () => nextCallback();
+
+          window.speechSynthesis.speak(utterance);
+        } catch (e) {
+          nextCallback();
+        }
+      } else {
+        nextCallback();
+      }
     };
 
     playNextChunk();

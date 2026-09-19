@@ -224,6 +224,13 @@ export default function VoiceChatModal({
     isSpeakingUtteranceRef.current = true;
     setVoiceState('speaking');
 
+    // Pause speech recognition while AI is speaking so speakers do not self-cancel audio
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+    }
+
     // Ensure audio context is active
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -507,13 +514,9 @@ CRITICAL VOICE INSTRUCTIONS:
         }
       }
 
-      const activeSpeech = (finalStr || interimStr).trim();
-
-      // Barge-in: If user starts speaking while AI is talking, interrupt AI immediately
-      if (activeSpeech.length > 2 && isSpeakingUtteranceRef.current) {
-        stopAllAudioAudioOnly();
-        isSpeakingUtteranceRef.current = false;
-        setVoiceState('listening');
+      // If AI is currently speaking, completely ignore microphone input to avoid speaker echo
+      if (isSpeakingUtteranceRef.current) {
+        return;
       }
 
       if (interimStr) {
@@ -523,7 +526,7 @@ CRITICAL VOICE INSTRUCTIONS:
 
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
         silenceTimerRef.current = setTimeout(() => {
-          if (pendingSpeechRef.current.trim().length > 1 && !isProcessingRef.current) {
+          if (pendingSpeechRef.current.trim().length > 1 && !isProcessingRef.current && !isSpeakingUtteranceRef.current) {
             const speechToProcess = pendingSpeechRef.current.trim();
             pendingSpeechRef.current = '';
             processUserSpeech(speechToProcess);
@@ -538,7 +541,9 @@ CRITICAL VOICE INSTRUCTIONS:
         pendingSpeechRef.current = '';
 
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-        processUserSpeech(currentSentence);
+        if (!isSpeakingUtteranceRef.current) {
+          processUserSpeech(currentSentence);
+        }
       }
     };
 
@@ -550,7 +555,7 @@ CRITICAL VOICE INSTRUCTIONS:
     };
 
     recognition.onend = () => {
-      if (isOpen && !isMuted && !isSpeakingUtteranceRef.current) {
+      if (isOpen && !isMuted && !isSpeakingUtteranceRef.current && !isProcessingRef.current) {
         try {
           recognition.start();
         } catch (e) {}

@@ -30,7 +30,9 @@ import {
   Info,
   Keyboard,
   FileDown,
-  Trash2
+  Trash2,
+  Menu,
+  PanelLeft
 } from 'lucide-react';
 import { OmniraIcon } from './OmniraLogo';
 
@@ -48,6 +50,7 @@ export default function LegalAndHelpModal({
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [dataExported, setDataExported] = useState(false);
   const [cacheCleared, setCacheCleared] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Bug Report Form State
   const [bugForm, setBugForm] = useState({
@@ -227,75 +230,67 @@ export default function LegalAndHelpModal({
       onClick={(e) => e.stopPropagation()}
     >
       {/* ========================================== */}
-      {/* MOBILE TOP BAR & HORIZONTAL TAB PILLS      */}
+      {/* MOBILE TOP BAR WITH TOGGLE SIDEBAR BUTTON  */}
       {/* ========================================== */}
-      <div className="md:hidden flex flex-col shrink-0 border-b border-[var(--border-color)] bg-[var(--bg-sidebar)]">
-        {/* Mobile Header */}
-        <div className="h-14 px-4 flex items-center justify-between border-b border-[var(--border-color)]/60">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white shadow-md">
-              <OmniraIcon className="w-3.5 h-3.5" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-bold text-xs tracking-tight">OMNIRA Legal & Support</span>
-              <span className="text-[10px] text-[var(--text-muted)]">Terms, Privacy & Guides</span>
-            </div>
-          </div>
+      <div className="md:hidden h-14 px-3.5 flex items-center justify-between border-b border-[var(--border-color)] bg-[var(--bg-sidebar)] shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <button
+            onClick={() => setIsMobileSidebarOpen(true)}
+            className="p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] cursor-pointer flex items-center gap-1.5 shadow-2xs shrink-0"
+            title="Open Sections Sidebar"
+          >
+            <PanelLeft className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+            <span className="text-[11px] font-bold">Menu</span>
+          </button>
 
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={handleCopyLink}
-              className="p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] text-xs cursor-pointer"
-              title="Copy URL"
-            >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-            </button>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] text-xs cursor-pointer"
-              title="Close"
-            >
-              <X className="w-4 h-4" />
-            </button>
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white shrink-0 shadow-xs">
+              <OmniraIcon className="w-3 h-3" />
+            </div>
+            <span className="font-bold text-xs truncate">
+              {tabs.find(t => t.id === activeTab)?.label || 'Information'}
+            </span>
           </div>
         </div>
 
-        {/* Horizontal Scrollable Tabs Pill Bar for Mobile */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar px-3 py-2">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onMouseDown={(e) => {
-                  e.stopPropagation();
-                  setActiveTab(tab.id);
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActiveTab(tab.id);
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-                  isActive 
-                    ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-2xs' 
-                    : 'bg-[var(--bg-card)] text-[var(--text-secondary)] border border-[var(--border-color)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white dark:text-neutral-900' : 'text-[var(--text-muted)]'}`} />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={handleCopyLink}
+            className="p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] text-xs cursor-pointer"
+            title="Copy URL"
+          >
+            {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+          </button>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] text-xs cursor-pointer"
+            title="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
       {/* ========================================== */}
-      {/* DESKTOP SIDEBAR NAVIGATION                 */}
+      {/* MOBILE DRAWER OVERLAY BACKDROP             */}
       {/* ========================================== */}
-      <aside className="hidden md:flex md:w-72 lg:w-80 border-r border-[var(--border-color)] bg-[var(--bg-sidebar)] flex-col shrink-0">
+      {isMobileSidebarOpen && (
+        <div 
+          onClick={() => setIsMobileSidebarOpen(false)}
+          className="fixed inset-0 bg-black/60 z-[110] md:hidden backdrop-blur-xs transition-opacity"
+        />
+      )}
+
+      {/* ========================================== */}
+      {/* SIDEBAR (TOGGLE DRAWER ON MOBILE, STATIC ON DESKTOP) */}
+      {/* ========================================== */}
+      <aside 
+        className={`fixed inset-y-0 left-0 z-[120] w-72 max-w-[85vw] bg-[var(--bg-sidebar)] border-r border-[var(--border-color)] flex flex-col h-full shadow-2xl transition-transform duration-200 ease-in-out md:static md:w-72 lg:w-80 md:shadow-none md:z-auto md:translate-x-0 ${
+          isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        }`}
+      >
         {/* Header */}
-        <div className="p-5 border-b border-[var(--border-color)] flex items-center justify-between">
+        <div className="p-4 sm:p-5 border-b border-[var(--border-color)] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white shadow-md">
               <OmniraIcon className="w-4 h-4" />
@@ -305,9 +300,17 @@ export default function LegalAndHelpModal({
               <span className="text-[11px] text-[var(--text-muted)]">Terms, Privacy & Guides</span>
             </div>
           </div>
+
+          <button
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className="md:hidden p-1.5 rounded-lg border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] cursor-pointer"
+            title="Close Drawer"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        {/* Navigation Items List */}
+        {/* Navigation Items List with Rounded Sidebar Buttons */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-1.5">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -318,10 +321,12 @@ export default function LegalAndHelpModal({
                 onMouseDown={(e) => {
                   e.stopPropagation();
                   setActiveTab(tab.id);
+                  setIsMobileSidebarOpen(false);
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
                   setActiveTab(tab.id);
+                  setIsMobileSidebarOpen(false);
                 }}
                 className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer ${
                   isActive 
@@ -359,7 +364,7 @@ export default function LegalAndHelpModal({
       {/* ========================================== */}
       <main className="flex-1 flex flex-col h-full overflow-hidden min-w-0 bg-[var(--bg-primary)]">
         
-        {/* Desktop Top Title Bar (Hidden on Mobile since mobile has its unified top bar) */}
+        {/* Desktop Top Title Bar (Hidden on Mobile) */}
         <div className="hidden md:flex px-8 lg:px-10 py-4 border-b border-[var(--border-color)] items-center justify-between shrink-0 bg-[var(--bg-card)]/60 backdrop-blur-md">
           <div>
             <h2 className="font-bold text-lg text-[var(--text-primary)] capitalize">

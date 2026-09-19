@@ -145,13 +145,13 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
   };
 
   const containerContent = (
-    <div className="w-full max-w-md bg-[#16191e] border border-neutral-800 rounded-3xl p-7 shadow-2xl relative z-10 backdrop-blur-xl text-white select-none">
+    <div className="w-full max-w-md bg-[var(--bg-card)] border border-[var(--border-color)] rounded-3xl p-7 shadow-2xl relative z-10 backdrop-blur-xl text-[var(--text-primary)] select-none animate-fade-in">
       
       {/* Modal Close Button if opened as modal */}
       {isModal && onClose && (
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 p-1.5 rounded-full border border-neutral-800 bg-[#0d0f12] text-neutral-400 hover:text-white transition-colors"
+          className="absolute right-4 top-4 p-1.5 rounded-full border border-[var(--border-color)] bg-[var(--bg-sidebar)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
         >
           <X className="w-4 h-4" />
         </button>
@@ -159,15 +159,15 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
 
       {/* Brand Header */}
       <div className="text-center space-y-2 mb-6 flex flex-col items-center">
-        <OmniraIcon className="w-14 h-14 mb-1 drop-shadow-lg" />
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs font-semibold">
+        <OmniraIcon className="w-16 h-16 mb-1 drop-shadow-md" filterId="auth-modal-logo" />
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-600 dark:text-violet-400 text-xs font-semibold">
           <span>OMNIRA AI Platform</span>
         </div>
 
-        <h1 className="text-2xl font-bold tracking-tight text-white">
+        <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
           {isSignUp ? 'Create your account' : 'Welcome to OMNIRA'}
         </h1>
-        <p className="text-xs text-neutral-400">
+        <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto">
           {isSignUp 
             ? 'Get instant access to advanced AI models, document studio, & code assistant.' 
             : 'Sign in with Google or Email to access your chat history and models.'}
@@ -175,7 +175,7 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
       </div>
 
       {error && (
-        <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2">
+        <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
@@ -187,7 +187,7 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
           type="button"
           onClick={handleGoogleLogin}
           disabled={isLoading}
-          className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl border border-neutral-700 bg-white text-neutral-900 hover:bg-neutral-100 font-semibold text-xs transition-all shadow-md cursor-pointer disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold text-xs transition-all shadow-xs cursor-pointer disabled:opacity-50"
         >
           <GoogleLogo className="w-4 h-4 shrink-0" />
           <span>Continue with Google</span>
@@ -197,10 +197,10 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
       {/* Divider */}
       <div className="relative my-5">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-neutral-800" />
+          <div className="w-full border-t border-[var(--border-color)]" />
         </div>
         <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-wider">
-          <span className="bg-[#16191e] px-3 text-neutral-400">Or email sign in</span>
+          <span className="bg-[var(--bg-card)] px-3 text-[var(--text-muted)]">Or email sign in</span>
         </div>
       </div>
 
@@ -208,58 +208,58 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
       <form onSubmit={handleSubmit} className="space-y-3.5">
         {isSignUp && (
           <div>
-            <label className="block text-xs font-medium text-neutral-300 mb-1">
+            <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
               Full Name
             </label>
             <div className="relative">
-              <User className="w-4 h-4 text-neutral-400 absolute left-3.5 top-3" />
+              <User className="w-4 h-4 text-[var(--text-muted)] absolute left-3.5 top-3" />
               <input
                 type="text"
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="e.g. Alex Morgan"
-                className="w-full pl-10 pr-4 py-2.5 bg-[#0d0f12] border border-neutral-800 rounded-xl text-xs text-white placeholder-neutral-500 outline-none focus:border-black dark:focus:border-white transition-colors"
+                className="w-full pl-10 pr-4 py-2.5 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl text-xs text-[var(--text-primary)] placeholder-[var(--text-light)] outline-none focus:border-violet-500 transition-colors"
               />
             </div>
           </div>
         )}
 
         <div>
-          <label className="block text-xs font-medium text-neutral-300 mb-1">
+          <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
             Email Address
           </label>
           <div className="relative">
-            <Mail className="w-4 h-4 text-neutral-400 absolute left-3.5 top-3" />
+            <Mail className="w-4 h-4 text-[var(--text-muted)] absolute left-3.5 top-3" />
             <input
               type="email"
               required
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="name@example.com"
-              className="w-full pl-10 pr-4 py-2.5 bg-[#0d0f12] border border-neutral-800 rounded-xl text-xs text-white placeholder-neutral-500 outline-none focus:border-black dark:focus:border-white transition-colors"
+              className="w-full pl-10 pr-4 py-2.5 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl text-xs text-[var(--text-primary)] placeholder-[var(--text-light)] outline-none focus:border-violet-500 transition-colors"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-neutral-300 mb-1">
+          <label className="block text-xs font-semibold text-[var(--text-primary)] mb-1">
             Password
           </label>
           <div className="relative">
-            <Lock className="w-4 h-4 text-neutral-400 absolute left-3.5 top-3" />
+            <Lock className="w-4 h-4 text-[var(--text-muted)] absolute left-3.5 top-3" />
             <input
               type={showPassword ? 'text' : 'password'}
               required
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               placeholder="Enter password"
-              className="w-full pl-10 pr-10 py-2.5 bg-[#0d0f12] border border-neutral-800 rounded-xl text-xs text-white placeholder-neutral-500 outline-none focus:border-black dark:focus:border-white transition-colors"
+              className="w-full pl-10 pr-10 py-2.5 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl text-xs text-[var(--text-primary)] placeholder-[var(--text-light)] outline-none focus:border-violet-500 transition-colors"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3 text-neutral-400 hover:text-white"
+              className="absolute right-3 top-3 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -270,10 +270,10 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 dark:text-black text-white font-semibold text-xs transition-all shadow-lg shadow-neutral-900/30 disabled:opacity-50 mt-1 cursor-pointer"
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 hover:opacity-90 font-semibold text-xs transition-all shadow-md disabled:opacity-50 mt-1 cursor-pointer"
         >
           {isLoading ? (
-            <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
           ) : (
             <>
               <span>{isSignUp ? 'Create Account' : 'Sign In'}</span>
@@ -284,20 +284,20 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
       </form>
 
       {/* Direct Entry / Skip Login Button */}
-      <div className="mt-4 pt-3 border-t border-neutral-800 flex items-center justify-between">
+      <div className="mt-4 pt-3 border-t border-[var(--border-color)] flex items-center justify-between">
         <button
           type="button"
           onClick={handleGuestLogin}
           disabled={isLoading}
-          className="text-xs text-black dark:text-white font-semibold hover:underline flex items-center gap-1.5 cursor-pointer"
+          className="text-xs text-[var(--text-primary)] font-semibold hover:underline flex items-center gap-1.5 cursor-pointer"
         >
-          <ShieldCheck className="w-4 h-4" />
+          <ShieldCheck className="w-4 h-4 text-emerald-500" />
           <span>Direct Access (Use without login)</span>
         </button>
 
         <button
           onClick={() => setIsSignUp(!isSignUp)}
-          className="text-xs text-neutral-400 hover:text-white underline font-medium"
+          className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] underline font-medium cursor-pointer"
         >
           {isSignUp ? 'Sign In' : 'Sign Up'}
         </button>
@@ -308,15 +308,15 @@ export default function AuthScreen({ onLogin, isModal = false, onClose }) {
 
   if (isModal) {
     return (
-      <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
         {containerContent}
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-screen bg-[#0d0f12] text-white flex items-center justify-center p-4 relative overflow-hidden font-sans">
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-neutral-100 dark:bg-neutral-800 rounded-full blur-[120px] pointer-events-none" />
+    <div className="min-h-screen w-screen bg-[var(--bg-primary)] text-[var(--text-primary)] flex items-center justify-center p-4 relative overflow-hidden font-sans">
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-violet-500/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-10 right-10 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
       {containerContent}
     </div>

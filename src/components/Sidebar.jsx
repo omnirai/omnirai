@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   SquarePen, 
   Search, 
@@ -22,10 +22,20 @@ import {
   Plus,
   Check,
   X,
-  Zap
+  Zap,
+  Sparkles,
+  User,
+  Settings,
+  HelpCircle,
+  FileText,
+  Download,
+  Keyboard,
+  ShieldCheck,
+  Bug
 } from 'lucide-react';
 import { GoogleLogo } from './AuthScreen';
 import { OmniraLogo } from './OmniraLogo';
+import LegalAndHelpModal from './LegalAndHelpModal';
 
 export default function Sidebar({ 
   isOpen, 
@@ -57,16 +67,28 @@ export default function Sidebar({
   const [contextMenu, setContextMenu] = useState(null); // { chat, x, y }
   const [renameModal, setRenameModal] = useState(null); // { chat, title }
   const [showArchived, setShowArchived] = useState(false);
+  
+  // User Profile Popup & Help Flyout State (Matches Screenshot 1 & 2)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isHelpFlyoutOpen, setIsHelpFlyoutOpen] = useState(false);
+  const [legalModalTab, setLegalModalTab] = useState(null); // 'terms' | 'privacy' | 'help' | 'releasenotes' | 'downloadapps' | 'reportbug'
+
   const touchTimerRef = useRef(null);
   const touchStartPos = useRef({ x: 0, y: 0 });
 
-  // Close context menu on outside click or escape
+  // Close menus on outside click or escape
   useEffect(() => {
-    const handleGlobalClick = () => setContextMenu(null);
+    const handleGlobalClick = () => {
+      setContextMenu(null);
+      setIsUserMenuOpen(false);
+      setIsHelpFlyoutOpen(false);
+    };
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         setContextMenu(null);
         setRenameModal(null);
+        setIsUserMenuOpen(false);
+        setIsHelpFlyoutOpen(false);
       }
     };
     window.addEventListener('click', handleGlobalClick);
@@ -76,6 +98,7 @@ export default function Sidebar({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
+
 
   // Long-press Touch Handlers for Mobile
   const handleTouchStart = (chat, e) => {
@@ -360,14 +383,20 @@ export default function Sidebar({
 
         </div>
 
-        {/* Bottom User Profile Section with Sign In / Log Out */}
-        <div className="p-3 border-t border-[var(--border-color)] mt-auto space-y-1.5">
+        {/* Bottom User Profile Section (Matching User Screenshot 1 & 2) */}
+        <div className="p-3 border-t border-[var(--border-color)] mt-auto relative">
+          
+          {/* Main User Pill */}
           <div 
-            onClick={() => openSettings && openSettings('account')}
-            className="flex items-center justify-between p-2 rounded-xl hover:bg-[var(--bg-hover)] cursor-pointer transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsUserMenuOpen(!isUserMenuOpen);
+              setIsHelpFlyoutOpen(false);
+            }}
+            className="flex items-center justify-between p-2 rounded-2xl bg-neutral-100 dark:bg-neutral-800/60 hover:bg-neutral-200/70 dark:hover:bg-neutral-800 cursor-pointer transition-all border border-[var(--border-color)]/50"
           >
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-7 h-7 rounded-full bg-black dark:bg-white text-white dark:text-black font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
+              <div className="w-8 h-8 rounded-full bg-[#10a37f] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
                 {currentUser?.picture || currentUser?.photoURL || (currentUser?.avatar && (currentUser.avatar.startsWith('data:') || currentUser.avatar.startsWith('http'))) ? (
                   <img 
                     src={currentUser.picture || currentUser.photoURL || currentUser.avatar} 
@@ -375,7 +404,7 @@ export default function Sidebar({
                     className="w-full h-full object-cover" 
                   />
                 ) : (
-                  userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'GU'
+                  userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'BD'
                 )}
               </div>
               
@@ -392,35 +421,244 @@ export default function Sidebar({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                openSettings && openSettings('account');
+                openSettings && openSettings('billing');
               }}
-              className="p-1 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--border-color)] transition-colors"
-              title="Settings"
+              className="px-3 py-1 rounded-full text-xs font-semibold bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white border border-neutral-200 dark:border-neutral-600 shadow-2xs hover:bg-neutral-50 dark:hover:bg-neutral-600 transition-colors cursor-pointer"
             >
-              <MoreHorizontal className="w-4 h-4" />
+              Upgrade
             </button>
           </div>
 
-          {isGuest ? (
-            <button
-              onClick={openAuth}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-black transition-colors cursor-pointer shadow-sm"
+          {/* User Account Popover Menu (Matching Screenshot 1) */}
+          {isUserMenuOpen && (
+            <div 
+              className="absolute bottom-16 left-3 w-64 z-[75] bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl shadow-2xl py-2 backdrop-blur-md animate-fade-in text-sm font-medium"
+              onClick={(e) => e.stopPropagation()}
             >
-              <GoogleLogo className="w-4 h-4" />
-              <span>Sign In with Google</span>
-            </button>
-          ) : (
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
-            >
-              <LogOut className="w-4 h-4 text-red-500 shrink-0" />
-              <span>Log out</span>
-            </button>
+              {/* Header Item */}
+              <div 
+                onClick={() => {
+                  setIsUserMenuOpen(false);
+                  openSettings && openSettings('account');
+                }}
+                className="flex items-center justify-between px-3.5 py-2 hover:bg-[var(--bg-hover)] cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-full bg-[#10a37f] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
+                    {currentUser?.picture || currentUser?.photoURL || (currentUser?.avatar && (currentUser.avatar.startsWith('data:') || currentUser.avatar.startsWith('http'))) ? (
+                      <img 
+                        src={currentUser.picture || currentUser.photoURL || currentUser.avatar} 
+                        alt={userName} 
+                        className="w-full h-full object-cover" 
+                      />
+                    ) : (
+                      userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'BD'
+                    )}
+                  </div>
+                  <div className="truncate text-xs">
+                    <div className="font-semibold text-[var(--text-primary)] truncate leading-tight">
+                      {userName}
+                    </div>
+                    <div className="text-[10px] text-[var(--text-muted)] leading-tight">
+                      {currentUser?.plan || 'Free'}
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+              </div>
+
+              <div className="h-px bg-[var(--border-color)]/70 my-1" />
+
+              {/* Upgrade plan */}
+              <button
+                onClick={() => {
+                  setIsUserMenuOpen(false);
+                  openSettings && openSettings('billing');
+                }}
+                className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left text-xs cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                <span>Upgrade plan</span>
+              </button>
+
+              {/* Personalization */}
+              <button
+                onClick={() => {
+                  setIsUserMenuOpen(false);
+                  openSettings && openSettings('personalization');
+                }}
+                className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left text-xs cursor-pointer"
+              >
+                <Clock className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                <span>Personalization</span>
+              </button>
+
+              {/* Profile */}
+              <button
+                onClick={() => {
+                  setIsUserMenuOpen(false);
+                  openSettings && openSettings('account');
+                }}
+                className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left text-xs cursor-pointer"
+              >
+                <User className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                <span>Profile</span>
+              </button>
+
+              {/* Settings */}
+              <button
+                onClick={() => {
+                  setIsUserMenuOpen(false);
+                  openSettings && openSettings('general');
+                }}
+                className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left text-xs cursor-pointer"
+              >
+                <Settings className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                <span>Settings</span>
+              </button>
+
+              <div className="h-px bg-[var(--border-color)]/70 my-1" />
+
+              {/* Help with Submenu (Screenshot 1 & 2) */}
+              <div 
+                className="relative"
+                onMouseEnter={() => setIsHelpFlyoutOpen(true)}
+                onMouseLeave={() => setIsHelpFlyoutOpen(false)}
+              >
+                <button
+                  onClick={() => setIsHelpFlyoutOpen(!isHelpFlyoutOpen)}
+                  className="w-full flex items-center justify-between px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left text-xs cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <HelpCircle className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                    <span>Help</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                </button>
+
+                {/* Connected Help Flyout Submenu (Matching Screenshot 2) */}
+                {isHelpFlyoutOpen && (
+                  <div 
+                    className="absolute left-full bottom-0 ml-1.5 w-60 z-[85] bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl shadow-2xl py-2 backdrop-blur-md animate-fade-in text-xs font-medium"
+                  >
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setIsHelpFlyoutOpen(false);
+                        setLegalModalTab('help');
+                      }}
+                      className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
+                    >
+                      <HelpCircle className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                      <span>Help center</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setIsHelpFlyoutOpen(false);
+                        setLegalModalTab('releasenotes');
+                      }}
+                      className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
+                    >
+                      <FileText className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                      <span>Release notes</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setIsHelpFlyoutOpen(false);
+                        setLegalModalTab('downloadapps');
+                      }}
+                      className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
+                    >
+                      <Download className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                      <span>Download apps</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setIsHelpFlyoutOpen(false);
+                        openSettings && openSettings('keyboard');
+                      }}
+                      className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
+                    >
+                      <Keyboard className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                      <span>Keyboard shortcuts</span>
+                    </button>
+
+                    <div className="h-px bg-[var(--border-color)]/70 my-1" />
+
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setIsHelpFlyoutOpen(false);
+                        setLegalModalTab('terms');
+                      }}
+                      className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
+                    >
+                      <FileText className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                      <span>Terms of Service</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setIsHelpFlyoutOpen(false);
+                        setLegalModalTab('privacy');
+                      }}
+                      className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                      <span>Privacy Policy</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setIsHelpFlyoutOpen(false);
+                        setLegalModalTab('reportbug');
+                      }}
+                      className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
+                    >
+                      <Bug className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                      <span>Report a bug</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Log out / Sign in */}
+              <button
+                onClick={() => {
+                  setIsUserMenuOpen(false);
+                  if (isGuest) {
+                    openAuth && openAuth();
+                  } else {
+                    handleLogout();
+                  }
+                }}
+                className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-red-500/10 text-red-500 transition-colors text-left text-xs cursor-pointer"
+              >
+                <LogOut className="w-4 h-4 text-red-500 shrink-0" />
+                <span>{isGuest ? 'Sign in with Google' : 'Log out'}</span>
+              </button>
+            </div>
           )}
         </div>
 
       </aside>
+
+      {/* Dedicated Legal & Help Center Modal (Terms, Privacy, Help, Release Notes, Apps, Bug Report) */}
+      <LegalAndHelpModal
+        isOpen={!!legalModalTab}
+        initialTab={legalModalTab || 'terms'}
+        onClose={() => setLegalModalTab(null)}
+        currentUser={currentUser}
+        onOpenSettings={openSettings}
+      />
 
       {/* Context Menu Popup (Matches User Screenshot: Pin, Rename, Archive, Delete) */}
       {contextMenu && contextMenu.chat && (

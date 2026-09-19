@@ -19,9 +19,11 @@ import {
   ExternalLink,
   ShieldAlert,
   HelpCircle,
-  Zap
+  Zap,
+  ShieldCheck
 } from 'lucide-react';
 import { OmniraLogo, OmniraIcon } from './OmniraLogo';
+import LegalAndHelpModal from './LegalAndHelpModal';
 
 export default function NotFoundPage({
   currentPath = window.location.pathname,
@@ -35,6 +37,8 @@ export default function NotFoundPage({
   const [query, setQuery] = useState('');
   const [copied, setCopied] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [legalModalTab, setLegalModalTab] = useState(null);
+
 
   const displayPath = currentPath || (typeof window !== 'undefined' ? window.location.pathname : '/404');
 
@@ -356,9 +360,21 @@ export default function NotFoundPage({
         <div className="flex items-center gap-2">
           <span>OMNIRA AI © {new Date().getFullYear()}</span>
           <span>•</span>
-          <span>Designed with high performance & local intelligence</span>
+          <button 
+            onClick={() => setLegalModalTab('terms')}
+            className="hover:underline hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+          >
+            Terms
+          </button>
+          <span>•</span>
+          <button 
+            onClick={() => setLegalModalTab('privacy')}
+            className="hover:underline hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+          >
+            Privacy
+          </button>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <button 
             onClick={() => onNavigateMode ? onNavigateMode('chat') : onNavigateHome?.()}
             className="hover:text-[var(--text-primary)] transition-colors cursor-pointer"
@@ -378,13 +394,22 @@ export default function NotFoundPage({
             Image Generator
           </button>
           <button 
-            onClick={() => onNavigateMode ? onNavigateMode('projects') : onNavigateHome?.()}
+            onClick={() => setLegalModalTab('help')}
             className="hover:text-[var(--text-primary)] transition-colors cursor-pointer"
           >
-            Projects
+            Help Center
           </button>
         </div>
       </footer>
+
+      {/* Legal & Help Modal */}
+      <LegalAndHelpModal
+        isOpen={!!legalModalTab}
+        initialTab={legalModalTab || 'terms'}
+        onClose={() => setLegalModalTab(null)}
+        currentUser={currentUser}
+        onOpenSettings={onNavigateHome}
+      />
 
     </div>
   );

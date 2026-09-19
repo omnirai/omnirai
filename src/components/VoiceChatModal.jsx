@@ -2,57 +2,59 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Mic, MicOff, AlertCircle, Globe, Volume2 } from 'lucide-react';
 import { queryQuickAi } from '../engine/quickAiEngine';
 
-// Helper to detect language script
+// Helper to detect language script and ISO code
 function detectScriptLanguage(text) {
-  if (!text) return 'en-US';
+  if (!text) return { langCode: 'en-US', shortCode: 'en' };
   // Devanagari (Nepali / Hindi)
   if (/[\u0900-\u097F]/.test(text)) {
-    if (/(छ|छन्|भयो|गर्छ|तपाईं|के|हो|छैन|नमस्ते|गर्नुहोस्|हामी|मलाई|नेपाली|धन्यवाद|कस्तो|हुन्छ)/.test(text)) return 'ne-NP';
-    return 'hi-IN';
+    if (/(छ|छन्|भयो|गर्छ|तपाईं|के|हो|छैन|नमस्ते|गर्नुहोस्|हामी|मलाई|नेपाली|धन्यवाद|कस्तो|हुन्छ|भन्नुहोस्|गर्न|राम्रो)/.test(text)) {
+      return { langCode: 'ne-NP', shortCode: 'ne' };
+    }
+    return { langCode: 'hi-IN', shortCode: 'hi' };
   }
-  // Arabic / Persian
-  if (/[\u0600-\u06FF]/.test(text)) return 'ar-SA';
+  // Arabic
+  if (/[\u0600-\u06FF]/.test(text)) return { langCode: 'ar-SA', shortCode: 'ar' };
   // Chinese
-  if (/[\u4E00-\u9FFF]/.test(text)) return 'zh-CN';
+  if (/[\u4E00-\u9FFF]/.test(text)) return { langCode: 'zh-CN', shortCode: 'zh' };
   // Japanese
-  if (/[\u3040-\u30FF]/.test(text)) return 'ja-JP';
+  if (/[\u3040-\u30FF]/.test(text)) return { langCode: 'ja-JP', shortCode: 'ja' };
   // Korean
-  if (/[\uAC00-\uD7AF]/.test(text)) return 'ko-KR';
+  if (/[\uAC00-\uD7AF]/.test(text)) return { langCode: 'ko-KR', shortCode: 'ko' };
   // Cyrillic (Russian)
-  if (/[\u0400-\u04FF]/.test(text)) return 'ru-RU';
-  // Spanish keywords
-  if (/(hola|gracias|buenos|días|cómo|estás|por favor|español)/i.test(text)) return 'es-ES';
-  // French keywords
-  if (/(bonjour|merci|salut|français|s'il vous plaît)/i.test(text)) return 'fr-FR';
-  // German keywords
-  if (/(hallo|danke|bitte|deutsch|guten tag)/i.test(text)) return 'de-DE';
+  if (/[\u0400-\u04FF]/.test(text)) return { langCode: 'ru-RU', shortCode: 'ru' };
+  // Spanish
+  if (/(hola|gracias|buenos|días|cómo|estás|por favor|español|amigo)/i.test(text)) return { langCode: 'es-ES', shortCode: 'es' };
+  // French
+  if (/(bonjour|merci|salut|français|s'il vous plaît|oui)/i.test(text)) return { langCode: 'fr-FR', shortCode: 'fr' };
+  // German
+  if (/(hallo|danke|bitte|deutsch|guten tag|ja)/i.test(text)) return { langCode: 'de-DE', shortCode: 'de' };
 
   const savedLang = localStorage.getItem('omnira_language');
   if (savedLang && savedLang !== 'Auto-detect') {
     const map = {
-      'Spanish (ES)': 'es-ES',
-      'French (FR)': 'fr-FR',
-      'German (DE)': 'de-DE',
-      'Italian (IT)': 'it-IT',
-      'Portuguese (PT)': 'pt-BR',
-      'Chinese (Simplified)': 'zh-CN',
-      'Japanese': 'ja-JP',
-      'Hindi': 'hi-IN',
-      'Nepali': 'ne-NP',
-      'Arabic': 'ar-SA',
-      'Russian': 'ru-RU'
+      'Spanish (ES)': { langCode: 'es-ES', shortCode: 'es' },
+      'French (FR)': { langCode: 'fr-FR', shortCode: 'fr' },
+      'German (DE)': { langCode: 'de-DE', shortCode: 'de' },
+      'Italian (IT)': { langCode: 'it-IT', shortCode: 'it' },
+      'Portuguese (PT)': { langCode: 'pt-BR', shortCode: 'pt' },
+      'Chinese (Simplified)': { langCode: 'zh-CN', shortCode: 'zh' },
+      'Japanese': { langCode: 'ja-JP', shortCode: 'ja' },
+      'Hindi': { langCode: 'hi-IN', shortCode: 'hi' },
+      'Nepali': { langCode: 'ne-NP', shortCode: 'ne' },
+      'Arabic': { langCode: 'ar-SA', shortCode: 'ar' },
+      'Russian': { langCode: 'ru-RU', shortCode: 'ru' }
     };
     if (map[savedLang]) return map[savedLang];
   }
 
-  return navigator.language || 'en-US';
+  return { langCode: navigator.language || 'en-US', shortCode: (navigator.language || 'en').split('-')[0] };
 }
 
 function getBestVoiceForLanguage(langCode, voices) {
   if (!voices || voices.length === 0) return null;
   const langPrefix = langCode.split('-')[0].toLowerCase();
   
-  // 1. Exact match (e.g. 'ne-NP', 'hi-IN', 'es-ES', 'fr-FR')
+  // 1. Exact match (e.g. 'ne-NP', 'hi-IN', 'es-ES')
   let match = voices.find(v => v.lang.toLowerCase().replace('_', '-') === langCode.toLowerCase());
   if (match) return match;
   
@@ -60,7 +62,7 @@ function getBestVoiceForLanguage(langCode, voices) {
   match = voices.find(v => v.lang.toLowerCase().startsWith(langPrefix));
   if (match) return match;
 
-  // 3. Fallback for Nepali (use Hindi or Indian voice if dedicated Nepali voice not in browser)
+  // 3. Fallback for Nepali (use Hindi voice if dedicated Nepali voice not installed on OS)
   if (langPrefix === 'ne') {
     match = voices.find(v => v.lang.toLowerCase().startsWith('hi') || v.lang.toLowerCase().includes('in'));
     if (match) return match;
@@ -75,7 +77,6 @@ function getBestVoiceForLanguage(langCode, voices) {
 
 function splitIntoSpokenSentences(text) {
   if (!text) return [];
-  // Split on sentence terminators: . ! ? । \n
   const raw = text.split(/(?<=[.!?।\n])\s+/);
   const chunks = [];
   for (const part of raw) {
@@ -110,15 +111,15 @@ export default function VoiceChatModal({
   const micStreamRef = useRef(null);
   const animFrameRef = useRef(null);
   const speakingIntervalRef = useRef(null);
-  const keepAliveIntervalRef = useRef(null);
   const silenceTimerRef = useRef(null);
   const isSpeakingUtteranceRef = useRef(false);
   const voicesListRef = useRef([]);
   const callHistoryRef = useRef([]);
   const isProcessingRef = useRef(false);
   const pendingSpeechRef = useRef('');
+  const currentAudioRef = useRef(null);
 
-  // Load available speech synthesis voices with maximum clarity
+  // Load available speech synthesis voices
   useEffect(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       const loadVoices = () => {
@@ -143,6 +144,14 @@ export default function VoiceChatModal({
       recognitionRef.current = null;
     }
 
+    if (currentAudioRef.current) {
+      try {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.currentTime = 0;
+      } catch (e) {}
+      currentAudioRef.current = null;
+    }
+
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = null;
@@ -151,11 +160,6 @@ export default function VoiceChatModal({
     if (speakingIntervalRef.current) {
       clearInterval(speakingIntervalRef.current);
       speakingIntervalRef.current = null;
-    }
-
-    if (keepAliveIntervalRef.current) {
-      clearInterval(keepAliveIntervalRef.current);
-      keepAliveIntervalRef.current = null;
     }
 
     if (animFrameRef.current) {
@@ -197,115 +201,130 @@ export default function VoiceChatModal({
     }
   }, [isOpen, isMuted]);
 
-  // Multilingual Full-Speech Function (Speaks entire text loudly and cleanly)
+  // Dual-Engine Spoken Voice Function (Google Neural TTS Stream with Web Speech fallback)
   const speakText = useCallback((textToSpeak, onComplete) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    stopAllAudioAudioOnly();
+
+    const cleanText = textToSpeak
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/[*#_`~[\]()]/g, ' ')
+      .replace(/https?:\/\/\S+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!cleanText) {
       setVoiceState('listening');
       if (onComplete) onComplete();
       return;
     }
 
-    try {
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.resume();
+    const { langCode, shortCode } = detectScriptLanguage(cleanText);
+    const sentenceChunks = splitIntoSpokenSentences(cleanText);
 
-      const cleanText = textToSpeak
-        .replace(/[*#_`~[\]()]/g, ' ')
-        .replace(/https?:\/\/\S+/g, '')
-        .replace(/<think>[\s\S]*?<\/think>/gi, '')
-        .replace(/\s+/g, ' ')
-        .trim();
+    isSpeakingUtteranceRef.current = true;
+    setVoiceState('speaking');
 
-      if (!cleanText) {
+    // Animate audio orb wave pulsation during speech
+    if (speakingIntervalRef.current) clearInterval(speakingIntervalRef.current);
+    speakingIntervalRef.current = setInterval(() => {
+      setAudioVolume(0.45 + Math.random() * 0.45);
+    }, 100);
+
+    let currentChunkIdx = 0;
+
+    const playNextChunk = () => {
+      if (currentChunkIdx >= sentenceChunks.length || !isSpeakingUtteranceRef.current) {
+        // Finished speaking
+        isSpeakingUtteranceRef.current = false;
+        if (speakingIntervalRef.current) {
+          clearInterval(speakingIntervalRef.current);
+          speakingIntervalRef.current = null;
+        }
+        setAudioVolume(0);
         setVoiceState('listening');
+
+        if (isOpen && !isMuted) {
+          setTimeout(() => {
+            restartRecognitionSafe();
+          }, 350);
+        }
+
         if (onComplete) onComplete();
         return;
       }
 
-      // Split into natural sentences so long outputs never get truncated by browser
-      const sentenceChunks = splitIntoSpokenSentences(cleanText);
-      const detectedLang = detectScriptLanguage(cleanText);
-      const voices = voicesListRef.current.length > 0 ? voicesListRef.current : window.speechSynthesis.getVoices();
-      const matchedVoice = getBestVoiceForLanguage(detectedLang, voices);
+      const chunkText = sentenceChunks[currentChunkIdx];
+      currentChunkIdx++;
 
-      // Start Chrome keep-alive interval to prevent 15-second cutoff bug
-      if (keepAliveIntervalRef.current) clearInterval(keepAliveIntervalRef.current);
-      keepAliveIntervalRef.current = setInterval(() => {
-        if (window.speechSynthesis.speaking) {
-          window.speechSynthesis.pause();
-          window.speechSynthesis.resume();
-        }
-      }, 3500);
+      // 1. Try Google High-Fidelity Neural Audio Stream (100% native pronunciation)
+      const encoded = encodeURIComponent(chunkText.slice(0, 190));
+      const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${shortCode}&q=${encoded}`;
+      const audio = new Audio(audioUrl);
+      currentAudioRef.current = audio;
 
-      // Animate orb pulsation during speech
-      if (speakingIntervalRef.current) clearInterval(speakingIntervalRef.current);
-      speakingIntervalRef.current = setInterval(() => {
-        setAudioVolume(0.5 + Math.random() * 0.4);
-      }, 100);
-
-      isSpeakingUtteranceRef.current = true;
-      setVoiceState('speaking');
-
-      let currentChunkIdx = 0;
-
-      const speakNextChunk = () => {
-        if (currentChunkIdx >= sentenceChunks.length || !isSpeakingUtteranceRef.current) {
-          // Finished speaking all sentences completely!
-          isSpeakingUtteranceRef.current = false;
-          if (speakingIntervalRef.current) {
-            clearInterval(speakingIntervalRef.current);
-            speakingIntervalRef.current = null;
-          }
-          if (keepAliveIntervalRef.current) {
-            clearInterval(keepAliveIntervalRef.current);
-            keepAliveIntervalRef.current = null;
-          }
-          setAudioVolume(0);
-          setVoiceState('listening');
-
-          // Resume listening for next query
-          if (isOpen && !isMuted) {
-            setTimeout(() => {
-              restartRecognitionSafe();
-            }, 300);
-          }
-
-          if (onComplete) onComplete();
-          return;
-        }
-
-        const currentChunkText = sentenceChunks[currentChunkIdx];
-        currentChunkIdx++;
-
-        const utterance = new SpeechSynthesisUtterance(currentChunkText);
-        utterance.volume = 1.0; // 100% Maximum Audio Volume
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
-        utterance.lang = detectedLang;
-
-        if (matchedVoice) {
-          utterance.voice = matchedVoice;
-        }
-
-        utterance.onend = () => {
-          speakNextChunk();
-        };
-
-        utterance.onerror = (e) => {
-          console.warn("Speech chunk synthesis notice:", e);
-          speakNextChunk();
-        };
-
-        window.speechSynthesis.speak(utterance);
+      audio.onended = () => {
+        playNextChunk();
       };
 
-      speakNextChunk();
-    } catch (e) {
-      console.warn("Speech synthesis error:", e);
-      setVoiceState('listening');
-      if (onComplete) onComplete();
+      audio.onerror = () => {
+        // 2. Fallback to Web Speech Synthesis API
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+          try {
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.resume();
+
+            const utterance = new SpeechSynthesisUtterance(chunkText);
+            utterance.volume = 1.0;
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            utterance.lang = langCode;
+
+            const voices = voicesListRef.current.length > 0 ? voicesListRef.current : window.speechSynthesis.getVoices();
+            const matchedVoice = getBestVoiceForLanguage(langCode, voices);
+            if (matchedVoice) utterance.voice = matchedVoice;
+
+            utterance.onend = () => {
+              playNextChunk();
+            };
+
+            utterance.onerror = () => {
+              playNextChunk();
+            };
+
+            window.speechSynthesis.speak(utterance);
+          } catch (e) {
+            playNextChunk();
+          }
+        } else {
+          playNextChunk();
+        }
+      };
+
+      audio.play().catch(() => {
+        // Autoplay blocked fallback to speechSynthesis
+        audio.onerror(new Event('error'));
+      });
+    };
+
+    playNextChunk();
+  }, [isOpen, isMuted, restartRecognitionSafe]);
+
+  const stopAllAudioAudioOnly = () => {
+    if (currentAudioRef.current) {
+      try {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.currentTime = 0;
+      } catch (e) {}
+      currentAudioRef.current = null;
     }
-  }, [isMuted, isOpen, restartRecognitionSafe]);
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try { window.speechSynthesis.cancel(); } catch (e) {}
+    }
+    if (speakingIntervalRef.current) {
+      clearInterval(speakingIntervalRef.current);
+      speakingIntervalRef.current = null;
+    }
+  };
 
   // Process user speech via live AI call engine in ALL languages
   const processUserSpeech = useCallback(async (spokenText) => {
@@ -317,16 +336,12 @@ export default function VoiceChatModal({
     setUserTranscript(query);
     setInterimTranscript('');
 
-    // Stop any existing speech synthesis
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
+    stopAllAudioAudioOnly();
 
     let reply = "";
 
     try {
-      // Build real phone-call prompt with multilingual instructions
-      const prompt = `You are OMNIRA AI in a real-time natural two-way voice call with the user.
+      const prompt = `You are OMNIRA AI in a real-time natural two-way voice phone call with the user.
 User just said in audio: "${query}".
 
 CRITICAL VOICE INSTRUCTIONS:
@@ -344,7 +359,6 @@ CRITICAL VOICE INSTRUCTIONS:
       });
 
       reply = response?.content || response?.text || (typeof response === 'string' ? response : "");
-      // Strip any reasoning tags or markdown symbols if present
       reply = reply
         .replace(/<think>[\s\S]*?<\/think>/gi, '')
         .replace(/[*#_`~[\]]/g, '')
@@ -452,18 +466,10 @@ CRITICAL VOICE INSTRUCTIONS:
 
       const activeSpeech = (finalStr || interimStr).trim();
 
-      // Barge-in: If user starts speaking while AI is speaking, interrupt AI immediately
+      // Barge-in: If user starts speaking while AI is talking, interrupt AI immediately
       if (activeSpeech.length > 2 && isSpeakingUtteranceRef.current) {
-        window.speechSynthesis.cancel();
+        stopAllAudioAudioOnly();
         isSpeakingUtteranceRef.current = false;
-        if (speakingIntervalRef.current) {
-          clearInterval(speakingIntervalRef.current);
-          speakingIntervalRef.current = null;
-        }
-        if (keepAliveIntervalRef.current) {
-          clearInterval(keepAliveIntervalRef.current);
-          keepAliveIntervalRef.current = null;
-        }
         setVoiceState('listening');
       }
 
@@ -544,9 +550,7 @@ CRITICAL VOICE INSTRUCTIONS:
       if (recognitionRef.current) {
         try { recognitionRef.current.stop(); } catch (e) {}
       }
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        try { window.speechSynthesis.cancel(); } catch (e) {}
-      }
+      stopAllAudioAudioOnly();
       setVoiceState('muted');
       setAudioVolume(0);
     }

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy - OMNIRA AI</title>
+  <meta name="description" content="Official Privacy Policy for OMNIRA AI Platform. Learn how we protect, encrypt, and handle user data and conversations." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="canonical" href="https://omnirai.vercel.app/privacy" />
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #171717;
+      --muted: #737373;
+      --border: #e5e5e5;
+      --card-bg: #f9f9f9;
+      --accent: #0284c7;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #121212;
+        --text: #f5f5f5;
+        --muted: #a3a3a3;
+        --border: #262626;
+        --card-bg: #1a1a1a;
+        --accent: #38bdf8;
+      }
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px 80px 20px;
+    }
+    header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 24px;
+      margin-bottom: 32px;
+    }
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      margin: 0 0 8px 0;
+    }
+    .effective-date {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-top: 32px;
+      margin-bottom: 12px;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+    }
+    p, li {
+      color: var(--text);
+      font-size: 15px;
+    }
+    ul {
+      padding-left: 24px;
+      margin-bottom: 16px;
+    }
+    li {
+      margin-bottom: 8px;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin: 24px 0;
+    }
+    .contact-box {
+      margin-top: 40px;
+      padding: 24px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <a href="https://omnirai.vercel.app/" class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        <span>OMNIRA AI</span>
+      </a>
+      <h1>Privacy Policy</h1>
+      <div class="effective-date">Effective Date: September 20, 2026 | Last Updated: September 2026</div>
+    </header>
+
+    <div class="card">
+      <strong>Summary:</strong> OMNIRA AI respects your privacy. We do not sell your personal data, and your private conversations and workspace files are never used to train public foundation models without your explicit consent.
+    </div>
+
+    <h2>1. Information We Collect</h2>
+    <p>When you use the OMNIRA AI platform (accessible at <a href="https://omnirai.vercel.app/">https://omnirai.vercel.app</a>), we may collect the following types of information:</p>
+    <ul>
+      <li><strong>Account Information:</strong> If you sign in via Google OAuth or Firebase Authentication, we collect your name, email address, profile photo, and unique authentication identifier.</li>
+      <li><strong>Conversation and Workspace Data:</strong> Messages, prompts, code snippets, and uploaded files you submit to the AI engines in order to fulfill your requests.</li>
+      <li><strong>Technical and Usage Data:</strong> Browser type, IP address, operating system, and anonymous diagnostic logs for performance monitoring and fraud prevention.</li>
+    </ul>
+
+    <h2>2. Zero Model Training on Private Data</h2>
+    <p>We enforce strict enterprise-grade privacy safeguards:</p>
+    <ul>
+      <li>Your personal conversations, uploaded code, and project files are never sold to data brokers.</li>
+      <li>We do not use your private user data to train public foundation artificial intelligence models.</li>
+      <li>Guest sessions store chat history locally in your device's browser memory (LocalStorage) unless cloud synchronization is activated.</li>
+    </ul>
+
+    <h2>3. How We Use Information</h2>
+    <p>We use the collected information solely for legitimate operational purposes:</p>
+    <ul>
+      <li>To process AI inferences and return intelligent responses, code, and images.</li>
+      <li>To authenticate users and synchronize chat history across your authorized devices.</li>
+      <li>To prevent abusive traffic, enforce daily quota policies, and maintain service stability.</li>
+      <li>To send administrative emails, security alerts, or requested passwordless login links.</li>
+    </ul>
+
+    <h2>4. Data Storage, Security & Encryption</h2>
+    <p>We implement modern security measures including TLS 1.3 encryption in transit and AES-256 encryption at rest for cloud databases (Google Cloud Firestore). Access to production environments is strictly restricted to authorized systems.</p>
+
+    <h2>5. Third-Party Service Providers</h2>
+    <p>To provide high-speed inference, authentication, and image generation, OMNIRA integrates trusted infrastructure providers:</p>
+    <ul>
+      <li><strong>Google Cloud & Firebase:</strong> For identity authentication, user management, and encrypted database storage.</li>
+      <li><strong>Vercel:</strong> For global content delivery and edge hosting.</li>
+      <li><strong>Inference Engines (Groq, OpenRouter, Cloudflare):</strong> To process natural language and image generation requests.</li>
+    </ul>
+
+    <h2>6. Your Data Rights & Account Deletion</h2>
+    <p>Under GDPR and CCPA regulations, you have the right to access, export, or permanently delete your account and conversation data at any time. You can clear your sessions via the Settings menu or request full deletion by contacting us.</p>
+
+    <div class="contact-box">
+      <h3 style="margin-top:0;">7. Contact Us</h3>
+      <p>If you have any questions, concerns, or requests regarding this Privacy Policy, please contact our privacy team:</p>
+      <p><strong>Email:</strong> <a href="mailto:privacy@omnira.ai">privacy@omnira.ai</a> / <a href="mailto:bishaldev949@gmail.com">bishaldev949@gmail.com</a></p>
+      <p><strong>Platform:</strong> <a href="https://omnirai.vercel.app/">https://omnirai.vercel.app/</a></p>
+    </div>
+  </div>
+</body>
+</html>

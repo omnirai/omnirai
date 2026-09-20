@@ -1,9 +1,9 @@
 # OMNIRA AI Chat — Cloudflare Workers AI Image Generation
 
-[![Live Demo](https://img.shields.io/badge/Live-omnira--chat.vercel.app-10b981?style=for-the-badge)](https://omnira-chat.vercel.app)
+[![Live Demo](https://img.shields.io/badge/Live-omnirai.vercel.app-10b981?style=for-the-badge)](https://omnirai.vercel.app)
 
 OMNIRA is an AI chat application built with React, Vite, Tailwind CSS, and Python backend microservices.
-Live Application: [https://omnira-chat.vercel.app](https://omnira-chat.vercel.app)
+Live Application: [https://omnirai.vercel.app](https://omnirai.vercel.app)
 
 ## 🎨 AI Image Generation Feature
 

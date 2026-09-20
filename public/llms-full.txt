@@ -1,6 +1,6 @@
 # Full AI Knowledge Reference: OMNIRA AI Platform
 
-URL: https://omnira-chat.vercel.app/
+URL: https://omnirai.vercel.app/
 
 ## Abstract
 OMNIRA is an open, high-performance web-based artificial intelligence ecosystem designed for users, developers, and creators worldwide. It unifies frontier LLM capabilities—including OpenAI GPT-4o, Anthropic Claude 3.5 Sonnet, Google Gemini 1.5 Flash, DeepSeek R1, Grok 2, and Perplexity Sonar—into a single web application with zero friction access.
@@ -41,6 +41,6 @@ OMNIRA is an open, high-performance web-based artificial intelligence ecosystem 
 - **Custom Domains**: Domain verification support for GPT builders.
 
 ## Canonical Reference
-Official URL: https://omnira-chat.vercel.app/
-Sitemap: https://omnira-chat.vercel.app/sitemap.xml
-robots.txt: https://omnira-chat.vercel.app/robots.txt
+Official URL: https://omnirai.vercel.app/
+Sitemap: https://omnirai.vercel.app/sitemap.xml
+robots.txt: https://omnirai.vercel.app/robots.txt

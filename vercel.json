@@ -5,9 +5,10 @@
       "destination": "/api/index.py"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!.*\\.[\\w]+$|_next|api).*)",
       "destination": "/index.html"
     }
   ]
 }
+
 

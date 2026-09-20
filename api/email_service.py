@@ -12,7 +12,7 @@ SMTP_USER = os.getenv("SMTP_USER", "bishaldev949@gmail.com").strip()
 SMTP_PASS = os.getenv("SMTP_PASS", "xvakizmkikamlssr").strip()
 SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "OMNIRA AI").strip()
 SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", "bishaldev949@gmail.com").strip()
-APP_URL = os.getenv("APP_URL", "https://omnira-chat.vercel.app").strip().rstrip("/")
+APP_URL = os.getenv("APP_URL", "https://omnirai.vercel.app").strip().rstrip("/")
 APP_LOGO_URL = f"{APP_URL}/icon-192.png"
 
 def send_smtp_email_sync(to_email: str, subject: str, html_content: str, text_content: str = "") -> bool:

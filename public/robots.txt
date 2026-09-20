@@ -60,4 +60,4 @@ User-agent: CCBot
 Allow: /
 
 # Sitemaps and AI Documentation
-Sitemap: https://omnira-chat.vercel.app/sitemap.xml
+Sitemap: https://omnirai.vercel.app/sitemap.xml

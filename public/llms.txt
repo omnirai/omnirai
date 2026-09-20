@@ -4,7 +4,7 @@
 
 ## Overview
 - **Name**: OMNIRA
-- **Website**: https://omnira-chat.vercel.app/
+- **Website**: https://omnirai.vercel.app/
 - **Category**: Artificial Intelligence Platform & Multi-Model Chat Studio
 - **Pricing**: Free Online Access
 

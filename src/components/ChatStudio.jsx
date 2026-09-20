@@ -1329,16 +1329,19 @@ export default function ChatStudio({
 
             {/* Live Typing & Generation Indicator */}
             {isGenerating && !isVoiceChatOpen && (
-              <div className="flex items-center gap-2.5 w-full py-1 text-sm text-[var(--text-muted)] animate-in fade-in duration-200">
+              <div className="flex items-center gap-2 w-full py-1 text-sm text-[var(--text-muted)] animate-in fade-in duration-200">
                 {isCurrentGeneratingImage ? (
                   <div className="flex flex-col gap-0.5">
                     <span className="text-xs text-[var(--text-primary)] font-semibold">Creating images...</span>
                     <span className="text-[10px] text-[var(--text-muted)]">Synthesizing FLUX neural vectors</span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 text-xs font-medium text-[var(--text-muted)]">
-                    <span className="w-2 h-2 rounded-full bg-neutral-800 dark:bg-neutral-200 animate-pulse" />
-                    <span>Thinking...</span>
+                  <div className="flex items-center gap-1.5 py-1 px-1">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-neutral-400 dark:bg-neutral-500 animate-bounce [animation-delay:-0.3s]" />
+                      <span className="w-2 h-2 rounded-full bg-neutral-400 dark:bg-neutral-500 animate-bounce [animation-delay:-0.15s]" />
+                      <span className="w-2 h-2 rounded-full bg-neutral-400 dark:bg-neutral-500 animate-bounce" />
+                    </span>
                   </div>
                 )}
               </div>

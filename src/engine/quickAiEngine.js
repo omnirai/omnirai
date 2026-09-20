@@ -608,21 +608,7 @@ export async function queryQuickAi({
     webSources = await fetchWebSearchSources(prompt);
   }
 
-  // 2a. OpenRouter — Real Claude, DeepSeek, Gemini, Llama (user key OR free models)
-  const openRouterKey = settings.openrouterKey || DEFAULT_OPENROUTER_KEY;
-  const isOpenRouterModel = ['claude-3-5-sonnet', 'claude-3-opus', 'deepseek-reasoner', 'perplexity'].includes(selectedModel);
-  const isGeminiViaOR = selectedModel === 'gemini-1.5-flash' && !settings.geminiKey;
-
-  if (openRouterKey || isOpenRouterModel || isGeminiViaOR) {
-    // Always try OpenRouter for these model types (they work free without key too)
-    try {
-      return await queryOpenRouterApi(prompt, selectedModel, history, fileData, settings, webSources, openRouterKey);
-    } catch (err) {
-      console.warn("OpenRouter error, falling back to Groq:", err.message);
-    }
-  }
-
-  // 2b. Direct Google Gemini API (if user has their own Gemini key)
+  // 2a. Direct Google Gemini API (if user has their own Gemini key)
   if ((selectedModel === 'gemini-1.5-flash' || settings.engineMode === 'gemini-api') && settings.geminiKey) {
     try {
       return await queryGeminiApi(prompt, history, settings.geminiKey);
@@ -631,12 +617,25 @@ export async function queryQuickAi({
     }
   }
 
-  // 2c. Legacy: old single apiKey field pointing at Gemini
+  // 2b. Legacy: old single apiKey field pointing at Gemini
   if ((selectedModel === 'gemini-1.5-flash' || settings.engineMode === 'gemini-api') && settings.apiKey && settings.apiKey.startsWith('AI')) {
     try {
       return await queryGeminiApi(prompt, history, settings.apiKey);
     } catch (err) {
       console.warn("Gemini API error, falling back to OMNIRA LLM:", err);
+    }
+  }
+
+  // 2c. OpenRouter — Only for Claude/exclusive models OR if user specified custom OpenRouter Key in Settings
+  const hasCustomOpenRouterKey = Boolean(settings.openrouterKey && settings.openrouterKey.trim());
+  const isOpenRouterExclusiveModel = ['claude-3-5-sonnet', 'claude-3-opus'].includes(selectedModel);
+
+  if (hasCustomOpenRouterKey || isOpenRouterExclusiveModel) {
+    const openRouterKey = settings.openrouterKey || DEFAULT_OPENROUTER_KEY;
+    try {
+      return await queryOpenRouterApi(prompt, selectedModel, history, fileData, settings, webSources, openRouterKey);
+    } catch (err) {
+      console.warn("OpenRouter error, falling back to Groq:", err.message);
     }
   }
 
@@ -658,17 +657,21 @@ export async function queryQuickAi({
     }
   }
 
-  // 5. REAL LLM Generation via OMNIRA Groq Engine
+  // 5. Ultra-Fast REAL LLM Generation via OMNIRA Groq Engine (Sub-second response)
   try {
     return await queryRealLlmApi(prompt, selectedModel, history, fileData, settings, projectContext, webSources);
   } catch (err) {
     console.error("OMNIRA LLM error:", err);
-    // Show clean friendly message — never expose raw Groq errors or model names
-    const msg = err.message || '';
-    if (msg.includes('Invalid API key')) {
-      return `⚠️ **API Key Error:** Your Groq API key appears to be invalid. Please update it in Settings.`;
+    // Secondary fallback to OpenRouter if Groq fails
+    try {
+      return await queryOpenRouterApi(prompt, selectedModel, history, fileData, settings, webSources, DEFAULT_OPENROUTER_KEY);
+    } catch (orErr) {
+      const msg = err.message || '';
+      if (msg.includes('Invalid API key')) {
+        return `⚠️ **API Key Error:** Your Groq API key appears to be invalid. Please update it in Settings.`;
+      }
+      return `I'm having a bit of trouble right now — please try again in a moment! 🔄`;
     }
-    return `I'm having a bit of trouble right now — please try again in a moment! 🔄`;
   }
 }
 

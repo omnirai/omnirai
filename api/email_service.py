@@ -298,15 +298,113 @@ Bishal & The OMNIRA Team
 """
     return subject, get_base_html(subject, content), text
 
-def send_auto_email(event_type: str, to_email: str, name: str = "", plan: str = "Pro") -> bool:
+def get_dislike_report_template(user_email: str, user_name: str, categories: list, details: str, user_query: str = "", ai_response: str = "", model: str = "OMNIRA (GPT-4o)"):
+    cats_str = ", ".join(categories) if categories else "General Dislike"
+    subject = f"[OMNIRA Feedback Report] Dislike: {cats_str} ({user_email or 'Guest'})"
+    
+    categories_badges = "".join([
+        f'<span style="display: inline-block; background-color: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; margin-right: 6px; margin-bottom: 6px;">{cat}</span>'
+        for cat in (categories or ["Disliked Response"])
+    ])
+    
+    clean_details = (details or "").strip()
+    clean_query = (user_query or "").strip()
+    clean_ai_response = (ai_response or "").strip()
+    if len(clean_ai_response) > 2500:
+        clean_ai_response = clean_ai_response[:2500] + "\n\n... [Truncated for email delivery]"
+
+    content = f"""
+      <h2 style="color: #111827; font-size: 20px; font-weight: 700; margin-top: 0; margin-bottom: 16px;">
+        User Dislike Feedback Report
+      </h2>
+      <p style="color: #4b5563; font-size: 14px; margin-bottom: 20px;">
+        A user has flagged an AI response as unsatisfactory and submitted the following feedback report to the administrator.
+      </p>
+
+      <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr>
+            <td style="color: #6b7280; width: 130px; padding-bottom: 8px;"><strong>User:</strong></td>
+            <td style="color: #111827; padding-bottom: 8px;">{user_name or 'User'} &lt;{user_email or 'guest@omnira.ai'}&gt;</td>
+          </tr>
+          <tr>
+            <td style="color: #6b7280; padding-bottom: 8px;"><strong>AI Model:</strong></td>
+            <td style="color: #111827; padding-bottom: 8px;">{model}</td>
+          </tr>
+          <tr>
+            <td style="color: #6b7280; padding-bottom: 8px;"><strong>Categories:</strong></td>
+            <td style="padding-bottom: 8px;">{categories_badges}</td>
+          </tr>
+          <tr>
+            <td style="color: #6b7280; padding-bottom: 8px;"><strong>Submitted At:</strong></td>
+            <td style="color: #111827; padding-bottom: 8px;">{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}</td>
+          </tr>
+        </table>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <h3 style="color: #374151; font-size: 15px; font-weight: 600; margin-bottom: 8px;">User Notes &amp; Details</h3>
+        <div style="background-color: #ffffff; border: 1px solid #d1d5db; border-radius: 8px; padding: 14px; font-size: 14px; color: #1f2937;">
+          {clean_details if clean_details else '<em style="color: #9ca3af;">No additional details entered by user.</em>'}
+        </div>
+      </div>
+
+      {f'''<div style="margin-bottom: 20px;">
+        <h3 style="color: #374151; font-size: 15px; font-weight: 600; margin-bottom: 8px;">User's Original Query</h3>
+        <div style="background-color: #f3f4f6; border-left: 4px solid #6366f1; border-radius: 4px; padding: 12px; font-size: 13px; color: #374151; white-space: pre-wrap;">
+          {clean_query}
+        </div>
+      </div>''' if clean_query else ''}
+
+      {f'''<div style="margin-bottom: 20px;">
+        <h3 style="color: #374151; font-size: 15px; font-weight: 600; margin-bottom: 8px;">Disliked AI Response</h3>
+        <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; border-radius: 4px; padding: 12px; font-size: 13px; color: #374151; max-height: 400px; overflow-y: auto; white-space: pre-wrap;">
+          {clean_ai_response}
+        </div>
+      </div>''' if clean_ai_response else ''}
+    """
+    
+    text = f"""User Dislike Feedback Report:
+User: {user_name} ({user_email})
+Model: {model}
+Categories: {cats_str}
+Details: {clean_details or 'None'}
+
+User Query:
+{clean_query}
+
+AI Response:
+{clean_ai_response}
+"""
+    return subject, get_base_html(subject, content), text
+
+def send_feedback_report(user_email: str, user_name: str, categories: list, details: str, user_query: str = "", ai_response: str = "", model: str = "OMNIRA (GPT-4o)") -> bool:
+    """
+    Sends the user dislike feedback report directly to the administrator email.
+    """
+    admin_email = os.getenv("ADMIN_EMAIL", SMTP_USER or "bishaldev949@gmail.com").strip()
+    subject, html, text = get_dislike_report_template(user_email, user_name, categories, details, user_query, ai_response, model)
+    send_email_async(admin_email, subject, html, text)
+    return True
+
+def send_auto_email(event_type: str, to_email: str, name: str = "", plan: str = "Pro", **kwargs) -> bool:
     """
     Main entrypoint for sending auto-emails.
-    Supported event_type: 'welcome' | 'signup' | 'signin' | 'subscribe' | 'upgrade'
+    Supported event_type: 'welcome' | 'signup' | 'signin' | 'subscribe' | 'upgrade' | 'feedback' | 'dislike'
     """
+    evt = (event_type or "").lower().strip()
+    
+    if evt in ["feedback", "dislike", "report", "feedback_report"]:
+        categories = kwargs.get("categories", [])
+        details = kwargs.get("details", "")
+        user_query = kwargs.get("user_query", "")
+        ai_response = kwargs.get("ai_response", "")
+        model = kwargs.get("model", "OMNIRA (GPT-4o)")
+        return send_feedback_report(to_email, name, categories, details, user_query, ai_response, model)
+
     if not to_email:
         return False
 
-    evt = event_type.lower().strip()
     if evt in ["welcome", "signup", "sign_up"]:
         subject, html, text = get_welcome_template(name)
     elif evt in ["signin", "sign_in", "login"]:
@@ -318,3 +416,4 @@ def send_auto_email(event_type: str, to_email: str, name: str = "", plan: str = 
 
     send_email_async(to_email, subject, html, text)
     return True
+

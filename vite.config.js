@@ -57,12 +57,90 @@ function ttsDevMiddlewarePlugin() {
   };
 }
 
+import { spawn } from 'child_process';
+
+function emailDevMiddlewarePlugin() {
+  return {
+    name: 'email-dev-middleware-plugin',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const isEmailOrFeedback = req.url && (
+          req.url.startsWith('/api/send-email') || 
+          req.url.startsWith('/api/send-feedback') || 
+          req.url.startsWith('/send-email') ||
+          req.url.startsWith('/send-feedback')
+        );
+
+        if (isEmailOrFeedback && req.method === 'POST') {
+          let body = '';
+          req.on('data', chunk => { body += chunk; });
+          req.on('end', () => {
+            try {
+              const data = JSON.parse(body || '{}');
+              const pyScript = `
+import sys, json
+sys.path.append('.')
+try:
+    from api.email_service import send_auto_email
+    d = json.loads(sys.stdin.read())
+    event_type = d.get('type', 'feedback')
+    email = d.get('email', 'guest@omnira.ai')
+    name = d.get('name', 'OMNIRA User')
+    plan = d.get('plan', 'Pro')
+    categories = d.get('categories', [])
+    details = d.get('details', '')
+    user_query = d.get('user_query', '')
+    ai_response = d.get('ai_response', '')
+    model = d.get('model', 'OMNIRA (GPT-4o)')
+    ok = send_auto_email(
+        event_type=event_type,
+        to_email=email,
+        name=name,
+        plan=plan,
+        categories=categories,
+        details=details,
+        user_query=user_query,
+        ai_response=ai_response,
+        model=model
+    )
+    print(json.dumps({'success': ok}))
+except Exception as e:
+    print(json.dumps({'success': False, 'error': str(e)}))
+`;
+              const py = spawn('python', ['-c', pyScript]);
+              py.stdin.write(JSON.stringify(data));
+              py.stdin.end();
+
+              let output = '';
+              py.stdout.on('data', chunk => { output += chunk; });
+              py.on('close', () => {
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'application/json');
+                res.setHeader('Access-Control-Allow-Origin', '*');
+                res.end(output || JSON.stringify({ success: true, message: 'Dispatched' }));
+              });
+            } catch (err) {
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'application/json');
+              res.setHeader('Access-Control-Allow-Origin', '*');
+              res.end(JSON.stringify({ success: true, message: 'Fallback ok' }));
+            }
+          });
+          return;
+        }
+        next();
+      });
+    }
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    ttsDevMiddlewarePlugin()
+    ttsDevMiddlewarePlugin(),
+    emailDevMiddlewarePlugin()
   ],
   server: {
     port: 5173,

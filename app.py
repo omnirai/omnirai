@@ -2187,12 +2187,36 @@ class QuickAiRequestHandler(BaseHTTPRequestHandler):
                 self.send_json(200, {"quota": quota})
                 return
 
-            # 3. Auto Email Dispatch Route (Welcome, Sign-in, Subscribe)
-            if path in ['/api/send-email', '/send-email']:
+            # 3. Auto Email & Feedback Dispatch Route (Welcome, Sign-in, Subscribe, Dislike Feedback)
+            if path in ['/api/send-email', '/send-email', '/api/send-feedback', '/send-feedback', '/api/feedback']:
                 email = data.get('email', '').strip() if isinstance(data, dict) else ''
                 name = data.get('name', '').strip() if isinstance(data, dict) else ''
                 event_type = data.get('type', 'welcome').strip() if isinstance(data, dict) else 'welcome'
+                if path in ['/api/send-feedback', '/send-feedback', '/api/feedback']:
+                    event_type = 'feedback'
                 plan = data.get('plan', 'Pro').strip() if isinstance(data, dict) else 'Pro'
+                categories = data.get('categories', []) if isinstance(data, dict) else []
+                details = data.get('details', '') if isinstance(data, dict) else ''
+                user_query = data.get('user_query', '') if isinstance(data, dict) else ''
+                ai_response = data.get('ai_response', '') if isinstance(data, dict) else ''
+                model = data.get('model', 'OMNIRA (GPT-4o)') if isinstance(data, dict) else 'OMNIRA (GPT-4o)'
+
+                if event_type in ['feedback', 'dislike', 'report']:
+                    if not email or '@' not in email:
+                        email = 'user_feedback@omnira.ai'
+                    dispatched = send_auto_email(
+                        event_type=event_type,
+                        to_email=email,
+                        name=name or 'OMNIRA User',
+                        plan=plan,
+                        categories=categories,
+                        details=details,
+                        user_query=user_query,
+                        ai_response=ai_response,
+                        model=model
+                    )
+                    self.send_json(200, {'success': dispatched, 'message': 'Feedback report received and sent to administrator.'})
+                    return
 
                 if not email or '@' not in email:
                     self.send_json(400, {'success': False, 'error': 'Valid recipient email required.'})

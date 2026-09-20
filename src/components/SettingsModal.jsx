@@ -40,6 +40,7 @@ import GithubConnectModal from './GithubConnectModal';
 import DomainVerifyModal from './DomainVerifyModal';
 import { triggerAutoEmail, getBackendImageQuota } from '../engine/quickAiEngine';
 import AuthScreen from './AuthScreen';
+import { deleteAllSessionsFromCloud } from '../firebase';
 
 // â”€â”€â”€ LoginGate: Wraps any section requiring a real account â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function LoginGate({ isGuest, onLogin, children, feature = 'this feature' }) {
@@ -910,7 +911,14 @@ export default function SettingsModal({
         localStorage.setItem('omnira_archived_chats', JSON.stringify(updatedArchived));
         localStorage.setItem('chatgpt_sessions', JSON.stringify([]));
         localStorage.setItem('OMNIRA_sessions', JSON.stringify([]));
+        if (currentUser?.uid) {
+          localStorage.removeItem(`omnira_chats_${currentUser.uid}`);
+        }
+        if (currentUser?.email) {
+          localStorage.removeItem(`omnira_chats_${currentUser.email.replace(/[^a-zA-Z0-9_-]/g, '_')}`);
+        }
         window.dispatchEvent(new Event('storage'));
+        window.dispatchEvent(new CustomEvent('omnira_chat_update'));
       }
       setActiveDataModal(null);
       showDataBanner(true, `All ${JSON.parse(localStorage.getItem('omnira_archived_chats') || '[]').length} chats have been archived successfully.`);
@@ -926,7 +934,17 @@ export default function SettingsModal({
       localStorage.setItem('OMNIRA_sessions', JSON.stringify([]));
       localStorage.setItem('quick_ai_chats', JSON.stringify([]));
       localStorage.setItem('omnira_archived_chats', JSON.stringify([]));
+      if (currentUser?.uid) {
+        localStorage.removeItem(`omnira_chats_${currentUser.uid}`);
+        deleteAllSessionsFromCloud(currentUser.uid).catch((err) => {
+          console.warn('Cloud delete notice:', err);
+        });
+      }
+      if (currentUser?.email) {
+        localStorage.removeItem(`omnira_chats_${currentUser.email.replace(/[^a-zA-Z0-9_-]/g, '_')}`);
+      }
       window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('omnira_chat_update'));
       setActiveDataModal(null);
       showDataBanner(true, 'All conversation history has been permanently deleted.');
     } catch (e) {
@@ -1509,7 +1527,14 @@ export default function SettingsModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-2 sm:p-4 md:p-6 animate-fade-in select-none">
+      <div 
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            onClose();
+          }
+        }}
+        className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-2xs flex items-center justify-center p-2 sm:p-4 md:p-6 animate-fade-in select-none"
+      >
         
         {/* Main Settings Dialog Container */}
         <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl w-full max-w-3xl h-[92vh] sm:h-[85vh] max-h-[680px] shadow-2xl flex overflow-hidden text-[var(--text-primary)] relative">
@@ -2178,6 +2203,59 @@ export default function SettingsModal({
                       />
                       <div className="w-10 h-5.5 bg-neutral-300 peer-focus:outline-none rounded-full peer dark:bg-neutral-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-blue-600"></div>
                     </label>
+                  </div>
+
+                  {/* CUSTOM API KEYS SECTION */}
+                  <div className="pt-8 pb-2">
+                    <h3 className="text-sm font-semibold text-[var(--text-primary)]">Custom API Keys (Optional)</h3>
+                    <p className="text-xs text-[var(--text-muted)] mt-1">
+                      OMNIRA provides free built-in keys for all models. Add your own keys here if you want to use paid models (like Claude 3.5 or GPT-4o) or have higher rate limits.
+                    </p>
+                  </div>
+
+                  {/* OpenRouter Key */}
+                  <div className="flex flex-col gap-2 pt-3">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-[var(--text-primary)]">OpenRouter Key (Claude, GPT-4o, DeepSeek)</span>
+                      <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline">Get Key</a>
+                    </div>
+                    <input 
+                      type="password"
+                      placeholder="sk-or-v1-..."
+                      value={settings?.openrouterKey || ''}
+                      onChange={(e) => setSettings && setSettings({ ...settings, openrouterKey: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-sidebar)] text-xs text-[var(--text-primary)] outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+
+                  {/* Groq Key */}
+                  <div className="flex flex-col gap-2 pt-3">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-[var(--text-primary)]">Groq Key (Fast Llama/Qwen)</span>
+                      <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline">Get Key</a>
+                    </div>
+                    <input 
+                      type="password"
+                      placeholder="gsk_..."
+                      value={settings?.apiKey || ''}
+                      onChange={(e) => setSettings && setSettings({ ...settings, apiKey: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-sidebar)] text-xs text-[var(--text-primary)] outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+
+                  {/* Gemini Key */}
+                  <div className="flex flex-col gap-2 pt-3">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-[var(--text-primary)]">Google Gemini Key</span>
+                      <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline">Get Key</a>
+                    </div>
+                    <input 
+                      type="password"
+                      placeholder="AIzaSy..."
+                      value={settings?.geminiKey || ''}
+                      onChange={(e) => setSettings && setSettings({ ...settings, geminiKey: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-sidebar)] text-xs text-[var(--text-primary)] outline-none focus:border-blue-500 transition-colors"
+                    />
                   </div>
 
                 </div>

@@ -20,6 +20,11 @@ import {
   getDailyChatUsage, 
   incrementDailyChatUsage 
 } from './engine/quickAiEngine';
+import { 
+  syncAllSessionsToCloud, 
+  loadSessionsFromCloud, 
+  deleteSessionFromCloud 
+} from './firebase';
 
 const VALID_MODES = [
   'chat', 
@@ -48,6 +53,22 @@ const getModeFromPath = (pathname) => {
   return '404';
 };
 
+// Helper to determine if the active user is truly signed in (not guest)
+export const isUserSignedIn = (user) => {
+  if (!user) return false;
+  if (user.provider === 'guest') return false;
+  if (!user.email || user.email === 'guest@omnira.ai') return false;
+  if (user.name === 'Guest User') return false;
+  return true;
+};
+
+// Storage key helper for user chat history
+export const getUserChatStorageKey = (user) => {
+  if (!isUserSignedIn(user)) return null;
+  const id = user.uid || user.email || 'user';
+  return `omnira_chats_${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('chat');
   const [activeMode, setActiveMode] = useState(() => {
@@ -62,7 +83,17 @@ export default function App() {
   const handleOpenSettings = (tab = 'account') => {
     setSettingsInitialTab(tab);
     setIsSettingsOpen(true);
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
   };
+
+  // Ensure mobile drawer closes if settings or auth modal is active
+  useEffect(() => {
+    if (isSettingsOpen && typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
+  }, [isSettingsOpen]);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [userQuota, setUserQuota] = useState({ used: 0, limit: 5, remaining: 5 });
@@ -86,7 +117,14 @@ export default function App() {
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     const saved = localStorage.getItem('omnira_authenticated');
-    return saved !== null ? saved === 'true' : true; // Always allow direct access
+    const userRaw = localStorage.getItem('omnira_user');
+    if (userRaw) {
+      try {
+        const u = JSON.parse(userRaw);
+        return isUserSignedIn(u);
+      } catch (e) {}
+    }
+    return saved === 'true';
   });
 
   // Selected Active AI Model
@@ -112,27 +150,50 @@ export default function App() {
       modelName: 'Xenova/Qwen1.5-0.5B-Chat',
       ollamaUrl: 'http://localhost:11434',
       ollamaModel: 'llama3',
-      apiKey: '',
+      apiKey: '',           // Groq API key (legacy)
+      openrouterKey: '',    // OpenRouter key → unlocks Claude, DeepSeek, Gemini paid
+      geminiKey: '',        // Direct Google Gemini API key (from aistudio.google.com)
       enableDictation: true,
       temperature: 0.7
     };
   });
 
   // Chat History Sessions State
+  // ONLY loaded if the user is authenticated & signed in! Guests start with a fresh session
   const [chatSessions, setChatSessions] = useState(() => {
-    const saved = localStorage.getItem('chatgpt_sessions');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch (e) {}
+    let savedUser = null;
+    try {
+      const rawUser = localStorage.getItem('omnira_user');
+      if (rawUser) savedUser = JSON.parse(rawUser);
+    } catch (e) {}
+
+    if (isUserSignedIn(savedUser)) {
+      const userKey = getUserChatStorageKey(savedUser);
+      const saved = (userKey && localStorage.getItem(userKey)) || localStorage.getItem('chatgpt_sessions') || localStorage.getItem('OMNIRA_sessions');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch (e) {}
+      }
     }
+
+    // Guest users start with a fresh temporary session
     return [{ id: 'default-session-1', title: 'New chat', messages: [] }];
   });
 
   const [currentChatId, setCurrentChatId] = useState(() => {
-    const saved = localStorage.getItem('chatgpt_current_id');
-    return saved || 'default-session-1';
+    let savedUser = null;
+    try {
+      const rawUser = localStorage.getItem('omnira_user');
+      if (rawUser) savedUser = JSON.parse(rawUser);
+    } catch (e) {}
+
+    if (isUserSignedIn(savedUser)) {
+      const saved = localStorage.getItem('chatgpt_current_id');
+      if (saved) return saved;
+    }
+    return 'default-session-1';
   });
 
   // Projects State with LocalStorage Persistence
@@ -178,7 +239,97 @@ export default function App() {
     localStorage.setItem('omnira_user', JSON.stringify(currentUser));
   }, [currentUser]);
 
+  // Restore user cloud sessions across devices (Firestore Cloud Sync)
+  const restoreUserCloudSessions = async (userId, userStorageKey) => {
+    if (!userId) return;
+    try {
+      const cloudSessions = await loadSessionsFromCloud(userId);
+      if (cloudSessions && cloudSessions.length > 0) {
+        setChatSessions((prev) => {
+          const map = new Map();
+          // 1. Populate with cloud sessions
+          cloudSessions.forEach((s) => {
+            if (s && s.id) map.set(s.id, s);
+          });
+          // 2. Preserve active local/guest messages if newer
+          const activeLocal = prev.filter((s) => s && Array.isArray(s.messages) && s.messages.length > 0);
+          activeLocal.forEach((s) => {
+            const existing = map.get(s.id);
+            if (!existing || ((s.messages?.length || 0) > (existing.messages?.length || 0))) {
+              map.set(s.id, s);
+            }
+          });
+          const merged = Array.from(map.values());
+          if (userStorageKey) {
+            try {
+              const str = JSON.stringify(merged);
+              localStorage.setItem(userStorageKey, str);
+              localStorage.setItem('chatgpt_sessions', str);
+            } catch (_) {}
+          }
+          return merged;
+        });
+      }
+    } catch (err) {
+      console.warn('Failed to restore cloud sessions:', err);
+    }
+  };
 
+  // Persist Chat History ONLY IF User is Signed In
+  useEffect(() => {
+    if (isUserSignedIn(currentUser)) {
+      const userKey = getUserChatStorageKey(currentUser);
+      if (userKey) {
+        try {
+          const serialized = JSON.stringify(chatSessions);
+          localStorage.setItem(userKey, serialized);
+          localStorage.setItem('chatgpt_sessions', serialized);
+          localStorage.setItem('OMNIRA_sessions', serialized);
+          localStorage.setItem('chatgpt_current_id', currentChatId);
+        } catch (err) {
+          console.warn('Failed to save chat sessions to localStorage:', err);
+        }
+      }
+
+      // Automatically sync to Cloud Firestore for cross-device access
+      if (currentUser?.uid) {
+        const timer = setTimeout(() => {
+          syncAllSessionsToCloud(currentUser.uid, chatSessions).catch((err) => {
+            console.warn('Firestore cloud sync notice:', err);
+          });
+        }, 1200);
+        return () => clearTimeout(timer);
+      }
+    } else {
+      // Guest users: chats are strictly ephemeral in-memory, NOT persisted!
+      localStorage.removeItem('chatgpt_sessions');
+      localStorage.removeItem('OMNIRA_sessions');
+      localStorage.removeItem('chatgpt_current_id');
+    }
+  }, [chatSessions, currentChatId, currentUser]);
+
+  // Sync state if chats are cleared or archived from SettingsModal
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'chatgpt_sessions' || e.type === 'omnira_chat_update') {
+        const raw = localStorage.getItem('chatgpt_sessions');
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              setChatSessions(parsed.length > 0 ? parsed : [{ id: `session-${Date.now()}`, title: 'New chat', messages: [] }]);
+            }
+          } catch (_) {}
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('omnira_chat_update', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('omnira_chat_update', handleStorageChange);
+    };
+  }, []);
 
   // Handle Google Redirect Result and Firebase Auth state changes
   useEffect(() => {
@@ -204,6 +355,27 @@ export default function App() {
             setIsAuthenticated(true);
             localStorage.setItem('omnira_logged_in', 'true');
             setIsAuthModalOpen(false);
+
+            // 1. Quick restore from local cache
+            const userKey = getUserChatStorageKey(loggedInUser);
+            const savedChats = userKey ? localStorage.getItem(userKey) : null;
+            if (savedChats) {
+              try {
+                const parsed = JSON.parse(savedChats);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  setChatSessions((prev) => {
+                    const activeGuestChats = prev.filter(s => s && Array.isArray(s.messages) && s.messages.length > 0);
+                    if (activeGuestChats.length > 0) {
+                      return [...activeGuestChats, ...parsed.filter(p => !activeGuestChats.some(g => g.id === p.id))];
+                    }
+                    return parsed;
+                  });
+                }
+              } catch (e) {}
+            }
+
+            // 2. Fetch cross-device chat history from Cloud Firestore
+            restoreUserCloudSessions(u.uid, userKey);
           }
         }).catch((err) => {
           console.warn('Redirect sign-in notice:', err);
@@ -228,6 +400,27 @@ export default function App() {
           setCurrentUser(loggedInUser);
           setIsAuthenticated(true);
           localStorage.setItem('omnira_logged_in', 'true');
+
+          // 1. Quick restore from local cache
+          const userKey = getUserChatStorageKey(loggedInUser);
+          const savedChats = userKey ? localStorage.getItem(userKey) : null;
+          if (savedChats) {
+            try {
+              const parsed = JSON.parse(savedChats);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                setChatSessions((prev) => {
+                  const activeGuestChats = prev.filter(s => s && Array.isArray(s.messages) && s.messages.length > 0);
+                  if (activeGuestChats.length > 0) {
+                    return [...activeGuestChats, ...parsed.filter(p => !activeGuestChats.some(g => g.id === p.id))];
+                  }
+                  return parsed;
+                });
+              }
+            } catch (e) {}
+          }
+
+          // 2. Fetch cross-device chat history from Cloud Firestore
+          restoreUserCloudSessions(user.uid, userKey);
         }
       });
     }).catch(err => console.error('Firebase initialization error', err));
@@ -240,12 +433,49 @@ export default function App() {
     setCurrentUser(user);
     setIsAuthenticated(true);
     setIsAuthModalOpen(false);
+
+    // If switching to signed-in user, restore their chat history
+    if (isUserSignedIn(user)) {
+      const userKey = getUserChatStorageKey(user);
+      const savedUserChats = userKey ? localStorage.getItem(userKey) : null;
+      if (savedUserChats) {
+        try {
+          const parsed = JSON.parse(savedUserChats);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setChatSessions((prev) => {
+              const activeGuestChats = prev.filter(s => s && Array.isArray(s.messages) && s.messages.length > 0);
+              if (activeGuestChats.length > 0) {
+                return [...activeGuestChats, ...parsed.filter(p => !activeGuestChats.some(g => g.id === p.id))];
+              }
+              return parsed;
+            });
+            setCurrentChatId(parsed[0].id);
+          }
+        } catch (e) {}
+      }
+
+      // Fetch latest cross-device chat history from Cloud Firestore
+      if (user.uid) {
+        restoreUserCloudSessions(user.uid, userKey);
+      }
+    }
   };
 
   const handleLogout = () => {
     import('./firebase').then(({ auth, signOut }) => {
       signOut(auth).catch(() => {});
     });
+    // Clear persisted sessions in general storage so guest cannot view previous user's history
+    localStorage.removeItem('chatgpt_sessions');
+    localStorage.removeItem('OMNIRA_sessions');
+    localStorage.removeItem('chatgpt_current_id');
+    localStorage.removeItem('omnira_authenticated');
+    localStorage.removeItem('omnira_logged_in');
+
+    const freshGuestId = `session-${Date.now()}`;
+    setChatSessions([{ id: freshGuestId, title: 'New chat', messages: [] }]);
+    setCurrentChatId(freshGuestId);
+
     // Switch to Guest Mode without blocking site access!
     setCurrentUser({
       name: 'Guest User',
@@ -255,7 +485,7 @@ export default function App() {
       provider: 'guest',
       plan: 'Free'
     });
-    setIsAuthenticated(true);
+    setIsAuthenticated(false);
     setIsSettingsOpen(false);
   };
 
@@ -428,6 +658,32 @@ export default function App() {
           error: response.success === false ? (response.error || 'Image generation failed.') : null,
           timestamp: new Date().toLocaleTimeString()
         };
+      } else if (response?.type === 'clock') {
+        finalAssistantMsg = {
+          role: 'assistant',
+          type: 'clock',
+          timeData: response.timeData,
+          content: response.text || '',
+          timestamp: new Date().toLocaleTimeString()
+        };
+      } else if (response?.type === 'weather') {
+        finalAssistantMsg = {
+          role: 'assistant',
+          type: 'weather',
+          introText: response.introText || '',
+          content: response.text || '',
+          weather: response.weather,
+          sources: response.sources || [],
+          suggestions: response.suggestions || [],
+          timestamp: new Date().toLocaleTimeString()
+        };
+      } else if (response && typeof response === 'object' && (response.sources || response.text)) {
+        finalAssistantMsg = {
+          role: 'assistant',
+          content: response.text || '',
+          sources: response.sources || [],
+          timestamp: new Date().toLocaleTimeString()
+        };
       } else {
         finalAssistantMsg = {
           role: 'assistant',
@@ -483,6 +739,9 @@ export default function App() {
 
   const handleSwitchMode = (newMode, pushHistory = true) => {
     setActiveMode(newMode);
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
     if (pushHistory && typeof window !== 'undefined') {
       const targetPath = newMode === 'chat' ? '/' : `/${newMode}`;
       if (window.location.pathname !== targetPath) {
@@ -498,6 +757,9 @@ export default function App() {
     setChatSessions((prev) => [newSession, ...prev]);
     setCurrentChatId(newId);
     handleSwitchMode('chat');
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
   };
 
   // Create New Chat inside a Specific Project
@@ -546,6 +808,11 @@ export default function App() {
 
   // Delete Chat
   const handleDeleteChat = (idToDelete) => {
+    if (currentUser?.uid) {
+      deleteSessionFromCloud(currentUser.uid, idToDelete).catch((err) => {
+        console.warn('Delete cloud session notice:', err);
+      });
+    }
     const filtered = chatSessions.filter(s => s.id !== idToDelete);
     if (filtered.length === 0) {
       const freshId = `session-${Date.now()}`;
@@ -620,9 +887,16 @@ export default function App() {
             <ChatStudio
               messages={messages}
               setMessages={(newMsgs) => {
-                setChatSessions((prev) =>
-                  prev.map((s) => (s.id === currentChatId ? { ...s, messages: newMsgs } : s))
-                );
+                const targetId = currentSession?.id || currentChatId;
+                setChatSessions((prev) => {
+                  const safeList = Array.isArray(prev) && prev.length > 0 ? prev : [{ id: targetId, title: 'New chat', messages: [] }];
+                  const exists = safeList.some((s) => s && s.id === targetId);
+                  const nextVal = typeof newMsgs === 'function' ? newMsgs(messages) : newMsgs;
+                  if (!exists) {
+                    return [{ id: targetId, title: 'New chat', messages: nextVal }, ...safeList];
+                  }
+                  return safeList.map((s) => (s.id === targetId ? { ...s, messages: nextVal } : s));
+                });
               }}
               onSendMessage={handleSendMessage}
               isGenerating={isGenerating}

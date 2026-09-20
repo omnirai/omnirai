@@ -33,15 +33,6 @@ export const AI_MODELS = [
     description: 'Fast, multimodal reasoning & document processing.'
   },
   {
-    id: 'claude-3-5-sonnet',
-    name: 'Claude 3.5 Sonnet',
-    shortName: 'Claude 3.5',
-    badge: 'Anthropic',
-    color: '#d97757',
-    iconType: 'claude',
-    description: 'Exceptional coding, writing & complex analysis.'
-  },
-  {
     id: 'deepseek-reasoner',
     name: 'DeepSeek R1',
     shortName: 'DeepSeek R1',
@@ -49,24 +40,6 @@ export const AI_MODELS = [
     color: '#4d6bfe',
     iconType: 'deepseek',
     description: 'Chain-of-thought deep mathematical reasoning.'
-  },
-  {
-    id: 'grok-2',
-    name: 'Grok 2 (xAI)',
-    shortName: 'Grok 2',
-    badge: 'xAI',
-    color: '#ffffff',
-    iconType: 'grok',
-    description: 'Real-time knowledge & witty answers.'
-  },
-  {
-    id: 'perplexity',
-    name: 'Perplexity Sonar',
-    shortName: 'Perplexity',
-    badge: 'Sonar',
-    color: '#20b2aa',
-    iconType: 'perplexity',
-    description: 'Live web search with real-time web citations.'
   },
   {
     id: 'cloudflare-image',
@@ -204,13 +177,15 @@ export default function TopBar({
           </button>
         )}
 
-        <button
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors shrink-0 cursor-pointer"
-          title={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
-        >
-          {isSidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeft className="w-4 h-4" />}
-        </button>
+        {!isSidebarOpen && (
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors shrink-0 cursor-pointer"
+            title="Open sidebar"
+          >
+            <PanelLeft className="w-4 h-4" />
+          </button>
+        )}
 
         {/* Interactive Model Switcher Dropdown */}
         <div className="relative min-w-0" ref={dropdownRef}>

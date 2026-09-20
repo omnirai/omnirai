@@ -31,6 +31,7 @@ import {
   Download,
   Keyboard,
   ShieldCheck,
+  ShieldAlert,
   Bug
 } from 'lucide-react';
 import { GoogleLogo } from './AuthScreen';
@@ -61,7 +62,7 @@ export default function Sidebar({
   chatQuota = { used: 0, limit: 30, remaining: 30 }
 }) {
   const userName = currentUser?.name || "Guest User";
-  const isGuest = !currentUser || currentUser.provider === 'guest' || userName === "Guest User";
+  const isGuest = !currentUser || currentUser.provider === 'guest' || userName === "Guest User" || currentUser.email === 'guest@omnira.ai';
 
   // Context Menu State (Pin, Rename, Archive, Delete)
   const [contextMenu, setContextMenu] = useState(null); // { chat, x, y }
@@ -73,9 +74,32 @@ export default function Sidebar({
   const [isHelpFlyoutOpen, setIsHelpFlyoutOpen] = useState(false);
   const [legalModalTab, setLegalModalTab] = useState(null); // 'terms' | 'privacy' | 'help' | 'releasenotes' | 'downloadapps' | 'reportbug'
 
+  const asideRef = useRef(null);
   const touchTimerRef = useRef(null);
   const touchStartPos = useRef({ x: 0, y: 0 });
   const helpTimerRef = useRef(null);
+
+  const closeSidebarOnMobile = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setIsOpen(false);
+    }
+  };
+
+  const handleOpenSettingsTab = (tab) => {
+    setIsUserMenuOpen(false);
+    setIsHelpFlyoutOpen(false);
+    closeSidebarOnMobile();
+    if (openSettings) {
+      openSettings(tab);
+    }
+  };
+
+  const handleOpenLegal = (tab) => {
+    setIsUserMenuOpen(false);
+    setIsHelpFlyoutOpen(false);
+    closeSidebarOnMobile();
+    setLegalModalTab(tab);
+  };
 
   const handleHelpMouseEnter = () => {
     if (helpTimerRef.current) {
@@ -92,12 +116,22 @@ export default function Sidebar({
     }, 300);
   };
 
-  // Close menus on outside click or escape
+  // Close menus & mobile drawer on outside click or escape
   useEffect(() => {
-    const handleGlobalClick = () => {
+    const handleGlobalClick = (e) => {
       setContextMenu(null);
       setIsUserMenuOpen(false);
       setIsHelpFlyoutOpen(false);
+
+      // Close mobile drawer if clicking outside the sidebar
+      if (isOpen && typeof window !== 'undefined' && window.innerWidth < 1024) {
+        if (e.target.closest && e.target.closest('button[title*="sidebar"], button[title*="Sidebar"]')) {
+          return;
+        }
+        if (asideRef.current && !asideRef.current.contains(e.target)) {
+          setIsOpen(false);
+        }
+      }
     };
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
@@ -105,6 +139,9 @@ export default function Sidebar({
         setRenameModal(null);
         setIsUserMenuOpen(false);
         setIsHelpFlyoutOpen(false);
+        if (isOpen && typeof window !== 'undefined' && window.innerWidth < 1024) {
+          setIsOpen(false);
+        }
       }
     };
     window.addEventListener('click', handleGlobalClick);
@@ -114,7 +151,7 @@ export default function Sidebar({
       window.removeEventListener('keydown', handleKeyDown);
       if (helpTimerRef.current) clearTimeout(helpTimerRef.current);
     };
-  }, []);
+  }, [isOpen, setIsOpen]);
 
 
   // Long-press Touch Handlers for Mobile
@@ -158,8 +195,8 @@ export default function Sidebar({
   };
 
   const mainNavItems = [
-    { id: 'chat', label: 'Chat', icon: MessageSquare, modeTarget: 'chat' },
-    { id: 'images', label: 'Images', icon: ImageIcon, badge: 'GALLERY', modeTarget: 'images' },
+    { id: 'new-chat', label: 'New chat', icon: SquarePen, action: 'new-chat' },
+    { id: 'images', label: 'Images', icon: ImageIcon, modeTarget: 'images' },
     { id: 'library', label: 'Library', icon: BookOpen, modeTarget: 'doc' },
     { id: 'scheduled', label: 'Scheduled', icon: Clock, modeTarget: 'math' },
     { id: 'projects', label: 'Projects', icon: Folder, modeTarget: 'projects', canCreate: true },
@@ -185,33 +222,34 @@ export default function Sidebar({
   const recentChats = chatList.filter((c) => c && !c.pinned && !c.archived);
   const archivedChats = chatList.filter((c) => c && c.archived);
 
-  // Render individual chat item
+  // Render individual chat item (Matches ChatGPT pure text styling)
   const renderChatItem = (chat) => {
     if (!chat || !chat.id) return null;
-    const isSelected = chat.id === currentChatId;
+    const isSelected = chat.id === currentChatId && activeMode === 'chat';
     const isPinned = !!chat.pinned;
 
     return (
       <div
         key={chat.id}
-        onClick={() => onSelectChat(chat.id)}
+        onClick={() => {
+          onSelectChat(chat.id);
+          closeSidebarOnMobile();
+        }}
         onContextMenu={(e) => handleContextMenu(chat, e)}
         onTouchStart={(e) => handleTouchStart(chat, e)}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className={`group relative flex items-center justify-between px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-all ${
+        className={`group relative flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[13.5px] cursor-pointer transition-colors ${
           isSelected 
-            ? 'bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold shadow-2xs' 
-            : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+            ? 'bg-[var(--bg-hover)] text-[var(--text-primary)] font-medium' 
+            : 'text-[var(--text-primary)] hover:bg-[var(--bg-hover)] font-normal'
         }`}
       >
         <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
-          {isPinned ? (
-            <Pin className="w-3 h-3 text-neutral-900 dark:text-white fill-neutral-900 dark:fill-white shrink-0" />
-          ) : (
-            <MessageSquare className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
+          {isPinned && (
+            <Pin className="w-3 h-3 text-neutral-500 fill-neutral-500 dark:text-neutral-400 dark:fill-neutral-400 shrink-0" />
           )}
-          <span className="truncate flex-1 text-left">
+          <span className="truncate flex-1 text-left text-[13.5px] leading-relaxed">
             {chat.title || "Untitled chat"}
           </span>
         </div>
@@ -228,10 +266,10 @@ export default function Sidebar({
               y: rect.bottom + 4
             });
           }}
-          className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all cursor-pointer shrink-0"
+          className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all cursor-pointer shrink-0"
           title="Chat options"
         >
-          <MoreHorizontal className="w-3.5 h-3.5" />
+          <MoreHorizontal className="w-3.5 h-3.5 stroke-[1.6]" />
         </button>
       </div>
     );
@@ -243,81 +281,86 @@ export default function Sidebar({
       {isOpen && (
         <div 
           onClick={() => setIsOpen(false)}
-          className="fixed inset-0 bg-black/50 z-50 lg:hidden backdrop-blur-xs transition-opacity duration-200"
+          className="fixed inset-0 bg-black/50 z-[55] lg:hidden backdrop-blur-xs transition-opacity duration-200"
         />
       )}
 
       {/* Sidebar Root Panel */}
       <aside 
-        className={`fixed inset-y-0 left-0 z-[60] w-64 max-w-[85vw] bg-[var(--bg-sidebar)] border-r border-[var(--border-color)] flex flex-col shadow-2xl transition-all duration-200 ease-in-out lg:relative lg:inset-auto lg:h-full lg:shrink-0 lg:z-50 lg:shadow-none ${
+        ref={asideRef}
+        className={`fixed inset-y-0 left-0 z-[60] w-64 max-w-[85vw] bg-[var(--bg-sidebar)] border-r border-[var(--border-color)]/50 flex flex-col transition-all duration-200 ease-in-out lg:relative lg:inset-auto lg:h-full lg:shrink-0 lg:z-50 ${
           isOpen ? 'translate-x-0 block' : '-translate-x-full hidden lg:hidden'
         }`}
       >
-        {/* Top Header: Brand Logo & Panel Toggle */}
-        <div className="h-14 px-3.5 border-b border-[var(--border-color)] flex items-center justify-between shrink-0">
+        {/* Top Header: Brand Logo, Search & Panel Toggle */}
+        <div className="h-12 px-3 flex items-center justify-between shrink-0">
           <div 
             onClick={() => {
               setActiveMode('chat');
               onNewChat();
+              closeSidebarOnMobile();
             }}
             className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
           >
-            <OmniraLogo className="h-5 object-contain" />
+            <OmniraLogo 
+              className="h-7" 
+              iconSize="w-7 h-7"
+              textClassName="text-[16px] font-bold tracking-tight"
+            />
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={() => {
+                const searchInput = document.querySelector('input[placeholder*="Search"]');
+                if (searchInput) searchInput.focus();
+              }}
+              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+              title="Search"
+            >
+              <Search className="w-4 h-4 stroke-[1.6]" />
+            </button>
+
             <button
               onClick={() => setIsOpen(false)}
               className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
               title="Close sidebar"
             >
-              <PanelLeftClose className="w-4 h-4" />
+              <PanelLeftClose className="w-4 h-4 stroke-[1.6]" />
             </button>
           </div>
         </div>
 
-        {/* Primary Action Button: New Chat */}
-        <div className="p-3 pb-2 space-y-1.5">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveMode('chat');
-              onNewChat();
-            }}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 hover:opacity-90 transition-all shadow-xs cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <Plus className="w-4 h-4" />
-              <span>New chat</span>
-            </div>
-            <SquarePen className="w-3.5 h-3.5 opacity-60" />
-          </button>
-        </div>
-
-        {/* Navigation Categories Section */}
-        <div className="px-2 py-1 space-y-0.5 border-b border-[var(--border-color)]/60">
+        {/* Navigation Categories Section (Matches ChatGPT) */}
+        <div className="px-2 pt-1 pb-1 space-y-0.5">
           {mainNavItems.map((item) => {
             const Icon = item.icon;
-            const isItemActive = activeMode === item.modeTarget && item.modeTarget !== undefined;
+            const isItemActive = item.action === 'new-chat' 
+              ? false 
+              : (activeMode === item.modeTarget && item.modeTarget !== undefined);
 
             return (
               <div
                 key={item.id}
                 onClick={() => {
-                  if (item.action === 'settings') {
-                    openSettings && openSettings('general');
+                  if (item.action === 'new-chat') {
+                    setActiveMode('chat');
+                    onNewChat();
+                  } else if (item.action === 'settings') {
+                    handleOpenSettingsTab('general');
                   } else if (item.modeTarget) {
                     setActiveMode(item.modeTarget);
                   }
+                  closeSidebarOnMobile();
                 }}
-                className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-medium cursor-pointer transition-colors ${
+                className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[13.5px] cursor-pointer transition-colors ${
                   isItemActive 
-                    ? 'bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold' 
-                    : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+                    ? 'bg-[var(--bg-hover)] text-[var(--text-primary)] font-medium' 
+                    : 'text-[var(--text-primary)] hover:bg-[var(--bg-hover)] font-normal'
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <Icon className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                  <Icon className="w-4 h-4 text-[var(--text-muted)] shrink-0 stroke-[1.6]" />
                   <span className="truncate">{item.label}</span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
@@ -328,17 +371,13 @@ export default function Sidebar({
                         e.stopPropagation();
                         setActiveMode('projects');
                         onCreateProject?.();
+                        closeSidebarOnMobile();
                       }}
-                      className="p-1 rounded hover:bg-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors opacity-70 hover:opacity-100 cursor-pointer"
+                      className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors opacity-70 hover:opacity-100 cursor-pointer"
                       title="Create project"
                     >
-                      <Plus className="w-3.5 h-3.5" />
+                      <Plus className="w-3.5 h-3.5 stroke-[1.6]" />
                     </button>
-                  )}
-                  {item.badge && (
-                    <span className="text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
-                      {item.badge}
-                    </span>
                   )}
                 </div>
               </div>
@@ -347,13 +386,13 @@ export default function Sidebar({
         </div>
 
         {/* Chat History Threads Area */}
-        <div className="flex-1 overflow-y-auto px-2 py-3 space-y-2">
+        <div className="flex-1 overflow-y-auto px-2 py-1 space-y-1">
           
           {/* Pinned Chats Section */}
           {pinnedChats.length > 0 && (
             <div className="space-y-0.5">
-              <div className="px-2.5 text-[10px] font-bold text-[var(--text-muted)] tracking-wider uppercase flex items-center gap-1.5 mb-1">
-                <Pin className="w-3 h-3 text-neutral-900 dark:text-white fill-neutral-900 dark:fill-white" />
+              <div className="px-2.5 pt-2 pb-1 text-xs font-normal text-[var(--text-muted)] flex items-center gap-1.5">
+                <Pin className="w-3 h-3 text-[var(--text-muted)] fill-[var(--text-muted)]" />
                 <span>Pinned</span>
               </div>
               {pinnedChats.map(renderChatItem)}
@@ -362,12 +401,12 @@ export default function Sidebar({
 
           {/* Recent Chats Section */}
           <div className="space-y-0.5">
-            <div className="px-2.5 text-[10px] font-bold text-[var(--text-muted)] tracking-wider uppercase mb-1">
+            <div className="px-2.5 pt-2 pb-1 text-xs font-normal text-[var(--text-muted)]">
               Recents
             </div>
 
             {recentChats.length === 0 && pinnedChats.length === 0 ? (
-              <div className="px-2.5 py-2 text-xs text-[var(--text-muted)] italic">
+              <div className="px-2.5 py-2 text-[13px] text-[var(--text-muted)] font-normal">
                 No recent conversations
               </div>
             ) : (
@@ -375,16 +414,36 @@ export default function Sidebar({
             )}
           </div>
 
+          {/* Guest Mode History Notice (Subtle, minimalist, non-intrusive) */}
+          {isGuest && (
+            <div className="mt-3 mx-1 p-2 rounded-lg border border-[var(--border-color)]/70 bg-[var(--bg-hover)]/30 text-xs">
+              <div className="text-[11.5px] leading-snug text-[var(--text-muted)] mb-2 px-0.5 font-normal">
+                Chats aren't saved in guest mode. Sign in to keep your history.
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  openAuth && openAuth();
+                  closeSidebarOnMobile();
+                }}
+                className="w-full py-1 px-2.5 border border-[var(--border-color)] rounded-md text-xs font-normal text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <LogIn className="w-3 h-3 stroke-[1.6]" />
+                <span>Sign in</span>
+              </button>
+            </div>
+          )}
+
           {/* Archived Chats Section */}
           {archivedChats.length > 0 && (
-            <div className="pt-2 border-t border-[var(--border-color)]/60 space-y-1">
+            <div className="pt-2 border-t border-[var(--border-color)]/40 space-y-1">
               <button
                 type="button"
                 onClick={() => setShowArchived(!showArchived)}
-                className="w-full flex items-center justify-between px-2.5 py-1 text-[11px] font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                className="w-full flex items-center justify-between px-2.5 py-1 text-xs font-normal text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
               >
                 <div className="flex items-center gap-1.5">
-                  <Archive className="w-3 h-3" />
+                  <Archive className="w-3.5 h-3.5 stroke-[1.6]" />
                   <span>Archived ({archivedChats.length})</span>
                 </div>
                 {showArchived ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
@@ -400,8 +459,8 @@ export default function Sidebar({
 
         </div>
 
-        {/* Bottom User Profile Section (Matching User Screenshot 1 & 2) */}
-        <div className="p-3 border-t border-[var(--border-color)] mt-auto relative">
+        {/* Bottom User Profile Section (Matching ChatGPT) */}
+        <div className="p-2 shrink-0 relative">
           
           {/* Main User Pill */}
           <div 
@@ -410,10 +469,10 @@ export default function Sidebar({
               setIsUserMenuOpen(!isUserMenuOpen);
               setIsHelpFlyoutOpen(false);
             }}
-            className="flex items-center justify-between p-2 rounded-2xl bg-neutral-100 dark:bg-neutral-800/60 hover:bg-neutral-200/70 dark:hover:bg-neutral-800 cursor-pointer transition-all border border-[var(--border-color)]/50"
+            className="flex items-center justify-between p-1.5 rounded-lg hover:bg-[var(--bg-hover)] cursor-pointer transition-colors"
           >
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-[#10a37f] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
+              <div className="w-7 h-7 rounded-full bg-[#10a37f] text-white font-medium text-xs flex items-center justify-center shrink-0 overflow-hidden">
                 {currentUser?.picture || currentUser?.photoURL || (currentUser?.avatar && (currentUser.avatar.startsWith('data:') || currentUser.avatar.startsWith('http'))) ? (
                   <img 
                     src={currentUser.picture || currentUser.photoURL || currentUser.avatar} 
@@ -425,11 +484,11 @@ export default function Sidebar({
                 )}
               </div>
               
-              <div className="truncate text-xs">
-                <div className="font-semibold text-[var(--text-primary)] truncate leading-tight">
+              <div className="truncate text-left">
+                <div className="font-normal text-[13px] text-[var(--text-primary)] truncate leading-tight">
                   {userName}
                 </div>
-                <div className="text-[10px] text-[var(--text-muted)] leading-tight">
+                <div className="text-[11px] text-[var(--text-muted)] font-normal leading-tight mt-0.5">
                   {currentUser?.plan || 'Free'}
                 </div>
               </div>
@@ -440,24 +499,23 @@ export default function Sidebar({
                 e.stopPropagation();
                 openSettings && openSettings('billing');
               }}
-              className="px-3 py-1 rounded-full text-xs font-semibold bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white border border-neutral-200 dark:border-neutral-600 shadow-2xs hover:bg-neutral-50 dark:hover:bg-neutral-600 transition-colors cursor-pointer"
+              className="px-2.5 py-0.5 rounded-full text-xs font-normal text-[var(--text-primary)] border border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
             >
               Upgrade
             </button>
           </div>
 
-          {/* User Account Popover Menu (Matching Screenshot 1) */}
+          {/* User Account Popover Menu */}
           {isUserMenuOpen && (
             <div 
-              className="absolute bottom-16 left-3 w-64 z-[75] bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl shadow-2xl py-2 backdrop-blur-md animate-fade-in text-sm font-medium"
+              className="absolute bottom-14 left-2 right-2 z-[75] bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl shadow-xl py-1.5 backdrop-blur-md animate-fade-in text-sm font-normal"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header Item */}
               <div 
                 onMouseEnter={() => setIsHelpFlyoutOpen(false)}
                 onClick={() => {
-                  setIsUserMenuOpen(false);
-                  openSettings && openSettings('account');
+                  handleOpenSettingsTab('account');
                 }}
                 className="flex items-center justify-between px-3.5 py-2 hover:bg-[var(--bg-hover)] cursor-pointer transition-colors"
               >
@@ -493,9 +551,7 @@ export default function Sidebar({
                 onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  setIsUserMenuOpen(false);
-                  setIsHelpFlyoutOpen(false);
-                  openSettings && openSettings('billing');
+                  handleOpenSettingsTab('billing');
                 }}
                 className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left text-xs cursor-pointer"
               >
@@ -509,9 +565,7 @@ export default function Sidebar({
                 onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  setIsUserMenuOpen(false);
-                  setIsHelpFlyoutOpen(false);
-                  openSettings && openSettings('personalization');
+                  handleOpenSettingsTab('personalization');
                 }}
                 className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left text-xs cursor-pointer"
               >
@@ -525,9 +579,7 @@ export default function Sidebar({
                 onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  setIsUserMenuOpen(false);
-                  setIsHelpFlyoutOpen(false);
-                  openSettings && openSettings('account');
+                  handleOpenSettingsTab('account');
                 }}
                 className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left text-xs cursor-pointer"
               >
@@ -541,9 +593,7 @@ export default function Sidebar({
                 onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  setIsUserMenuOpen(false);
-                  setIsHelpFlyoutOpen(false);
-                  openSettings && openSettings('general');
+                  handleOpenSettingsTab('general');
                 }}
                 className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left text-xs cursor-pointer"
               >
@@ -562,9 +612,7 @@ export default function Sidebar({
                   onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    setLegalModalTab('help');
-                    setIsUserMenuOpen(false);
-                    setIsHelpFlyoutOpen(false);
+                    handleOpenLegal('help');
                   }}
                   onMouseEnter={() => setIsHelpFlyoutOpen(true)}
                   className={`w-full flex items-center justify-between px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left text-xs cursor-pointer ${
@@ -589,9 +637,7 @@ export default function Sidebar({
                       onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setLegalModalTab('help');
-                        setIsUserMenuOpen(false);
-                        setIsHelpFlyoutOpen(false);
+                        handleOpenLegal('help');
                       }}
                       className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
                     >
@@ -603,9 +649,7 @@ export default function Sidebar({
                       onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setLegalModalTab('releasenotes');
-                        setIsUserMenuOpen(false);
-                        setIsHelpFlyoutOpen(false);
+                        handleOpenLegal('releasenotes');
                       }}
                       className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
                     >
@@ -617,9 +661,7 @@ export default function Sidebar({
                       onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setLegalModalTab('downloadapps');
-                        setIsUserMenuOpen(false);
-                        setIsHelpFlyoutOpen(false);
+                        handleOpenLegal('downloadapps');
                       }}
                       className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
                     >
@@ -631,9 +673,7 @@ export default function Sidebar({
                       onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        openSettings && openSettings('keyboard');
-                        setIsUserMenuOpen(false);
-                        setIsHelpFlyoutOpen(false);
+                        handleOpenSettingsTab('keyboard');
                       }}
                       className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
                     >
@@ -647,9 +687,7 @@ export default function Sidebar({
                       onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setLegalModalTab('terms');
-                        setIsUserMenuOpen(false);
-                        setIsHelpFlyoutOpen(false);
+                        handleOpenLegal('terms');
                       }}
                       className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
                     >
@@ -661,9 +699,7 @@ export default function Sidebar({
                       onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setLegalModalTab('privacy');
-                        setIsUserMenuOpen(false);
-                        setIsHelpFlyoutOpen(false);
+                        handleOpenLegal('privacy');
                       }}
                       className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
                     >
@@ -675,9 +711,7 @@ export default function Sidebar({
                       onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setLegalModalTab('reportbug');
-                        setIsUserMenuOpen(false);
-                        setIsHelpFlyoutOpen(false);
+                        handleOpenLegal('reportbug');
                       }}
                       className="w-full flex items-center gap-3 px-3.5 py-2 hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-colors text-left cursor-pointer"
                     >
@@ -696,6 +730,7 @@ export default function Sidebar({
                   e.stopPropagation();
                   setIsUserMenuOpen(false);
                   setIsHelpFlyoutOpen(false);
+                  closeSidebarOnMobile();
                   if (isGuest) {
                     openAuth && openAuth();
                   } else {
